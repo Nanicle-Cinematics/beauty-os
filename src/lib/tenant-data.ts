@@ -11,16 +11,6 @@ export type WorkspaceSummary = {
   status: string;
 };
 
-export type TenantWorkspace = {
-  id: string;
-  name: string;
-  slug: string;
-  planName: string;
-  staffSeats: number;
-  branchCount: number;
-  automationStatus: string;
-};
-
 export type PlatformBusiness = {
   name: string;
   slug: string;
@@ -45,27 +35,6 @@ const fallbackWorkspaces: WorkspaceSummary[] = [
     status: "Trial",
   },
 ];
-
-const fallbackTenants: Record<string, TenantWorkspace> = {
-  "osu-glow-studio": {
-    id: "sample_osu_glow",
-    name: "Osu Glow Studio",
-    slug: "osu-glow-studio",
-    planName: "Studio Pro",
-    staffSeats: 6,
-    branchCount: 1,
-    automationStatus: "automated reminders active",
-  },
-  "luxe-lash-lab": {
-    id: "sample_luxe_lash",
-    name: "Luxe Lash Lab",
-    slug: "luxe-lash-lab",
-    planName: "Growth Suite",
-    staffSeats: 3,
-    branchCount: 1,
-    automationStatus: "trial reminders active",
-  },
-};
 
 const fallbackPlatformBusinesses: PlatformBusiness[] = [
   { name: "Osu Glow Studio", slug: "osu-glow-studio", plan: "Studio Pro", status: "Active", users: 6 },
@@ -139,38 +108,6 @@ export async function getWorkspaceSummaries(user: AppUser): Promise<WorkspaceSum
     plan: business.subscription?.plan.name ?? "No plan",
     status: readableStatus(business.status),
   }));
-}
-
-export async function getTenantWorkspace(slug: string): Promise<TenantWorkspace | null> {
-  if (!isDatabaseConfigured()) {
-    return fallbackTenants[slug] ?? null;
-  }
-
-  const business = await prisma.business.findUnique({
-    where: { slug },
-    include: {
-      subscription: { include: { plan: true } },
-      _count: {
-        select: {
-          staff: true,
-        },
-      },
-    },
-  });
-
-  if (!business) {
-    return null;
-  }
-
-  return {
-    id: business.id,
-    name: business.name,
-    slug: business.slug,
-    planName: business.subscription?.plan.name ?? "No plan",
-    staffSeats: business._count.staff,
-    branchCount: 1,
-    automationStatus: "automated reminders active",
-  };
 }
 
 export async function getPlatformBusinesses(): Promise<PlatformBusiness[]> {

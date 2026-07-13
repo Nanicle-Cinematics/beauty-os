@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { TenantDashboardData } from "@/lib/dashboard-data";
 
 const navItems: { label: string; icon: string; section?: string; path?: string }[] = [
   { label: "Dashboard", icon: "⌘", section: "dashboard", path: "" },
@@ -11,47 +12,6 @@ const navItems: { label: string; icon: string; section?: string; path?: string }
   { label: "Marketing", icon: "✦" },
 ];
 
-const stats = [
-  { label: "Today revenue", value: "GH₵ 4,820", detail: "+18% vs last Monday", tone: "rose" },
-  { label: "Bookings today", value: "18", detail: "5 checked in · 2 deposits due", tone: "teal" },
-  { label: "Client retention", value: "72%", detail: "31 repeat visits this week", tone: "blue" },
-  { label: "Inventory alerts", value: "7", detail: "3 critical stock items", tone: "amber" },
-];
-
-const appointments = [
-  { time: "09:00", client: "Ama Serwaa", service: "Silk press + trim", staff: "Nadia", status: "Checked in", value: "GH₵ 420" },
-  { time: "10:30", client: "Esi Manu", service: "Soft glam", staff: "Mina", status: "Deposit paid", value: "GH₵ 650" },
-  { time: "12:00", client: "Akua Mensah", service: "Wig install", staff: "Nadia", status: "Confirmed", value: "GH₵ 780" },
-  { time: "14:15", client: "Afia Owusu", service: "Gel manicure", staff: "Louise", status: "New client", value: "GH₵ 260" },
-  { time: "16:00", client: "Yaa Boateng", service: "Bridal trial", staff: "Mina", status: "VIP", value: "GH₵ 1,100" },
-];
-
-const staff = [
-  { name: "Nadia", role: "Senior stylist", booked: "86%", revenue: "GH₵ 1,640", color: "bg-emerald-500" },
-  { name: "Mina", role: "Makeup artist", booked: "78%", revenue: "GH₵ 1,750", color: "bg-rose-500" },
-  { name: "Louise", role: "Nail tech", booked: "52%", revenue: "GH₵ 690", color: "bg-blue-500" },
-  { name: "Efua", role: "Reception", booked: "Front desk", revenue: "12 tasks", color: "bg-amber-500" },
-];
-
-const clients = [
-  { name: "Mabel A.", tag: "VIP", note: "Prefers warm undertones", spend: "GH₵ 8,420" },
-  { name: "Nana E.", tag: "At risk", note: "No visit in 74 days", spend: "GH₵ 1,260" },
-  { name: "Serwaa K.", tag: "Birthday", note: "Send facial promo", spend: "GH₵ 3,980" },
-];
-
-const inventory = [
-  { item: "Lace adhesive", stock: "2 bottles", level: 22 },
-  { item: "Developer 20 vol", stock: "4 units", level: 38 },
-  { item: "Nude gel polish", stock: "1 unit", level: 12 },
-];
-
-const tasks = [
-  "Confirm tomorrow's bridal party arrival times",
-  "Approve Nana's commission payout",
-  "Order lace adhesive before Friday",
-  "Review no-show policy update",
-];
-
 const toneClasses: Record<string, string> = {
   rose: "border-rose-200 bg-rose-50 text-rose-700",
   teal: "border-emerald-200 bg-emerald-50 text-emerald-700",
@@ -60,24 +20,14 @@ const toneClasses: Record<string, string> = {
 };
 
 type TenantDashboardProps = {
-  businessName: string;
+  data: TenantDashboardData;
   businessSlug: string;
-  planName?: string;
-  staffSeats?: number;
-  branchCount?: number;
-  automationStatus?: string;
   currentSection?: "dashboard" | "appointments" | "clients";
 };
 
-export function TenantDashboard({
-  businessName,
-  businessSlug,
-  planName = "Studio Pro",
-  staffSeats = 6,
-  branchCount = 1,
-  automationStatus = "automated reminders active",
-  currentSection = "dashboard",
-}: TenantDashboardProps) {
+export function TenantDashboard({ data, businessSlug, currentSection = "dashboard" }: TenantDashboardProps) {
+  const { tenant, stats, pulse, pills, tasks, appointments, clientSignals, staff, inventory } = data;
+
   return (
     <main className="min-h-screen bg-[#f6f8f6] text-[#111b17]">
       <div className="grid min-h-screen grid-cols-[248px_minmax(0,1fr)] max-[920px]:grid-cols-1">
@@ -117,9 +67,9 @@ export function TenantDashboard({
             <div className="text-xs font-black uppercase tracking-[0.14em] text-[#f2c66d]">
               Plan
             </div>
-            <div className="mt-2 text-sm font-bold">{planName}</div>
+            <div className="mt-2 text-sm font-bold">{tenant.planName}</div>
             <div className="mt-1 text-xs leading-5 text-white/62">
-              {staffSeats} staff seats · {branchCount} branch · {automationStatus}
+              {tenant.staffSeats} staff seats · {tenant.branchCount} branch · {tenant.automationStatus}
             </div>
           </div>
         </aside>
@@ -128,7 +78,7 @@ export function TenantDashboard({
           <header className="sticky top-3 z-20 mb-5 flex min-h-16 items-center gap-3 rounded-3xl border border-[#dbe4de] bg-white/88 px-4 shadow-[0_18px_45px_rgba(16,38,31,0.08)] backdrop-blur max-[720px]:static max-[720px]:flex-wrap">
             <div className="min-w-0 border-r border-[#dbe4de] pr-5 max-[720px]:border-r-0">
               <div className="text-[11px] font-black uppercase tracking-[0.14em] text-[#1d7b5d]">
-                {businessName}
+                {tenant.name}
               </div>
               <h1 className="text-xl font-black tracking-tight">Operations dashboard</h1>
             </div>
@@ -139,12 +89,12 @@ export function TenantDashboard({
                 placeholder="Search clients, bookings, products..."
               />
             </label>
-            <button className="grid size-11 place-items-center rounded-2xl border border-[#dbe4de] bg-white text-[#1d7b5d]">
+            <Link href={`/${businessSlug}/appointments`} className="grid h-11 place-items-center rounded-2xl border border-[#dbe4de] bg-white px-3 text-[#1d7b5d]">
               ◐
-            </button>
-            <button className="rounded-2xl bg-[#10261f] px-4 py-3 text-sm font-black text-white">
+            </Link>
+            <Link href={`/${businessSlug}/appointments`} className="rounded-2xl bg-[#10261f] px-4 py-3 text-sm font-black text-white">
               New booking
-            </button>
+            </Link>
           </header>
 
           <div className="grid gap-5">
@@ -154,7 +104,7 @@ export function TenantDashboard({
                   <div className="flex flex-col justify-between gap-8">
                     <div>
                       <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#f2c66d]">
-                        Today · Monday, 13 July
+                        {data.todayLabel}
                       </div>
                       <h2 className="max-w-2xl text-4xl font-black leading-tight tracking-tight max-[720px]:text-3xl">
                         Keep the studio full, calm, and profitable.
@@ -164,9 +114,9 @@ export function TenantDashboard({
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2 text-xs font-bold">
-                      <span className="rounded-full bg-white/12 px-3 py-2">Next gap: 13:30</span>
-                      <span className="rounded-full bg-white/12 px-3 py-2">3 unpaid deposits</span>
-                      <span className="rounded-full bg-white/12 px-3 py-2">2 birthdays today</span>
+                      {pills.map((pill) => (
+                        <span key={pill} className="rounded-full bg-white/12 px-3 py-2">{pill}</span>
+                      ))}
                     </div>
                   </div>
                   <div className="rounded-3xl border border-white/12 bg-white/10 p-4 backdrop-blur">
@@ -174,16 +124,16 @@ export function TenantDashboard({
                       Studio pulse
                     </div>
                     <div className="mt-5 grid gap-4">
-                      {["Bookings", "Capacity", "Checkout"].map((label, index) => (
-                        <div key={label}>
+                      {pulse.map((bar) => (
+                        <div key={bar.label}>
                           <div className="mb-2 flex justify-between text-xs font-bold">
-                            <span>{label}</span>
-                            <span>{[82, 74, 61][index]}%</span>
+                            <span>{bar.label}</span>
+                            <span>{bar.value}%</span>
                           </div>
                           <div className="h-2 rounded-full bg-white/15">
                             <div
                               className="h-full rounded-full bg-[#f2c66d]"
-                              style={{ width: `${[82, 74, 61][index]}%` }}
+                              style={{ width: `${bar.value}%` }}
                             />
                           </div>
                         </div>
@@ -235,46 +185,56 @@ export function TenantDashboard({
                   </div>
                   <Link href={`/${businessSlug}/appointments`} className="rounded-2xl border border-[#dbe4de] px-4 py-2 text-sm font-black">Calendar</Link>
                 </div>
-                <div className="overflow-hidden rounded-2xl border border-[#dbe4de]">
-                  <div className="grid grid-cols-[88px_1.2fr_1fr_110px_120px] bg-[#f2f7f4] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-[#65766d] max-[760px]:hidden">
-                    <span>Time</span><span>Client</span><span>Staff</span><span>Status</span><span>Value</span>
+                {appointments.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[#cdddd4] bg-[#f8faf8] px-4 py-10 text-center text-sm font-semibold text-[#6b7c73]">
+                    No appointments booked for today yet.
                   </div>
-                  {appointments.map((appt) => (
-                    <div key={`${appt.time}-${appt.client}`} className="grid grid-cols-[88px_1.2fr_1fr_110px_120px] items-center gap-3 border-t border-[#e6eee9] px-4 py-4 text-sm max-[760px]:grid-cols-1">
-                      <div className="font-black text-[#1d7b5d]">{appt.time}</div>
-                      <div>
-                        <div className="font-black">{appt.client}</div>
-                        <div className="mt-1 text-xs font-semibold text-[#6b7c73]">{appt.service}</div>
-                      </div>
-                      <div className="font-bold">{appt.staff}</div>
-                      <div>
-                        <span className="rounded-full bg-[#eff7f2] px-3 py-1 text-xs font-black text-[#1d7b5d]">
-                          {appt.status}
-                        </span>
-                      </div>
-                      <div className="font-black">{appt.value}</div>
+                ) : (
+                  <div className="overflow-hidden rounded-2xl border border-[#dbe4de]">
+                    <div className="grid grid-cols-[88px_1.2fr_1fr_110px_120px] bg-[#f2f7f4] px-4 py-3 text-[11px] font-black uppercase tracking-[0.12em] text-[#65766d] max-[760px]:hidden">
+                      <span>Time</span><span>Client</span><span>Staff</span><span>Status</span><span>Value</span>
                     </div>
-                  ))}
-                </div>
+                    {appointments.map((appt) => (
+                      <div key={appt.id} className="grid grid-cols-[88px_1.2fr_1fr_110px_120px] items-center gap-3 border-t border-[#e6eee9] px-4 py-4 text-sm max-[760px]:grid-cols-1">
+                        <div className="font-black text-[#1d7b5d]">{appt.time}</div>
+                        <div>
+                          <div className="font-black">{appt.client}</div>
+                          <div className="mt-1 text-xs font-semibold text-[#6b7c73]">{appt.service}</div>
+                        </div>
+                        <div className="font-bold">{appt.staff}</div>
+                        <div>
+                          <span className="rounded-full bg-[#eff7f2] px-3 py-1 text-xs font-black text-[#1d7b5d]">
+                            {appt.status}
+                          </span>
+                        </div>
+                        <div className="font-black">{appt.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-5">
                 <div className="rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]">
                   <h2 className="text-lg font-black">Client signals</h2>
-                  <div className="mt-4 grid gap-3">
-                    {clients.map((client) => (
-                      <div key={client.name} className="rounded-2xl border border-[#e6eee9] p-3">
-                        <div className="flex items-center justify-between gap-2">
-                          <strong>{client.name}</strong>
-                          <span className="rounded-full bg-[#f6edf0] px-2 py-1 text-[11px] font-black text-rose-700">
-                            {client.tag}
-                          </span>
+                  {clientSignals.length === 0 ? (
+                    <p className="mt-4 text-sm text-[#6b7c73]">No client activity to surface yet.</p>
+                  ) : (
+                    <div className="mt-4 grid gap-3">
+                      {clientSignals.map((client) => (
+                        <div key={client.name} className="rounded-2xl border border-[#e6eee9] p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <strong>{client.name}</strong>
+                            <span className="rounded-full bg-[#f6edf0] px-2 py-1 text-[11px] font-black text-rose-700">
+                              {client.tag}
+                            </span>
+                          </div>
+                          <div className="mt-2 text-sm text-[#6b7c73]">{client.note}</div>
+                          <div className="mt-2 text-xs font-black text-[#10261f]">{client.spend} lifetime</div>
                         </div>
-                        <div className="mt-2 text-sm text-[#6b7c73]">{client.note}</div>
-                        <div className="mt-2 text-xs font-black text-[#10261f]">{client.spend} lifetime</div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </section>
@@ -282,45 +242,53 @@ export function TenantDashboard({
             <section className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-5 max-[980px]:grid-cols-1">
               <div className="rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]">
                 <h2 className="text-lg font-black">Staff utilization</h2>
-                <div className="mt-5 grid gap-4">
-                  {staff.map((person) => (
-                    <div key={person.name} className="grid grid-cols-[1fr_86px] items-center gap-4">
-                      <div className="min-w-0">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="font-black">{person.name}</div>
-                            <div className="text-xs font-semibold text-[#6b7c73]">{person.role}</div>
+                {staff.length === 0 ? (
+                  <p className="mt-4 text-sm text-[#6b7c73]">No active staff members yet.</p>
+                ) : (
+                  <div className="mt-5 grid gap-4">
+                    {staff.map((person) => (
+                      <div key={person.name} className="grid grid-cols-[1fr_86px] items-center gap-4">
+                        <div className="min-w-0">
+                          <div className="flex items-center justify-between gap-3">
+                            <div>
+                              <div className="font-black">{person.name}</div>
+                              <div className="text-xs font-semibold text-[#6b7c73]">{person.role}</div>
+                            </div>
+                            <div className="text-right text-xs font-black">{person.revenue}</div>
                           </div>
-                          <div className="text-right text-xs font-black">{person.revenue}</div>
+                          <div className="mt-2 h-2 rounded-full bg-[#e8f0eb]">
+                            <div className={`h-full rounded-full ${person.color}`} style={{ width: `${person.bookedPercent}%` }} />
+                          </div>
                         </div>
-                        <div className="mt-2 h-2 rounded-full bg-[#e8f0eb]">
-                          <div className={`h-full rounded-full ${person.color}`} style={{ width: person.booked }} />
-                        </div>
+                        <div className="text-right text-sm font-black">{person.bookedLabel}</div>
                       </div>
-                      <div className="text-right text-sm font-black">{person.booked}</div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]">
                 <h2 className="text-lg font-black">Inventory watchlist</h2>
-                <div className="mt-5 grid gap-4">
-                  {inventory.map((product) => (
-                    <div key={product.item}>
-                      <div className="mb-2 flex justify-between gap-3 text-sm">
-                        <strong>{product.item}</strong>
-                        <span className="font-bold text-[#6b7c73]">{product.stock}</span>
+                {inventory.length === 0 ? (
+                  <p className="mt-4 text-sm text-[#6b7c73]">No products tracked yet.</p>
+                ) : (
+                  <div className="mt-5 grid gap-4">
+                    {inventory.map((product) => (
+                      <div key={product.item}>
+                        <div className="mb-2 flex justify-between gap-3 text-sm">
+                          <strong>{product.item}</strong>
+                          <span className="font-bold text-[#6b7c73]">{product.stock}</span>
+                        </div>
+                        <div className="h-3 rounded-full bg-[#e8f0eb]">
+                          <div
+                            className={`h-full rounded-full ${product.level < 35 ? "bg-rose-500" : product.level < 70 ? "bg-amber-500" : "bg-emerald-500"}`}
+                            style={{ width: `${product.level}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="h-3 rounded-full bg-[#e8f0eb]">
-                        <div
-                          className={`h-full rounded-full ${product.level < 25 ? "bg-rose-500" : "bg-amber-500"}`}
-                          style={{ width: `${product.level}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
           </div>
