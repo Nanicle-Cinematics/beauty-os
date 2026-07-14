@@ -46,6 +46,17 @@ model User {
   @@index([isPlatformAdmin])
 }
 
+/// Fixed-window rate-limit counter, keyed by e.g. "signup:<ip>". One row per
+/// key, reset when its window expires. DB-backed so it works across serverless
+/// instances (in-memory counters don't).
+model RateLimit {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  count     Int      @default(0)
+  windowEnd DateTime
+  updatedAt DateTime @updatedAt
+}
+
 /// One-time token to verify a user's email after self-serve signup. Raw token
 /// lives only in the emailed link; we store its sha256 hash.
 model EmailVerificationToken {

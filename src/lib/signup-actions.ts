@@ -6,12 +6,21 @@ import { signUpBusiness } from "@/lib/signup-data";
 import { issueVerificationToken } from "@/lib/verification-data";
 import { sendVerificationEmail } from "@/lib/email";
 import { getBaseUrl } from "@/lib/urls";
+import { checkRateLimit, clientIp, retryMessage } from "@/lib/rate-limit";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
 }
 
 export async function signUpAction(formData: FormData) {
+  // Throttle signups per IP so the public form can't be scripted to spam
+  // accounts / burn the email quota. 5 per hour.
+  const ip = await clientIp();
+  const rate = await checkRateLimit(`signup:${ip}`, 5, 60 * 60 * 1000);
+  if (!rate.allowed) {
+    redirect(`/signup?error=${encodeURIComponent(retryMessage("Too many signups from your network.", rate.retryAfterSec))}`);
+  }
+
   const result = await signUpBusiness({
     businessName: getString(formData, "businessName"),
     categoryId: getString(formData, "categoryId"),

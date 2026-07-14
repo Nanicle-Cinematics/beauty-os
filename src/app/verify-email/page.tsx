@@ -6,7 +6,7 @@ import { resendVerificationAction } from "@/lib/verification-actions";
 export const dynamic = "force-dynamic";
 
 type VerifyEmailPageProps = {
-  searchParams: Promise<{ verify?: string }>;
+  searchParams: Promise<{ verify?: string; error?: string }>;
 };
 
 export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
@@ -14,7 +14,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
   if (user.verified) {
     redirect("/app");
   }
-  const { verify } = await searchParams;
+  const { verify, error } = await searchParams;
 
   return (
     <main className="grid min-h-screen place-items-center bg-[#f6f8f6] px-4 py-10 text-[#111b17]">
@@ -33,6 +33,9 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
               <>Verify your email to start using Beauty OS. We sent a link to <span className="font-black text-[#111b17]">{user.email}</span> — open it to continue.</>
             )}
           </p>
+          {error ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-bold text-rose-700">{error}</div>
+          ) : null}
           <p className="text-xs font-semibold text-[#8a978f]">Already clicked it? Refresh this page.</p>
 
           <div className="mt-1 grid gap-2">
