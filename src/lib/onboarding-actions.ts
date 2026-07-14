@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requirePlatformAdmin, startSession } from "@/lib/auth";
 import { createBusiness, acceptInvite } from "@/lib/onboarding-data";
+import { sendInviteEmail } from "@/lib/email";
+import { getBaseUrl, inviteUrl } from "@/lib/urls";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -31,8 +33,18 @@ export async function createBusinessAction(formData: FormData) {
     redirect(`/platform/onboard?error=${encodeURIComponent(result.error)}`);
   }
 
+  const url = inviteUrl(await getBaseUrl(), result.inviteToken);
+  const mail = await sendInviteEmail({
+    to: result.ownerEmail,
+    name: result.ownerName,
+    businessName: result.businessName,
+    url,
+    businessId: result.businessId,
+  });
+  const emailed = mail.ok && !mail.dryRun ? "&emailed=1" : "";
+
   revalidatePath("/platform");
-  redirect(`/platform?created=${result.slug}&invite=${result.inviteToken}`);
+  redirect(`/platform?created=${result.slug}&invite=${result.inviteToken}${emailed}`);
 }
 
 export async function acceptInviteAction(formData: FormData) {

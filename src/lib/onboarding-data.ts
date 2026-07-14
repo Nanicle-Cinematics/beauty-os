@@ -20,7 +20,7 @@ export type OnboardingOptions = {
 };
 
 export type CreateBusinessResult =
-  | { ok: true; slug: string; inviteToken: string }
+  | { ok: true; slug: string; inviteToken: string; businessId: string; businessName: string; ownerEmail: string; ownerName: string }
   | { ok: false; error: string };
 
 export type AcceptInviteResult = { ok: true; slug: string; userId: string } | { ok: false; error: string };
@@ -230,7 +230,15 @@ export async function createBusiness({
       return business;
     });
 
-    return { ok: true, slug: created.slug, inviteToken };
+    return {
+      ok: true,
+      slug: created.slug,
+      inviteToken,
+      businessId: created.id,
+      businessName: bizName,
+      ownerEmail: oEmail,
+      ownerName: oName,
+    };
   } catch {
     // Unique-constraint races (slug/email) or any write failure land here.
     return { ok: false, error: "Could not create the business. Please try again." };
@@ -327,7 +335,9 @@ export async function acceptInvite({
   }
 }
 
-export type ResendInviteResult = { ok: true; slug: string; inviteToken: string } | { ok: false; error: string };
+export type ResendInviteResult =
+  | { ok: true; slug: string; inviteToken: string; businessId: string; businessName: string; email: string; name: string }
+  | { ok: false; error: string };
 
 function nameFromEmail(email: string) {
   const local = email.split("@")[0] ?? "";
@@ -346,6 +356,7 @@ export async function resendOwnerInvite(businessId: string): Promise<ResendInvit
     where: { id: businessId },
     select: {
       slug: true,
+      name: true,
       staff: { where: { role: "OWNER" }, orderBy: { createdAt: "asc" }, take: 1, select: { userId: true, invitedEmail: true } },
     },
   });
@@ -373,6 +384,8 @@ export async function resendOwnerInvite(businessId: string): Promise<ResendInvit
   const inviteToken = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
 
+  const recipientName = existing?.name ?? nameFromEmail(email);
+
   if (existing) {
     await prisma.businessInvite.update({
       where: { id: existing.id },
@@ -383,7 +396,7 @@ export async function resendOwnerInvite(businessId: string): Promise<ResendInvit
       data: {
         businessId,
         email,
-        name: nameFromEmail(email),
+        name: recipientName,
         role: "OWNER",
         tokenHash: hashToken(inviteToken),
         expiresAt,
@@ -391,7 +404,15 @@ export async function resendOwnerInvite(businessId: string): Promise<ResendInvit
     });
   }
 
-  return { ok: true, slug: business.slug, inviteToken };
+  return {
+    ok: true,
+    slug: business.slug,
+    inviteToken,
+    businessId,
+    businessName: business.name,
+    email,
+    name: recipientName,
+  };
 }
 
 // Invalidate the active owner invite link. The pending owner slot remains, so

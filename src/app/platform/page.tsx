@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { headers } from "next/headers";
 import { getPlatformOverview } from "@/lib/platform-data";
 import {
   setBusinessStatusAction,
@@ -8,6 +7,7 @@ import {
   revokeInviteAction,
 } from "@/lib/platform-actions";
 import { requirePlatformAdmin } from "@/lib/auth";
+import { getBaseUrl, inviteUrl as buildInviteUrl } from "@/lib/urls";
 
 export const dynamic = "force-dynamic";
 
@@ -43,22 +43,17 @@ type PlatformPageProps = {
     resent?: string;
     revoked?: string;
     inviteError?: string;
+    emailed?: string;
   }>;
 };
 
 export default async function PlatformPage({ searchParams }: PlatformPageProps) {
   const user = await requirePlatformAdmin();
-  const { created, invite, slug, revoked, inviteError } = await searchParams;
+  const { created, invite, slug, revoked, inviteError, emailed } = await searchParams;
   const { stats, businesses, plans, activity, statusOptions, planOptions } = await getPlatformOverview();
 
   const inviteSlug = created ?? slug ?? "";
-  let inviteUrl = "";
-  if (invite) {
-    const h = await headers();
-    const host = h.get("host") ?? "";
-    const proto = h.get("x-forwarded-proto") ?? "http";
-    inviteUrl = `${proto}://${host}/invite/${invite}`;
-  }
+  const inviteUrl = invite ? buildInviteUrl(await getBaseUrl(), invite) : "";
 
   return (
     <main className="min-h-screen bg-[#f6f8f6] px-6 py-6 text-[#111b17] max-[720px]:px-3">
@@ -84,7 +79,13 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
         {inviteUrl ? (
           <div className="grid gap-2 rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
             <span>
-              {created ? (
+              {emailed ? (
+                created ? (
+                  <>Business <span className="font-black">{inviteSlug}</span> created and the invite was emailed to the owner. Backup link:</>
+                ) : (
+                  <>New invite emailed to the owner for <span className="font-black">{inviteSlug}</span>. Backup link:</>
+                )
+              ) : created ? (
                 <>Business <span className="font-black">{inviteSlug}</span> created. Send the owner this invite link to set their password:</>
               ) : (
                 <>New invite link for <span className="font-black">{inviteSlug}</span> — the previous link no longer works:</>
@@ -95,7 +96,9 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
               value={inviteUrl}
               className="w-full select-all rounded-xl border border-[#bfe3d1] bg-white px-3 py-2 font-mono text-xs text-[#10261f]"
             />
-            <span className="text-xs font-semibold text-[#4c9c78]">The link expires in 7 days.</span>
+            <span className="text-xs font-semibold text-[#4c9c78]">
+              {emailed ? "Emailed via Resend · " : ""}The link expires in 7 days.
+            </span>
           </div>
         ) : null}
 

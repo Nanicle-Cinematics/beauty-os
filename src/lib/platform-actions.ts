@@ -5,6 +5,8 @@ import { revalidatePath } from "next/cache";
 import { requirePlatformAdmin } from "@/lib/auth";
 import { setBusinessStatus, changeBusinessPlan } from "@/lib/platform-data";
 import { resendOwnerInvite, revokeOwnerInvite } from "@/lib/onboarding-data";
+import { sendInviteEmail } from "@/lib/email";
+import { getBaseUrl, inviteUrl } from "@/lib/urls";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -48,8 +50,18 @@ export async function resendInviteAction(formData: FormData) {
     redirect(`/platform?inviteError=${encodeURIComponent(result.error)}`);
   }
 
+  const url = inviteUrl(await getBaseUrl(), result.inviteToken);
+  const mail = await sendInviteEmail({
+    to: result.email,
+    name: result.name,
+    businessName: result.businessName,
+    url,
+    businessId: result.businessId,
+  });
+  const emailed = mail.ok && !mail.dryRun ? "&emailed=1" : "";
+
   revalidatePath("/platform");
-  redirect(`/platform?invite=${result.inviteToken}&slug=${result.slug}&resent=1`);
+  redirect(`/platform?invite=${result.inviteToken}&slug=${result.slug}&resent=1${emailed}`);
 }
 
 export async function revokeInviteAction(formData: FormData) {
