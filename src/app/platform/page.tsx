@@ -22,8 +22,13 @@ const subPill: Record<string, string> = {
 const inputClass = "h-11 rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-3 text-sm outline-none focus:border-[#1d7b5d]";
 const cardClass = "rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]";
 
-export default async function PlatformPage() {
+type PlatformPageProps = {
+  searchParams: Promise<{ created?: string }>;
+};
+
+export default async function PlatformPage({ searchParams }: PlatformPageProps) {
   const user = await requirePlatformAdmin();
+  const { created } = await searchParams;
   const { stats, businesses, plans, activity, statusOptions, planOptions } = await getPlatformOverview();
 
   return (
@@ -37,10 +42,21 @@ export default async function PlatformPage() {
               Signed in as <span className="font-black text-[#111b17]">{user.email}</span>
             </p>
           </div>
-          <Link href="/logout" className="rounded-2xl border border-[#dbe4de] px-4 py-2 text-sm font-black">
-            Sign out
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/platform/onboard" className="rounded-2xl bg-[#10261f] px-4 py-2 text-sm font-black text-white">
+              Add business
+            </Link>
+            <Link href="/logout" className="rounded-2xl border border-[#dbe4de] px-4 py-2 text-sm font-black">
+              Sign out
+            </Link>
+          </div>
         </header>
+
+        {created ? (
+          <div className="rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
+            Business <span className="font-black">{created}</span> created. The owner can now sign in.
+          </div>
+        ) : null}
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
           {stats.map((stat) => (
