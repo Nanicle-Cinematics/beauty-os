@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { loginAction } from "@/lib/auth-actions";
-import { getCurrentUser, getDemoAccounts } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -12,7 +12,7 @@ type LoginPageProps = {
 
 function safeNextPath(value?: string) {
   if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
+    return "/app";
   }
 
   return value;
@@ -54,13 +54,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </p>
           </div>
 
-          <div className="mt-10 grid gap-3 text-xs text-white/70">
-            {getDemoAccounts().map((account) => (
-              <div key={account.email} className="rounded-2xl border border-white/10 bg-white/8 p-3">
-                <div className="font-black text-white">{account.email}</div>
-                <div className="mt-1">{account.role} · password123</div>
-              </div>
-            ))}
+          <div className="mt-10 rounded-2xl border border-white/10 bg-white/8 p-4 text-sm text-white/72">
+            New to Beauty OS?{" "}
+            <Link href="/signup" className="font-black text-[#f2c66d]">Start a free trial</Link> and get your own workspace in a minute.
           </div>
         </div>
 
@@ -68,7 +64,8 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <div>
             <h2 className="text-2xl font-black tracking-tight">Welcome back</h2>
             <p className="mt-2 text-sm leading-6 text-[#6b7c73]">
-              Use one of the demo accounts until the production identity setup is connected.
+              Sign in to your workspace, or{" "}
+              <Link href="/signup" className="font-black text-[#1d7b5d]">create a new one</Link>.
             </p>
           </div>
 
@@ -85,7 +82,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <input
               name="email"
               type="email"
-              defaultValue="admin@beautyos.dev"
+              placeholder="you@studio.com"
               className="h-12 rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-4 outline-none focus:border-[#1d7b5d]"
               required
             />
@@ -96,7 +93,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <input
               name="password"
               type="password"
-              defaultValue="password123"
+              placeholder="Your password"
               className="h-12 rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-4 outline-none focus:border-[#1d7b5d]"
               required
             />

@@ -1,99 +1,137 @@
 import Link from "next/link";
-import { getWorkspaceSummaries } from "@/lib/tenant-data";
-import { requireUser } from "@/lib/auth";
+import { getPublicPlans } from "@/lib/signup-data";
 
-export default async function Home() {
-  const user = await requireUser("/");
-  const workspaces = await getWorkspaceSummaries(user);
+export const dynamic = "force-dynamic";
+
+const features = [
+  { title: "Bookings & calendar", body: "Appointments, deposits, waitlist and reminders — one clear day view per artist." },
+  { title: "Client CRM", body: "Profiles, history, skin notes, tags and outstanding balances for every client." },
+  { title: "Staff & roles", body: "Invite your team, set roles and commissions, and see who's on today." },
+  { title: "Inventory", body: "Track stock with a live movement ledger, low-stock and expiry alerts." },
+  { title: "Payments", body: "Record payments and deposits, collect what's due, and see the money clearly." },
+  { title: "Marketing & loyalty", body: "Campaigns, discount coupons, membership tiers and a points program." },
+];
+
+export default async function LandingPage() {
+  const plans = await getPublicPlans();
 
   return (
-    <main className="min-h-screen bg-[#f6f8f6] px-6 py-6 text-[#111b17] max-[720px]:px-3">
-      <div className="mx-auto grid min-h-[calc(100vh-48px)] max-w-6xl content-center gap-6">
-        <section className="rounded-[32px] bg-[#10261f] p-8 text-white shadow-[0_24px_60px_rgba(16,38,31,0.18)] max-[720px]:p-5">
-          <div className="mb-6 flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-start">
-            <div className="text-sm font-bold text-white/72">
-              Signed in as <span className="text-white">{user.email}</span>
-            </div>
-            <Link href="/logout" className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-black">
-              Sign out
+    <main className="min-h-screen bg-[#f6f8f6] text-[#111b17]">
+      {/* Nav */}
+      <header className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-5 max-[720px]:px-4">
+        <Link href="/" className="inline-flex items-center gap-3">
+          <span className="grid size-10 place-items-center rounded-2xl bg-[#10261f] text-sm font-black text-[#f2c66d]">BO</span>
+          <span className="text-lg font-black tracking-tight">Beauty OS</span>
+        </Link>
+        <nav className="flex items-center gap-2">
+          <Link href="/login" className="rounded-2xl border border-[#dbe4de] bg-white px-4 py-2 text-sm font-black">Sign in</Link>
+          <Link href="/signup" className="rounded-2xl bg-[#10261f] px-4 py-2 text-sm font-black text-white">Start free</Link>
+        </nav>
+      </header>
+
+      {/* Hero */}
+      <section className="mx-auto max-w-6xl px-6 pt-6 pb-14 max-[720px]:px-4">
+        <div className="rounded-[36px] bg-[#10261f] p-10 text-white shadow-[0_30px_70px_rgba(16,38,31,0.22)] max-[720px]:p-6">
+          <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.16em] text-[#f2c66d]">
+            The operating system for beauty businesses
+          </div>
+          <h1 className="mt-5 max-w-3xl text-6xl font-black leading-[1.02] tracking-tight max-[900px]:text-5xl max-[720px]:text-4xl">
+            Everything your studio runs on, in one calm place.
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-7 text-white/75">
+            Bookings, clients, staff, inventory, payments and marketing for salons, makeup artists, lash &amp;
+            brow studios, barbershops and spas. Set up in a minute — free while you trial.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link href="/signup" className="rounded-2xl bg-[#f2c66d] px-6 py-3 text-sm font-black text-[#10261f]">
+              Start your free trial
+            </Link>
+            <Link href="/login" className="rounded-2xl border border-white/20 px-6 py-3 text-sm font-black text-white">
+              Sign in
             </Link>
           </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-8 max-[860px]:grid-cols-1">
-            <div>
-              <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#f2c66d]">
-                Multi-tenant SaaS
-              </div>
-              <h1 className="max-w-3xl text-5xl font-black leading-tight tracking-tight max-[720px]:text-3xl">
-                Beauty OS runs every studio as a separate, secure workspace.
-              </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72">
-                Each business has its own staff, clients, services, inventory, payments, and reports, while the platform owner manages all tenants from one admin portal.
-              </p>
-            </div>
-            <div className="rounded-3xl border border-white/12 bg-white/10 p-5">
-              <div className="text-xs font-black uppercase tracking-[0.14em] text-white/55">
-                Tenant model
-              </div>
-              <div className="mt-5 grid gap-3 text-sm font-bold text-white/82">
-                <div className="rounded-2xl bg-white/10 p-3">Shared login identity</div>
-                <div className="rounded-2xl bg-white/10 p-3">Per-business staff roles</div>
-                <div className="rounded-2xl bg-white/10 p-3">Tenant-scoped data by businessId</div>
-                <div className="rounded-2xl bg-white/10 p-3">Owner platform controls</div>
-              </div>
-            </div>
-          </div>
-        </section>
+        </div>
+      </section>
 
-        <section className="grid grid-cols-[minmax(0,1fr)_320px] gap-5 max-[980px]:grid-cols-1">
-          <div className="rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-black">Choose workspace</h2>
-                <p className="mt-1 text-sm text-[#6b7c73]">
-                  Only workspaces your account can access are shown here.
-                </p>
-              </div>
-            </div>
+      {/* Features */}
+      <section className="mx-auto max-w-6xl px-6 pb-16 max-[720px]:px-4">
+        <h2 className="text-3xl font-black tracking-tight">One system, every part of the business</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6b7c73]">
+          Stop stitching together a booking app, a spreadsheet and a notebook. Beauty OS does it all, per workspace.
+        </p>
+        <div className="mt-8 grid grid-cols-3 gap-4 max-[900px]:grid-cols-2 max-[560px]:grid-cols-1">
+          {features.map((f) => (
+            <article key={f.title} className="rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.05)]">
+              <div className="h-1.5 w-9 rounded-full bg-[#1d7b5d]" />
+              <h3 className="mt-4 text-lg font-black">{f.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-[#6b7c73]">{f.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
 
-            <div className="grid gap-3">
-              {workspaces.map((workspace) => (
-                <Link
-                  key={workspace.slug}
-                  href={`/${workspace.slug}`}
-                  className="grid grid-cols-[1fr_auto] items-center gap-4 rounded-2xl border border-[#e6eee9] p-4 transition hover:border-[#1d7b5d] hover:bg-[#f8fbf9] max-[640px]:grid-cols-1"
-                >
-                  <div>
-                    <div className="font-black">{workspace.name}</div>
-                    <div className="mt-1 text-sm font-semibold text-[#6b7c73]">
-                      {workspace.category} · {workspace.plan}
-                    </div>
-                  </div>
-                  <span className="w-fit rounded-full bg-[#eff7f2] px-3 py-1 text-xs font-black text-[#1d7b5d]">
-                    {workspace.status}
-                  </span>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <aside className="rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]">
-            <h2 className="text-lg font-black">Platform owner</h2>
-            <p className="mt-2 text-sm leading-6 text-[#6b7c73]">
-              Manage plans, tenant status, billing, onboarding, support, and system-wide controls.
-            </p>
-            <Link
-              href="/platform"
-              className={`mt-5 inline-flex rounded-2xl px-4 py-3 text-sm font-black ${
-                user.isPlatformAdmin
-                  ? "bg-[#10261f] text-white"
-                  : "pointer-events-none bg-[#e8f0eb] text-[#6b7c73]"
+      {/* Pricing */}
+      <section className="mx-auto max-w-6xl px-6 pb-16 max-[720px]:px-4">
+        <h2 className="text-3xl font-black tracking-tight">Simple pricing</h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6b7c73]">
+          Start free, then pick the plan that fits. Prices in Ghana Cedis, billed monthly or yearly.
+        </p>
+        <div className="mt-8 grid grid-cols-2 gap-4 max-[720px]:grid-cols-1">
+          {plans.map((plan) => (
+            <article
+              key={plan.key}
+              className={`rounded-[28px] border p-6 ${
+                plan.highlighted
+                  ? "border-[#10261f] bg-[#10261f] text-white shadow-[0_24px_60px_rgba(16,38,31,0.18)]"
+                  : "border-[#dbe4de] bg-white shadow-[0_12px_35px_rgba(16,38,31,0.05)]"
               }`}
             >
-              {user.isPlatformAdmin ? "Open admin portal" : "Admin only"}
-            </Link>
-          </aside>
-        </section>
-      </div>
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-xl font-black">{plan.name}</h3>
+                {plan.highlighted ? (
+                  <span className="rounded-full bg-[#f2c66d] px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-[#10261f]">
+                    Popular
+                  </span>
+                ) : null}
+              </div>
+              <div className="mt-4 flex items-end gap-2">
+                <span className="text-4xl font-black tracking-tight">{plan.priceMonthly}</span>
+                <span className={`pb-1 text-sm font-bold ${plan.highlighted ? "text-white/60" : "text-[#6b7c73]"}`}>/mo</span>
+              </div>
+              <div className={`mt-1 text-xs font-bold ${plan.highlighted ? "text-white/55" : "text-[#8a978f]"}`}>
+                or {plan.priceYearly}/yr
+              </div>
+              <ul className="mt-5 grid gap-2 text-sm font-semibold">
+                {plan.features.map((feat) => (
+                  <li key={feat} className="flex items-center gap-2">
+                    <span className={`grid size-4 place-items-center rounded-full text-[10px] font-black ${plan.highlighted ? "bg-[#f2c66d] text-[#10261f]" : "bg-[#eff7f2] text-[#1d7b5d]"}`}>✓</span>
+                    {feat}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/signup"
+                className={`mt-6 inline-flex w-full items-center justify-center rounded-2xl px-4 py-3 text-sm font-black ${
+                  plan.highlighted ? "bg-[#f2c66d] text-[#10261f]" : "bg-[#10261f] text-white"
+                }`}
+              >
+                Start free trial
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-[#dbe4de]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-6 text-sm font-semibold text-[#6b7c73] max-[560px]:flex-col max-[560px]:items-start max-[720px]:px-4">
+          <span>© {new Date().getFullYear()} Beauty OS</span>
+          <div className="flex gap-4">
+            <Link href="/login" className="font-black text-[#111b17]">Sign in</Link>
+            <Link href="/signup" className="font-black text-[#111b17]">Start free</Link>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }

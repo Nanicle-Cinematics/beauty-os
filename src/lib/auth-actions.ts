@@ -5,7 +5,7 @@ import { signIn } from "@/lib/auth";
 
 function safeNextPath(value: FormDataEntryValue | null) {
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
-    return "/";
+    return "/app";
   }
 
   return value;
