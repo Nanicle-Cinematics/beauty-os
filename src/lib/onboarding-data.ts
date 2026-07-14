@@ -1,7 +1,14 @@
 import "server-only";
 
+import { createHash, randomBytes } from "crypto";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { hashPassword } from "@/lib/password";
+
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
 
 export type OnboardingOption = { value: string; label: string };
 
@@ -12,7 +19,11 @@ export type OnboardingOptions = {
   timezones: OnboardingOption[];
 };
 
-export type CreateBusinessResult = { ok: true; slug: string } | { ok: false; error: string };
+export type CreateBusinessResult =
+  | { ok: true; slug: string; inviteToken: string }
+  | { ok: false; error: string };
+
+export type AcceptInviteResult = { ok: true; slug: string; userId: string } | { ok: false; error: string };
 
 export const CURRENCIES: OnboardingOption[] = [
   { value: "GHS", label: "GH₵ Ghana Cedi" },
@@ -99,7 +110,6 @@ export async function createBusiness({
   phone,
   ownerName,
   ownerEmail,
-  ownerPassword,
   planId,
   actorUserId,
 }: {
@@ -112,7 +122,6 @@ export async function createBusiness({
   phone: string;
   ownerName: string;
   ownerEmail: string;
-  ownerPassword: string;
   planId: string;
   actorUserId: string | null;
 }): Promise<CreateBusinessResult> {
@@ -124,14 +133,11 @@ export async function createBusiness({
   const oName = ownerName.trim();
   const oEmail = ownerEmail.trim().toLowerCase();
 
-  if (!bizName || !oName || !oEmail || !ownerPassword) {
-    return { ok: false, error: "Business name, owner name, owner email and password are all required." };
+  if (!bizName || !oName || !oEmail) {
+    return { ok: false, error: "Business name, owner name and owner email are all required." };
   }
   if (!EMAIL_RE.test(oEmail)) {
     return { ok: false, error: "Enter a valid owner email address." };
-  }
-  if (ownerPassword.length < 8) {
-    return { ok: false, error: "Owner password must be at least 8 characters." };
   }
 
   const safeCurrency = VALID_CURRENCIES.has(currency) ? currency : "GHS";
@@ -158,7 +164,7 @@ export async function createBusiness({
 
   const base = (slug.trim() ? slugify(slug) : slugify(bizName)) || "business";
   const uniqueSlug = await ensureUniqueSlug(base);
-  const passwordHash = await hashPassword(ownerPassword);
+  const inviteToken = randomBytes(32).toString("hex");
   const now = new Date();
 
   try {
@@ -176,18 +182,25 @@ export async function createBusiness({
         },
       });
 
-      const owner = await tx.user.create({
-        data: { email: oEmail, name: oName, passwordHash, isPlatformAdmin: false },
-      });
-
+      // The owner starts as an invited-but-unlinked membership; accepting the
+      // invite creates their User and links it (mirrors the staff-invite flow).
       await tx.staffMember.create({
         data: {
           businessId: business.id,
-          userId: owner.id,
           invitedEmail: oEmail,
           role: "OWNER",
-          status: "ACTIVE",
-          joinedAt: now,
+          status: "INVITED",
+        },
+      });
+
+      await tx.businessInvite.create({
+        data: {
+          businessId: business.id,
+          email: oEmail,
+          name: oName,
+          role: "OWNER",
+          tokenHash: hashToken(inviteToken),
+          expiresAt: new Date(now.getTime() + INVITE_TTL_MS),
         },
       });
 
@@ -217,9 +230,99 @@ export async function createBusiness({
       return business;
     });
 
-    return { ok: true, slug: created.slug };
+    return { ok: true, slug: created.slug, inviteToken };
   } catch {
     // Unique-constraint races (slug/email) or any write failure land here.
     return { ok: false, error: "Could not create the business. Please try again." };
+  }
+}
+
+export async function getInvite(token: string) {
+  if (!isDatabaseConfigured() || !token) {
+    return null;
+  }
+  const invite = await prisma.businessInvite.findUnique({
+    where: { tokenHash: hashToken(token) },
+    include: { business: { select: { name: true } } },
+  });
+  if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
+    return null;
+  }
+  return { email: invite.email, name: invite.name, businessName: invite.business.name };
+}
+
+export async function acceptInvite({
+  token,
+  name,
+  password,
+}: {
+  token: string;
+  name: string;
+  password: string;
+}): Promise<AcceptInviteResult> {
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "Database is not configured." };
+  }
+  if (!password || password.length < 8) {
+    return { ok: false, error: "Password must be at least 8 characters." };
+  }
+
+  const invite = await prisma.businessInvite.findUnique({
+    where: { tokenHash: hashToken(token) },
+    include: { business: { select: { id: true, slug: true } } },
+  });
+  if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
+    return { ok: false, error: "This invite link is invalid or has expired." };
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email: invite.email }, select: { id: true } });
+  if (existing) {
+    return { ok: false, error: "An account with this email already exists — please sign in instead." };
+  }
+
+  const finalName = name.trim() || invite.name;
+  const passwordHash = await hashPassword(password);
+  const now = new Date();
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { email: invite.email, name: finalName, passwordHash, isPlatformAdmin: false },
+      });
+
+      const pending = await tx.staffMember.findFirst({
+        where: { businessId: invite.businessId, invitedEmail: invite.email, userId: null, status: "INVITED" },
+        select: { id: true },
+      });
+      if (pending) {
+        await tx.staffMember.update({
+          where: { id: pending.id },
+          data: { userId: user.id, status: "ACTIVE", joinedAt: now },
+        });
+      } else {
+        await tx.staffMember.create({
+          data: { businessId: invite.businessId, userId: user.id, invitedEmail: invite.email, role: invite.role, status: "ACTIVE", joinedAt: now },
+        });
+      }
+
+      await tx.businessInvite.update({ where: { id: invite.id }, data: { acceptedAt: now } });
+
+      await tx.auditLog.create({
+        data: {
+          businessId: invite.businessId,
+          actorUserId: user.id,
+          action: "business.invite_accepted",
+          entityType: "Business",
+          entityId: invite.businessId,
+          metadata: { email: invite.email },
+        },
+      });
+
+      return { userId: user.id, slug: invite.business.slug };
+    });
+
+    return { ok: true, slug: result.slug, userId: result.userId };
+  } catch {
+    return { ok: false, error: "Could not complete setup. Please try again." };
   }
 }

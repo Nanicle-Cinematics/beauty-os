@@ -57,6 +57,7 @@ const VALID_STATUSES = new Set(BUSINESS_STATUSES.map((s) => s.value));
 
 const ACTION_LABELS: Record<string, string> = {
   "business.created": "Onboarded business",
+  "business.invite_accepted": "Owner activated",
   "business.status_changed": "Changed status",
   "business.plan_changed": "Changed plan",
 };

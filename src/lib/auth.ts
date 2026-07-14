@@ -123,19 +123,23 @@ export async function signIn(email: string, password: string) {
     return null;
   }
 
+  await startSession(user.id);
+  return user;
+}
+
+/// Create a server session for a user and set the session cookie. Used by
+/// signIn and by flows that authenticate a user directly (e.g. accepting an
+/// invite right after setting a password). DB mode only.
+export async function startSession(userId: string) {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
 
   await prisma.session.create({
-    data: {
-      userId: user.id,
-      tokenHash: hashSessionToken(token),
-      expiresAt,
-    },
+    data: { userId, tokenHash: hashSessionToken(token), expiresAt },
   });
 
   await prisma.user.update({
-    where: { id: user.id },
+    where: { id: userId },
     data: { lastLoginAt: new Date() },
   });
 
@@ -147,8 +151,6 @@ export async function signIn(email: string, password: string) {
     path: "/",
     expires: expiresAt,
   });
-
-  return user;
 }
 
 export async function signOut() {

@@ -110,7 +110,9 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
           <section className={cardClass}>
             <div>
               <h2 className="text-lg font-black">Owner account</h2>
-              <p className="mt-1 text-sm text-[#6b7c73]">The owner signs in with this email and password.</p>
+              <p className="mt-1 text-sm text-[#6b7c73]">
+                We generate a secure invite link so the owner sets their own password — no temporary password to share.
+              </p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
@@ -123,11 +125,6 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
                 <input name="ownerEmail" type="email" placeholder="owner@business.com" className={inputClass} required />
               </label>
             </div>
-
-            <label className={labelClass}>
-              Temporary password * (min 8 characters)
-              <input name="ownerPassword" type="text" minLength={8} placeholder="Share this with the owner" className={inputClass} required />
-            </label>
           </section>
 
           <div className="flex items-center justify-end gap-3">

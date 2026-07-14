@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { getPlatformOverview } from "@/lib/platform-data";
 import { setBusinessStatusAction, changeBusinessPlanAction } from "@/lib/platform-actions";
 import { requirePlatformAdmin } from "@/lib/auth";
@@ -23,13 +24,21 @@ const inputClass = "h-11 rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-3 t
 const cardClass = "rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]";
 
 type PlatformPageProps = {
-  searchParams: Promise<{ created?: string }>;
+  searchParams: Promise<{ created?: string; invite?: string }>;
 };
 
 export default async function PlatformPage({ searchParams }: PlatformPageProps) {
   const user = await requirePlatformAdmin();
-  const { created } = await searchParams;
+  const { created, invite } = await searchParams;
   const { stats, businesses, plans, activity, statusOptions, planOptions } = await getPlatformOverview();
+
+  let inviteUrl = "";
+  if (created && invite) {
+    const h = await headers();
+    const host = h.get("host") ?? "";
+    const proto = h.get("x-forwarded-proto") ?? "http";
+    inviteUrl = `${proto}://${host}/invite/${invite}`;
+  }
 
   return (
     <main className="min-h-screen bg-[#f6f8f6] px-6 py-6 text-[#111b17] max-[720px]:px-3">
@@ -53,8 +62,18 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
         </header>
 
         {created ? (
-          <div className="rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
-            Business <span className="font-black">{created}</span> created. The owner can now sign in.
+          <div className="grid gap-2 rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
+            <span>
+              Business <span className="font-black">{created}</span> created. Send the owner this invite link to set their password:
+            </span>
+            {inviteUrl ? (
+              <input
+                readOnly
+                value={inviteUrl}
+                className="w-full select-all rounded-xl border border-[#bfe3d1] bg-white px-3 py-2 font-mono text-xs text-[#10261f]"
+              />
+            ) : null}
+            <span className="text-xs font-semibold text-[#4c9c78]">The link expires in 7 days.</span>
           </div>
         ) : null}
 

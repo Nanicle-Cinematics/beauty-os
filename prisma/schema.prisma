@@ -215,8 +215,27 @@ model Business {
   subscription      Subscription?
   auditLogs         AuditLog[]
   notificationLogs  NotificationLog[]
+  invites           BusinessInvite[]
 
   @@index([categoryId])
+}
+
+/// A pending invitation for someone to join a business (currently used to let
+/// an onboarded owner set their own password instead of an admin-set one).
+/// The raw token lives only in the invite link; we store its sha256 hash.
+model BusinessInvite {
+  id         String       @id @default(cuid())
+  businessId String
+  business   Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  email      String
+  name       String
+  role       BusinessRole @default(OWNER)
+  tokenHash  String       @unique
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime     @default(now())
+
+  @@index([businessId])
 }
 
 model BusinessHours {
