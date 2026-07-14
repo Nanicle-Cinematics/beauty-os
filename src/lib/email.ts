@@ -1,15 +1,32 @@
 import "server-only";
 
+import nodemailer from "nodemailer";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 
 const RESEND_ENDPOINT = "https://api.resend.com/emails";
 
-export function isEmailConfigured() {
-  return Boolean(process.env.RESEND_API_KEY?.trim());
+type SmtpConfig = { host: string; port: number; secure: boolean; user: string; pass: string; from: string };
+
+// SMTP is used when host/user/pass are all set. Port 465 = implicit TLS;
+// anything else (e.g. 587) uses STARTTLS, which nodemailer negotiates.
+function smtpConfig(): SmtpConfig | null {
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.trim();
+  if (!host || !user || !pass) {
+    return null;
+  }
+  const port = Number(process.env.SMTP_PORT) || 587;
+  return { host, port, secure: port === 465, user, pass, from: process.env.SMTP_FROM?.trim() || user };
 }
 
-function defaultFrom() {
-  return process.env.EMAIL_FROM?.trim() || "Beauty OS <onboarding@beautyos.dev>";
+function resendKey() {
+  return process.env.RESEND_API_KEY?.trim() || null;
+}
+
+// Email is deliverable if either transport is configured.
+export function isEmailConfigured() {
+  return Boolean(smtpConfig()) || Boolean(resendKey());
 }
 
 export type SendEmailResult = { ok: boolean; dryRun: boolean };
@@ -23,25 +40,42 @@ type SendEmailInput = {
   businessId?: string | null;
 };
 
-// Send a transactional email via Resend. When no RESEND_API_KEY is set we
-// dry-run (log + record the intent) so dev never sends and never crashes —
-// same live-path/fallback shape as the rest of the app. Every attempt is
-// recorded in NotificationLog when a business is attached.
+// Send a transactional email. Transport precedence: SMTP (nodemailer) → Resend
+// HTTP API → dry-run (log + record intent, never send, never crash). Setting
+// SMTP_* vars activates SMTP; remove them and a RESEND_API_KEY takes back over
+// — no code change needed. Every attempt is recorded in NotificationLog when a
+// business is attached.
 export async function sendEmail({ to, subject, html, text, type, businessId }: SendEmailInput): Promise<SendEmailResult> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const dryRun = !apiKey;
+  const smtp = smtpConfig();
+  const key = resendKey();
 
   let status: "SENT" | "FAILED" | "PENDING" = "PENDING";
   let sentAt: Date | null = null;
+  let dryRun = false;
+  const transport = smtp ? "smtp" : key ? "resend" : "dry-run";
 
-  if (dryRun) {
-    console.info(`[email:dry-run] to=${to} type=${type} subject="${subject}" (set RESEND_API_KEY to send)`);
-  } else {
+  if (smtp) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtp.host,
+        port: smtp.port,
+        secure: smtp.secure,
+        auth: { user: smtp.user, pass: smtp.pass },
+      });
+      await transporter.sendMail({ from: smtp.from, to, subject, text, html });
+      status = "SENT";
+      sentAt = new Date();
+    } catch (err) {
+      status = "FAILED";
+      console.error("[email] SMTP send failed:", err instanceof Error ? err.message : err);
+    }
+  } else if (key) {
+    const from = process.env.EMAIL_FROM?.trim() || "Beauty OS <onboarding@beautyos.dev>";
     try {
       const res = await fetch(RESEND_ENDPOINT, {
         method: "POST",
-        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from: defaultFrom(), to, subject, html, text }),
+        headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ from, to, subject, html, text }),
       });
       if (res.ok) {
         status = "SENT";
@@ -54,6 +88,9 @@ export async function sendEmail({ to, subject, html, text, type, businessId }: S
       status = "FAILED";
       console.error("[email] Resend request failed:", err);
     }
+  } else {
+    dryRun = true;
+    console.info(`[email:dry-run] to=${to} type=${type} subject="${subject}" (set SMTP_* or RESEND_API_KEY to send)`);
   }
 
   if (businessId && isDatabaseConfigured()) {
@@ -66,7 +103,7 @@ export async function sendEmail({ to, subject, html, text, type, businessId }: S
           recipient: to,
           status,
           sentAt,
-          payload: { subject, dryRun },
+          payload: { subject, dryRun, transport },
         },
       })
       .catch(() => {
