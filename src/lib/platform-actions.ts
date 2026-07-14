@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requirePlatformAdmin } from "@/lib/auth";
-import { setBusinessStatus, changeBusinessPlan } from "@/lib/platform-data";
+import { setBusinessStatus, changeBusinessPlan, deleteBusiness } from "@/lib/platform-data";
 import { resendOwnerInvite, revokeOwnerInvite } from "@/lib/onboarding-data";
 import { sendInviteEmail } from "@/lib/email";
 import { getBaseUrl, inviteUrl } from "@/lib/urls";
@@ -71,4 +71,13 @@ export async function revokeInviteAction(formData: FormData) {
 
   revalidatePath("/platform");
   redirect(result.slug ? `/platform?revoked=${result.slug}` : "/platform");
+}
+
+export async function deleteBusinessAction(formData: FormData) {
+  await requirePlatformAdmin();
+
+  const result = await deleteBusiness(getString(formData, "businessId"));
+
+  revalidatePath("/platform");
+  redirect(result.ok ? `/platform?deleted=${result.slug}` : "/platform?inviteError=Could%20not%20delete%20that%20business.");
 }

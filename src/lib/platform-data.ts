@@ -332,3 +332,43 @@ export async function changeBusinessPlan({
     }),
   ]);
 }
+
+// Permanently delete a business and all its tenant data (every business-scoped
+// relation cascades; only AuditLog SetNull-orphans, which we clear first).
+// Also removes any member User left with no other membership and no admin role,
+// so a deleted signup frees its email for re-use.
+export async function deleteBusiness(businessId: string): Promise<{ ok: boolean; slug: string | null }> {
+  if (!isDatabaseConfigured()) {
+    return { ok: false, slug: null };
+  }
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { slug: true, staff: { select: { userId: true } } },
+  });
+  if (!business) {
+    return { ok: false, slug: null };
+  }
+
+  const memberUserIds = [...new Set(business.staff.map((s) => s.userId).filter((id): id is string => Boolean(id)))];
+
+  try {
+    // Audit rows would orphan (businessId SetNull) on delete — remove them first.
+    await prisma.auditLog.deleteMany({ where: { businessId } });
+    await prisma.business.delete({ where: { id: businessId } });
+  } catch {
+    return { ok: false, slug: null };
+  }
+
+  // Clean up now-orphaned, non-admin member accounts.
+  for (const userId of memberUserIds) {
+    const [remaining, user] = await Promise.all([
+      prisma.staffMember.count({ where: { userId } }),
+      prisma.user.findUnique({ where: { id: userId }, select: { isPlatformAdmin: true } }),
+    ]);
+    if (remaining === 0 && user && !user.isPlatformAdmin) {
+      await prisma.user.delete({ where: { id: userId } }).catch(() => {});
+    }
+  }
+
+  return { ok: true, slug: business.slug };
+}

@@ -5,9 +5,11 @@ import {
   changeBusinessPlanAction,
   resendInviteAction,
   revokeInviteAction,
+  deleteBusinessAction,
 } from "@/lib/platform-actions";
 import { requirePlatformAdmin } from "@/lib/auth";
 import { getBaseUrl, inviteUrl as buildInviteUrl } from "@/lib/urls";
+import { DeleteBusinessButton } from "@/components/delete-business-button";
 
 export const dynamic = "force-dynamic";
 
@@ -44,12 +46,13 @@ type PlatformPageProps = {
     revoked?: string;
     inviteError?: string;
     emailed?: string;
+    deleted?: string;
   }>;
 };
 
 export default async function PlatformPage({ searchParams }: PlatformPageProps) {
   const user = await requirePlatformAdmin();
-  const { created, invite, slug, revoked, inviteError, emailed } = await searchParams;
+  const { created, invite, slug, revoked, inviteError, emailed, deleted } = await searchParams;
   const { stats, businesses, plans, activity, statusOptions, planOptions } = await getPlatformOverview();
 
   const inviteSlug = created ?? slug ?? "";
@@ -105,6 +108,12 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
         {revoked ? (
           <div className="rounded-2xl border border-[#e6c6cd] bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
             Invite for <span className="font-black">{revoked}</span> revoked — that link no longer works. Resend to issue a new one.
+          </div>
+        ) : null}
+
+        {deleted ? (
+          <div className="rounded-2xl border border-[#e6c6cd] bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+            Business <span className="font-black">{deleted}</span> and all its data were permanently deleted.
           </div>
         ) : null}
 
@@ -213,6 +222,11 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                     </select>
                     <button className="rounded-2xl bg-[#10261f] px-4 text-sm font-black text-white">Change plan</button>
                   </form>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 border-t border-[#e6eee9] pt-3">
+                  <span className="text-[11px] font-bold text-[#8a978f]">Danger zone — permanent</span>
+                  <DeleteBusinessButton businessId={business.id} slug={business.slug} action={deleteBusinessAction} />
                 </div>
               </article>
             ))}
