@@ -16,9 +16,14 @@ export default async function WorkspacesPage() {
             <div className="text-sm font-bold text-white/72">
               Signed in as <span className="text-white">{user.email}</span>
             </div>
-            <Link href="/logout" className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-black">
-              Sign out
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/settings" className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-black">
+                Settings
+              </Link>
+              <Link href="/logout" className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-black">
+                Sign out
+              </Link>
+            </div>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-8 max-[860px]:grid-cols-1">
             <div>
