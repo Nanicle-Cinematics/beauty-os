@@ -37,8 +37,8 @@ export async function signUpAction(formData: FormData) {
     });
   }
 
-  // Log the new owner in and land them on their workspaces (where the verify
-  // banner shows) with their fresh workspace ready to open.
+  // Log the new owner in, but they land on the /verify-email gate until they
+  // confirm their address (hard email gating).
   await startSession(result.userId);
-  redirect(`/app?welcome=1`);
+  redirect("/verify-email");
 }

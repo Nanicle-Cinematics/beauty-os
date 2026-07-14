@@ -169,11 +169,26 @@ export async function signOut() {
   cookieStore.delete(sessionCookieName);
 }
 
-export async function requireUser(nextPath = "/"): Promise<AppUser> {
+// Require a logged-in user but NOT a verified email. Used only by the
+// /verify-email gate page itself, so unverified users can reach it.
+export async function requireSession(nextPath = "/"): Promise<AppUser> {
   const user = await getCurrentUser();
 
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(safeNextPath(nextPath))}`);
+  }
+
+  return user;
+}
+
+// Require a logged-in AND email-verified user. Unverified users are sent to the
+// /verify-email gate. Every authenticated surface flows through here (directly,
+// or via requireTenantAccess / requirePlatformAdmin), so this is the hard gate.
+export async function requireUser(nextPath = "/"): Promise<AppUser> {
+  const user = await requireSession(nextPath);
+
+  if (!user.verified) {
+    redirect("/verify-email");
   }
 
   return user;

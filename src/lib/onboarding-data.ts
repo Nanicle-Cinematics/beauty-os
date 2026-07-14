@@ -295,7 +295,9 @@ export async function acceptInvite({
   try {
     const result = await prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
-        data: { email: invite.email, name: finalName, passwordHash, isPlatformAdmin: false },
+        // Clicking the emailed invite link proves control of the address, so
+        // the invited owner is verified on acceptance (no separate verify step).
+        data: { email: invite.email, name: finalName, passwordHash, isPlatformAdmin: false, emailVerifiedAt: now },
       });
 
       const pending = await tx.staffMember.findFirst({

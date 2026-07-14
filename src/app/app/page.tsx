@@ -1,39 +1,16 @@
 import Link from "next/link";
 import { getWorkspaceSummaries } from "@/lib/tenant-data";
 import { requireUser } from "@/lib/auth";
-import { resendVerificationAction } from "@/lib/verification-actions";
 
 export const dynamic = "force-dynamic";
 
-type WorkspacesPageProps = {
-  searchParams: Promise<{ welcome?: string; verify?: string }>;
-};
-
-export default async function WorkspacesPage({ searchParams }: WorkspacesPageProps) {
+export default async function WorkspacesPage() {
   const user = await requireUser("/app");
-  const [{ welcome, verify }, workspaces] = await Promise.all([searchParams, getWorkspaceSummaries(user)]);
+  const workspaces = await getWorkspaceSummaries(user);
 
   return (
     <main className="min-h-screen bg-[#f6f8f6] px-6 py-6 text-[#111b17] max-[720px]:px-3">
       <div className="mx-auto grid min-h-[calc(100vh-48px)] max-w-6xl content-center gap-6">
-        {!user.verified ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
-            <div className="font-bold text-amber-800">
-              {verify === "sent"
-                ? <>Verification link sent to <span className="font-black">{user.email}</span> — check your inbox.</>
-                : <>Please verify your email. We sent a link to <span className="font-black">{user.email}</span>.</>}
-            </div>
-            <form action={resendVerificationAction}>
-              <button className="rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-xs font-black text-amber-800">
-                Resend link
-              </button>
-            </form>
-          </div>
-        ) : verify ? (
-          <div className="rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
-            Your email is verified. You&rsquo;re all set.
-          </div>
-        ) : null}
         <section className="rounded-[32px] bg-[#10261f] p-8 text-white shadow-[0_24px_60px_rgba(16,38,31,0.18)] max-[720px]:p-5">
           <div className="mb-6 flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-start">
             <div className="text-sm font-bold text-white/72">
@@ -46,15 +23,13 @@ export default async function WorkspacesPage({ searchParams }: WorkspacesPagePro
           <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-8 max-[860px]:grid-cols-1">
             <div>
               <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#f2c66d]">
-                {welcome ? "You're all set" : "Your workspaces"}
+                Your workspaces
               </div>
               <h1 className="max-w-3xl text-5xl font-black leading-tight tracking-tight max-[720px]:text-3xl">
-                {welcome ? "Welcome to Beauty OS. Open your workspace to begin." : "Welcome back. Pick a workspace to get to work."}
+                Welcome back. Pick a workspace to get to work.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72">
-                {welcome
-                  ? "Your business is ready below — staff, clients, services, inventory, payments and reports, all in one place."
-                  : "Each business has its own staff, clients, services, inventory, payments, and reports."}
+                Each business has its own staff, clients, services, inventory, payments, and reports.
               </p>
             </div>
             <div className="rounded-3xl border border-white/12 bg-white/10 p-5">
