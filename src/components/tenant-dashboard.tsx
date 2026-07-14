@@ -9,7 +9,7 @@ const navItems: { label: string; icon: string; section?: string; path?: string }
   { label: "Staff", icon: "◱", section: "staff", path: "staff" },
   { label: "Inventory", icon: "▤", section: "inventory", path: "inventory" },
   { label: "Payments", icon: "₵", section: "payments", path: "payments" },
-  { label: "Marketing", icon: "✦" },
+  { label: "Marketing", icon: "✦", section: "marketing", path: "marketing" },
 ];
 
 const toneClasses: Record<string, string> = {
@@ -22,7 +22,15 @@ const toneClasses: Record<string, string> = {
 type TenantDashboardProps = {
   data: TenantDashboardData;
   businessSlug: string;
-  currentSection?: "dashboard" | "appointments" | "clients" | "services" | "staff" | "inventory" | "payments";
+  currentSection?:
+    | "dashboard"
+    | "appointments"
+    | "clients"
+    | "services"
+    | "staff"
+    | "inventory"
+    | "payments"
+    | "marketing";
 };
 
 export function TenantDashboard({ data, businessSlug, currentSection = "dashboard" }: TenantDashboardProps) {
