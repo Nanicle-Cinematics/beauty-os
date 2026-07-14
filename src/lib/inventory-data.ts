@@ -295,7 +295,7 @@ export async function addProduct({
         },
       });
     }
-  });
+  }, { timeout: 15000 });
 }
 
 export async function adjustStock({

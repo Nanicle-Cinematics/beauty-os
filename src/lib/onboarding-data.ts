@@ -228,7 +228,7 @@ export async function createBusiness({
       });
 
       return business;
-    });
+    }, { timeout: 15000 });
 
     return {
       ok: true,
@@ -327,7 +327,7 @@ export async function acceptInvite({
       });
 
       return { userId: user.id, slug: invite.business.slug };
-    });
+    }, { timeout: 15000 });
 
     return { ok: true, slug: result.slug, userId: result.userId };
   } catch {

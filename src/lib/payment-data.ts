@@ -332,5 +332,5 @@ export async function recordPayment({
         });
       }
     }
-  });
+  }, { timeout: 15000 });
 }
