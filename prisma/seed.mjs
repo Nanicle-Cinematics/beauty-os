@@ -10,25 +10,33 @@ function hashPassword(password) {
   return `scrypt$${salt}$${key}`;
 }
 
-const passwordHash = hashPassword("password123");
+// Password for BRAND-NEW users only. Prefer SEED_PASSWORD; otherwise generate
+// a strong random one (never the old hardcoded "password123"). Existing users'
+// passwords are never touched, so re-seeding can't reset rotated credentials.
+const seedPassword = process.env.SEED_PASSWORD || randomBytes(12).toString("base64url").slice(0, 16);
+const usingGeneratedPassword = !process.env.SEED_PASSWORD;
+const createdCredentials = [];
+
+// Upsert a user without ever overwriting the password of one that already
+// exists — the create branch sets it, the update branch leaves it alone.
+async function upsertUser({ email, name, isPlatformAdmin = false }) {
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (existing) {
+    await prisma.user.update({
+      where: { id: existing.id },
+      data: { name, isPlatformAdmin, emailVerifiedAt: new Date() },
+    });
+    return existing.id;
+  }
+  const created = await prisma.user.create({
+    data: { email, name, isPlatformAdmin, passwordHash: hashPassword(seedPassword), emailVerifiedAt: new Date() },
+  });
+  createdCredentials.push({ email, password: seedPassword });
+  return created.id;
+}
 
 async function seedPlatformAdmin() {
-  await prisma.user.upsert({
-    where: { email: "admin@beautyos.dev" },
-    update: {
-      name: "Platform Admin",
-      passwordHash,
-      isPlatformAdmin: true,
-      emailVerifiedAt: new Date(),
-    },
-    create: {
-      email: "admin@beautyos.dev",
-      name: "Platform Admin",
-      passwordHash,
-      isPlatformAdmin: true,
-      emailVerifiedAt: new Date(),
-    },
-  });
+  await upsertUser({ email: "admin@beautyos.dev", name: "Platform Admin", isPlatformAdmin: true });
 }
 
 async function seedLookupData() {
@@ -118,16 +126,7 @@ async function seedBusiness({
   customers,
   products,
 }) {
-  const owner = await prisma.user.upsert({
-    where: { email: ownerEmail },
-    update: { name: ownerName, passwordHash, emailVerifiedAt: new Date() },
-    create: {
-      email: ownerEmail,
-      name: ownerName,
-      passwordHash,
-      emailVerifiedAt: new Date(),
-    },
-  });
+  const ownerId = await upsertUser({ email: ownerEmail, name: ownerName });
 
   const business = await prisma.business.upsert({
     where: { slug },
@@ -172,11 +171,11 @@ async function seedBusiness({
   });
 
   const ownerStaff = await prisma.staffMember.upsert({
-    where: { businessId_userId: { businessId: business.id, userId: owner.id } },
+    where: { businessId_userId: { businessId: business.id, userId: ownerId } },
     update: { role: "OWNER", status: "ACTIVE", joinedAt: new Date("2026-07-01T09:00:00.000Z") },
     create: {
       businessId: business.id,
-      userId: owner.id,
+      userId: ownerId,
       role: "OWNER",
       status: "ACTIVE",
       joinedAt: new Date("2026-07-01T09:00:00.000Z"),
@@ -345,6 +344,17 @@ async function main() {
   });
 
   console.log("Seeded Beauty OS tenants, plans, services, clients, appointments, and inventory.");
+
+  if (createdCredentials.length) {
+    const source = usingGeneratedPassword ? "a generated password (set SEED_PASSWORD to control it)" : "SEED_PASSWORD";
+    console.log(`\nCreated ${createdCredentials.length} new user(s) with ${source}:`);
+    for (const c of createdCredentials) {
+      console.log(usingGeneratedPassword ? `   ${c.email}  ->  ${c.password}` : `   ${c.email}`);
+    }
+    console.log("Store these now — existing users' passwords were left unchanged.\n");
+  } else {
+    console.log("No new users created; existing users' passwords were left unchanged.\n");
+  }
 }
 
 main()
