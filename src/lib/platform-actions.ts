@@ -1,8 +1,10 @@
 "use server";
 
+import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requirePlatformAdmin } from "@/lib/auth";
 import { setBusinessStatus, changeBusinessPlan } from "@/lib/platform-data";
+import { resendOwnerInvite, revokeOwnerInvite } from "@/lib/onboarding-data";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -36,4 +38,25 @@ export async function changeBusinessPlanAction(formData: FormData) {
   });
 
   revalidatePath("/platform");
+}
+
+export async function resendInviteAction(formData: FormData) {
+  await requirePlatformAdmin();
+
+  const result = await resendOwnerInvite(getString(formData, "businessId"));
+  if (!result.ok) {
+    redirect(`/platform?inviteError=${encodeURIComponent(result.error)}`);
+  }
+
+  revalidatePath("/platform");
+  redirect(`/platform?invite=${result.inviteToken}&slug=${result.slug}&resent=1`);
+}
+
+export async function revokeInviteAction(formData: FormData) {
+  await requirePlatformAdmin();
+
+  const result = await revokeOwnerInvite(getString(formData, "businessId"));
+
+  revalidatePath("/platform");
+  redirect(result.slug ? `/platform?revoked=${result.slug}` : "/platform");
 }

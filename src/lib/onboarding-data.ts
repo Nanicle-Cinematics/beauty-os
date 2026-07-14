@@ -245,7 +245,7 @@ export async function getInvite(token: string) {
     where: { tokenHash: hashToken(token) },
     include: { business: { select: { name: true } } },
   });
-  if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
+  if (!invite || invite.acceptedAt || invite.revokedAt || invite.expiresAt < new Date()) {
     return null;
   }
   return { email: invite.email, name: invite.name, businessName: invite.business.name };
@@ -271,7 +271,7 @@ export async function acceptInvite({
     where: { tokenHash: hashToken(token) },
     include: { business: { select: { id: true, slug: true } } },
   });
-  if (!invite || invite.acceptedAt || invite.expiresAt < new Date()) {
+  if (!invite || invite.acceptedAt || invite.revokedAt || invite.expiresAt < new Date()) {
     return { ok: false, error: "This invite link is invalid or has expired." };
   }
 
@@ -325,4 +325,88 @@ export async function acceptInvite({
   } catch {
     return { ok: false, error: "Could not complete setup. Please try again." };
   }
+}
+
+export type ResendInviteResult = { ok: true; slug: string; inviteToken: string } | { ok: false; error: string };
+
+function nameFromEmail(email: string) {
+  const local = email.split("@")[0] ?? "";
+  const cleaned = local.replace(/[._-]+/g, " ").trim();
+  return cleaned ? cleaned.replace(/\b\w/g, (c) => c.toUpperCase()) : "Owner";
+}
+
+// Rotate (or recreate) the owner invite for a business and return a fresh
+// link. Works whether the previous invite was pending, revoked or expired.
+export async function resendOwnerInvite(businessId: string): Promise<ResendInviteResult> {
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "Database is not configured." };
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: {
+      slug: true,
+      staff: { where: { role: "OWNER" }, orderBy: { createdAt: "asc" }, take: 1, select: { userId: true, invitedEmail: true } },
+    },
+  });
+  if (!business) {
+    return { ok: false, error: "Business not found." };
+  }
+
+  const owner = business.staff[0];
+  if (owner?.userId) {
+    return { ok: false, error: "The owner has already activated their account." };
+  }
+
+  // Prefer the most recent unaccepted invite (to keep the owner's name); fall
+  // back to the pending staff email when there is no prior invite to rotate.
+  const existing = await prisma.businessInvite.findFirst({
+    where: { businessId, acceptedAt: null },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, email: true, name: true },
+  });
+  const email = existing?.email ?? owner?.invitedEmail ?? null;
+  if (!email) {
+    return { ok: false, error: "No pending owner to invite." };
+  }
+
+  const inviteToken = randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+
+  if (existing) {
+    await prisma.businessInvite.update({
+      where: { id: existing.id },
+      data: { tokenHash: hashToken(inviteToken), expiresAt, revokedAt: null, acceptedAt: null },
+    });
+  } else {
+    await prisma.businessInvite.create({
+      data: {
+        businessId,
+        email,
+        name: nameFromEmail(email),
+        role: "OWNER",
+        tokenHash: hashToken(inviteToken),
+        expiresAt,
+      },
+    });
+  }
+
+  return { ok: true, slug: business.slug, inviteToken };
+}
+
+// Invalidate the active owner invite link. The pending owner slot remains, so
+// a fresh link can be issued later via resendOwnerInvite.
+export async function revokeOwnerInvite(businessId: string): Promise<{ ok: boolean; slug: string | null }> {
+  if (!isDatabaseConfigured()) {
+    return { ok: false, slug: null };
+  }
+  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { slug: true } });
+  if (!business) {
+    return { ok: false, slug: null };
+  }
+  await prisma.businessInvite.updateMany({
+    where: { businessId, acceptedAt: null, revokedAt: null },
+    data: { revokedAt: new Date() },
+  });
+  return { ok: true, slug: business.slug };
 }

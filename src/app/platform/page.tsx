@@ -1,7 +1,12 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { getPlatformOverview } from "@/lib/platform-data";
-import { setBusinessStatusAction, changeBusinessPlanAction } from "@/lib/platform-actions";
+import {
+  setBusinessStatusAction,
+  changeBusinessPlanAction,
+  resendInviteAction,
+  revokeInviteAction,
+} from "@/lib/platform-actions";
 import { requirePlatformAdmin } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -20,20 +25,35 @@ const subPill: Record<string, string> = {
   CANCELED: "bg-[#eef1f0] text-[#6b7c73]",
 };
 
+const inviteStateLabel: Record<string, string> = {
+  active: "Invite sent",
+  revoked: "Revoked",
+  expired: "Expired",
+  none: "No invite",
+};
+
 const inputClass = "h-11 rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-3 text-sm outline-none focus:border-[#1d7b5d]";
 const cardClass = "rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]";
 
 type PlatformPageProps = {
-  searchParams: Promise<{ created?: string; invite?: string }>;
+  searchParams: Promise<{
+    created?: string;
+    invite?: string;
+    slug?: string;
+    resent?: string;
+    revoked?: string;
+    inviteError?: string;
+  }>;
 };
 
 export default async function PlatformPage({ searchParams }: PlatformPageProps) {
   const user = await requirePlatformAdmin();
-  const { created, invite } = await searchParams;
+  const { created, invite, slug, revoked, inviteError } = await searchParams;
   const { stats, businesses, plans, activity, statusOptions, planOptions } = await getPlatformOverview();
 
+  const inviteSlug = created ?? slug ?? "";
   let inviteUrl = "";
-  if (created && invite) {
+  if (invite) {
     const h = await headers();
     const host = h.get("host") ?? "";
     const proto = h.get("x-forwarded-proto") ?? "http";
@@ -61,19 +81,33 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
           </div>
         </header>
 
-        {created ? (
+        {inviteUrl ? (
           <div className="grid gap-2 rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
             <span>
-              Business <span className="font-black">{created}</span> created. Send the owner this invite link to set their password:
+              {created ? (
+                <>Business <span className="font-black">{inviteSlug}</span> created. Send the owner this invite link to set their password:</>
+              ) : (
+                <>New invite link for <span className="font-black">{inviteSlug}</span> — the previous link no longer works:</>
+              )}
             </span>
-            {inviteUrl ? (
-              <input
-                readOnly
-                value={inviteUrl}
-                className="w-full select-all rounded-xl border border-[#bfe3d1] bg-white px-3 py-2 font-mono text-xs text-[#10261f]"
-              />
-            ) : null}
+            <input
+              readOnly
+              value={inviteUrl}
+              className="w-full select-all rounded-xl border border-[#bfe3d1] bg-white px-3 py-2 font-mono text-xs text-[#10261f]"
+            />
             <span className="text-xs font-semibold text-[#4c9c78]">The link expires in 7 days.</span>
+          </div>
+        ) : null}
+
+        {revoked ? (
+          <div className="rounded-2xl border border-[#e6c6cd] bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+            Invite for <span className="font-black">{revoked}</span> revoked — that link no longer works. Resend to issue a new one.
+          </div>
+        ) : null}
+
+        {inviteError ? (
+          <div className="rounded-2xl border border-[#e6c6cd] bg-rose-50 px-4 py-3 text-sm font-bold text-rose-700">
+            {inviteError}
           </div>
         ) : null}
 
@@ -126,6 +160,35 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                     <span className="rounded-full bg-[#eef1f0] px-2.5 py-0.5 text-[11px] font-black text-[#6b7c73]">No subscription</span>
                   )}
                 </div>
+
+                {!business.ownerActivated ? (
+                  <div className="grid gap-2 rounded-2xl border border-amber-200 bg-amber-50/70 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-black text-amber-700">
+                        Owner not activated{business.inviteEmail ? ` · ${business.inviteEmail}` : ""}
+                      </span>
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-amber-700">
+                        {inviteStateLabel[business.inviteState ?? "none"]}
+                      </span>
+                    </div>
+                    <div className="flex gap-2">
+                      <form action={resendInviteAction} className="flex-1">
+                        <input type="hidden" name="businessId" value={business.id} />
+                        <button className="w-full rounded-xl bg-[#10261f] px-3 py-2 text-xs font-black text-white">
+                          {business.inviteState === "active" ? "Resend link" : "Send invite link"}
+                        </button>
+                      </form>
+                      {business.inviteState === "active" ? (
+                        <form action={revokeInviteAction}>
+                          <input type="hidden" name="businessId" value={business.id} />
+                          <button className="rounded-xl border border-[#e6c6cd] bg-white px-3 py-2 text-xs font-black text-rose-700">
+                            Revoke
+                          </button>
+                        </form>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="grid gap-2">
                   <form action={setBusinessStatusAction} className="flex gap-2">

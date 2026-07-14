@@ -233,6 +233,7 @@ model BusinessInvite {
   tokenHash  String       @unique
   expiresAt  DateTime
   acceptedAt DateTime?
+  revokedAt  DateTime?
   createdAt  DateTime     @default(now())
 
   @@index([businessId])

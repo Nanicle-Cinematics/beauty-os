@@ -18,6 +18,9 @@ export type PlatformBusinessRow = {
   staff: number;
   customers: number;
   created: string;
+  ownerActivated: boolean;
+  inviteEmail: string | null;
+  inviteState: "active" | "revoked" | "expired" | "none" | null;
 };
 
 export type PlatformPlanRow = {
@@ -110,11 +113,13 @@ const fallbackOverview: PlatformOverview = {
       id: "sample_osu_glow", slug: "osu-glow-studio", name: "Osu Glow Studio", category: "Hair, makeup, nails",
       planName: "Studio Pro", planId: "sample_studio", subscriptionStatus: "Active", subscriptionStatusKey: "ACTIVE",
       status: "Active", statusKey: "ACTIVE", staff: 6, customers: 214, created: "12 Jan 2026",
+      ownerActivated: true, inviteEmail: null, inviteState: null,
     },
     {
       id: "sample_luxe_lash", slug: "luxe-lash-lab", name: "Luxe Lash Lab", category: "Lashes and brows",
       planName: "Growth Suite", planId: "sample_growth", subscriptionStatus: "Trialing", subscriptionStatusKey: "TRIALING",
       status: "Trial", statusKey: "TRIAL", staff: 3, customers: 88, created: "03 Mar 2026",
+      ownerActivated: false, inviteEmail: "owner@luxelash.example", inviteState: "active",
     },
   ],
   plans: [
@@ -140,6 +145,8 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
       include: {
         category: { select: { label: true } },
         subscription: { include: { plan: true } },
+        staff: { where: { role: "OWNER" }, orderBy: { createdAt: "asc" }, take: 1, select: { userId: true, invitedEmail: true } },
+        invites: { where: { acceptedAt: null }, orderBy: { createdAt: "desc" }, take: 1, select: { email: true, revokedAt: true, expiresAt: true } },
         _count: { select: { staff: true, customers: true } },
       },
     }),
@@ -181,23 +188,47 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
     { label: "Clients", value: totalCustomers.toLocaleString("en-US"), detail: "Across every tenant" },
   ];
 
+  const now = new Date();
+
   return {
     stats,
-    businesses: businesses.map((b) => ({
-      id: b.id,
-      slug: b.slug,
-      name: b.name,
-      category: b.category.label,
-      planName: b.subscription?.plan.name ?? "No plan",
-      planId: b.subscription?.planId ?? null,
-      subscriptionStatus: b.subscription ? titleCase(b.subscription.status) : null,
-      subscriptionStatusKey: b.subscription?.status ?? null,
-      status: titleCase(b.status),
-      statusKey: b.status,
-      staff: b._count.staff,
-      customers: b._count.customers,
-      created: shortDate(b.createdAt),
-    })),
+    businesses: businesses.map((b) => {
+      const owner = b.staff[0];
+      const ownerActivated = Boolean(owner?.userId);
+      const invite = b.invites[0];
+      let inviteState: PlatformBusinessRow["inviteState"] = null;
+      let inviteEmail: string | null = null;
+      if (!ownerActivated) {
+        inviteEmail = invite?.email ?? owner?.invitedEmail ?? null;
+        if (!invite) {
+          inviteState = "none";
+        } else if (invite.revokedAt) {
+          inviteState = "revoked";
+        } else if (invite.expiresAt < now) {
+          inviteState = "expired";
+        } else {
+          inviteState = "active";
+        }
+      }
+      return {
+        id: b.id,
+        slug: b.slug,
+        name: b.name,
+        category: b.category.label,
+        planName: b.subscription?.plan.name ?? "No plan",
+        planId: b.subscription?.planId ?? null,
+        subscriptionStatus: b.subscription ? titleCase(b.subscription.status) : null,
+        subscriptionStatusKey: b.subscription?.status ?? null,
+        status: titleCase(b.status),
+        statusKey: b.status,
+        staff: b._count.staff,
+        customers: b._count.customers,
+        created: shortDate(b.createdAt),
+        ownerActivated,
+        inviteEmail,
+        inviteState,
+      };
+    }),
     plans: plans.map((p) => ({
       id: p.id,
       key: p.key,
