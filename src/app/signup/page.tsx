@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { signUpAction } from "@/lib/signup-actions";
 import { getSignupCategories } from "@/lib/signup-data";
+import { PasswordInput } from "@/components/password-input";
 
 export const dynamic = "force-dynamic";
 
@@ -76,7 +77,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
             </div>
             <label className={labelClass}>
               Password (min 8 characters)
-              <input name="ownerPassword" type="password" minLength={8} placeholder="Create a password" className={inputClass} required />
+              <PasswordInput name="ownerPassword" minLength={8} placeholder="Create a password" autoComplete="new-password" className={`${inputClass} w-full`} required />
             </label>
             <button className="mt-2 rounded-2xl bg-[#10261f] px-6 py-3 text-sm font-black text-white">
               Start free trial

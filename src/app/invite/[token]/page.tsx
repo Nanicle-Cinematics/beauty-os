@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getInvite } from "@/lib/onboarding-data";
 import { acceptInviteAction } from "@/lib/onboarding-actions";
+import { PasswordInput } from "@/components/password-input";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +56,7 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
               </label>
               <label className={labelClass}>
                 Create a password (min 8 characters)
-                <input name="password" type="password" minLength={8} placeholder="Choose a strong password" className={inputClass} required />
+                <PasswordInput name="password" minLength={8} placeholder="Choose a strong password" autoComplete="new-password" className={`${inputClass} w-full`} required />
               </label>
               <button className="mt-1 rounded-2xl bg-[#10261f] px-6 py-3 text-sm font-black text-white">
                 Activate account

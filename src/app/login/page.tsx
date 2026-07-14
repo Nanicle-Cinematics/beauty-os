@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { loginAction } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
+import { PasswordInput } from "@/components/password-input";
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -90,11 +91,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
           <label className="grid gap-2 text-sm font-bold">
             Password
-            <input
+            <PasswordInput
               name="password"
-              type="password"
               placeholder="Your password"
-              className="h-12 rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-4 outline-none focus:border-[#1d7b5d]"
+              autoComplete="current-password"
+              className="h-12 w-full rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-4 outline-none focus:border-[#1d7b5d]"
               required
             />
           </label>
