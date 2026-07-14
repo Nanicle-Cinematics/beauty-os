@@ -16,12 +16,6 @@ export default async function WorkspacesPage({ searchParams }: WorkspacesPagePro
   return (
     <main className="min-h-screen bg-[#f6f8f6] px-6 py-6 text-[#111b17] max-[720px]:px-3">
       <div className="mx-auto grid min-h-[calc(100vh-48px)] max-w-6xl content-center gap-6">
-        {welcome ? (
-          <div className="rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
-            Welcome to Beauty OS! Your workspace is ready below.
-          </div>
-        ) : null}
-
         {!user.verified ? (
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
             <div className="font-bold text-amber-800">
@@ -52,13 +46,15 @@ export default async function WorkspacesPage({ searchParams }: WorkspacesPagePro
           <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-8 max-[860px]:grid-cols-1">
             <div>
               <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-[#f2c66d]">
-                Your workspaces
+                {welcome ? "You're all set" : "Your workspaces"}
               </div>
               <h1 className="max-w-3xl text-5xl font-black leading-tight tracking-tight max-[720px]:text-3xl">
-                Welcome back. Pick a workspace to get to work.
+                {welcome ? "Welcome to Beauty OS. Open your workspace to begin." : "Welcome back. Pick a workspace to get to work."}
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72">
-                Each business has its own staff, clients, services, inventory, payments, and reports.
+                {welcome
+                  ? "Your business is ready below — staff, clients, services, inventory, payments and reports, all in one place."
+                  : "Each business has its own staff, clients, services, inventory, payments, and reports."}
               </p>
             </div>
             <div className="rounded-3xl border border-white/12 bg-white/10 p-5">
