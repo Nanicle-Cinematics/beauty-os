@@ -41,8 +41,23 @@ model User {
   customerProfiles Customer[]
   auditLogs        AuditLog[]
   sessions         Session[]
+  emailVerificationTokens EmailVerificationToken[]
 
   @@index([isPlatformAdmin])
+}
+
+/// One-time token to verify a user's email after self-serve signup. Raw token
+/// lives only in the emailed link; we store its sha256 hash.
+model EmailVerificationToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 /// Server-side session record (supports session listing/revocation from

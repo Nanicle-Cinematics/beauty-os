@@ -1,16 +1,45 @@
 import Link from "next/link";
 import { getWorkspaceSummaries } from "@/lib/tenant-data";
 import { requireUser } from "@/lib/auth";
+import { resendVerificationAction } from "@/lib/verification-actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function WorkspacesPage() {
+type WorkspacesPageProps = {
+  searchParams: Promise<{ welcome?: string; verify?: string }>;
+};
+
+export default async function WorkspacesPage({ searchParams }: WorkspacesPageProps) {
   const user = await requireUser("/app");
-  const workspaces = await getWorkspaceSummaries(user);
+  const [{ welcome, verify }, workspaces] = await Promise.all([searchParams, getWorkspaceSummaries(user)]);
 
   return (
     <main className="min-h-screen bg-[#f6f8f6] px-6 py-6 text-[#111b17] max-[720px]:px-3">
       <div className="mx-auto grid min-h-[calc(100vh-48px)] max-w-6xl content-center gap-6">
+        {welcome ? (
+          <div className="rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
+            Welcome to Beauty OS! Your workspace is ready below.
+          </div>
+        ) : null}
+
+        {!user.verified ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+            <div className="font-bold text-amber-800">
+              {verify === "sent"
+                ? <>Verification link sent to <span className="font-black">{user.email}</span> — check your inbox.</>
+                : <>Please verify your email. We sent a link to <span className="font-black">{user.email}</span>.</>}
+            </div>
+            <form action={resendVerificationAction}>
+              <button className="rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-xs font-black text-amber-800">
+                Resend link
+              </button>
+            </form>
+          </div>
+        ) : verify ? (
+          <div className="rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
+            Your email is verified. You&rsquo;re all set.
+          </div>
+        ) : null}
         <section className="rounded-[32px] bg-[#10261f] p-8 text-white shadow-[0_24px_60px_rgba(16,38,31,0.18)] max-[720px]:p-5">
           <div className="mb-6 flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-start">
             <div className="text-sm font-bold text-white/72">

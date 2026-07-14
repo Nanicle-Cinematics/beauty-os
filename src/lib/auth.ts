@@ -13,9 +13,10 @@ export type AppUser = {
   email: string;
   name: string;
   isPlatformAdmin: boolean;
+  verified: boolean;
 };
 
-const demoUsers: Record<string, AppUser & { password: string; workspaces: string[] }> = {
+const demoUsers: Record<string, Omit<AppUser, "verified"> & { password: string; workspaces: string[] }> = {
   "admin@beautyos.dev": {
     id: "demo_platform_admin",
     email: "admin@beautyos.dev",
@@ -75,6 +76,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
       email: demoUser.email,
       name: demoUser.name,
       isPlatformAdmin: demoUser.isPlatformAdmin,
+      verified: true,
     };
   }
 
@@ -92,6 +94,7 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     email: session.user.email,
     name: session.user.name,
     isPlatformAdmin: session.user.isPlatformAdmin,
+    verified: session.user.emailVerifiedAt != null,
   };
 }
 

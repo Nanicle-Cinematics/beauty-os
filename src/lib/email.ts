@@ -128,3 +128,42 @@ export async function sendInviteEmail({
 
   return sendEmail({ to, subject, html, text, type: "owner_invite", businessId });
 }
+
+export async function sendVerificationEmail({
+  to,
+  name,
+  url,
+  businessId,
+}: {
+  to: string;
+  name: string;
+  url: string;
+  businessId?: string | null;
+}): Promise<SendEmailResult> {
+  const subject = "Verify your email for Beauty OS";
+  const safeName = escapeHtml(name);
+
+  const text = [
+    `Hi ${name},`,
+    ``,
+    `Confirm your email address to secure your Beauty OS account:`,
+    url,
+    ``,
+    `This link expires in 24 hours. If you didn't sign up, you can ignore this.`,
+  ].join("\n");
+
+  const html = `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#f6f8f6;padding:32px">
+    <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #dbe4de;border-radius:24px;padding:28px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#1d7b5d">Beauty OS</div>
+      <h1 style="margin:8px 0 16px;font-size:22px;color:#111b17">Verify your email</h1>
+      <p style="margin:0 0 16px;font-size:14px;color:#6b7c73">
+        Hi ${safeName}, confirm your email address to secure your account.
+      </p>
+      <a href="${url}" style="display:inline-block;background:#10261f;color:#ffffff;text-decoration:none;font-weight:800;font-size:14px;padding:12px 22px;border-radius:16px">Verify email</a>
+      <p style="margin:20px 0 0;font-size:12px;color:#8a978f">This link expires in 24 hours. If you didn't sign up, you can ignore this.</p>
+    </div>
+  </div>`;
+
+  return sendEmail({ to, subject, html, text, type: "email_verification", businessId });
+}

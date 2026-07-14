@@ -80,7 +80,9 @@ export async function getSignupCategories(): Promise<PublicCategory[]> {
   return categories;
 }
 
-export type SignUpResult = { ok: true; slug: string; userId: string } | { ok: false; error: string };
+export type SignUpResult =
+  | { ok: true; slug: string; userId: string; businessId: string; ownerEmail: string; ownerName: string }
+  | { ok: false; error: string };
 
 // Public self-serve signup: creates the business, the owner's User (with the
 // password they chose), and an ACTIVE OWNER membership in one transaction, then
@@ -171,10 +173,10 @@ export async function signUpBusiness({
         },
       });
 
-      return { slug: business.slug, userId: owner.id };
+      return { slug: business.slug, userId: owner.id, businessId: business.id };
     }, { timeout: 15000 });
 
-    return { ok: true, slug: result.slug, userId: result.userId };
+    return { ok: true, slug: result.slug, userId: result.userId, businessId: result.businessId, ownerEmail: oEmail, ownerName: oName };
   } catch {
     return { ok: false, error: "Could not create your workspace. Please try again." };
   }
