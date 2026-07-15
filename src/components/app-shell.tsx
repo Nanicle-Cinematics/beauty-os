@@ -33,22 +33,17 @@ type NavItem = { label: string; path: string; icon: LucideIcon };
 
 const primaryNav: NavItem[] = [
   { label: "Dashboard", path: "", icon: LayoutDashboard },
+  { label: "Calendar", path: "calendar", icon: CalendarDays },
   { label: "Appointments", path: "appointments", icon: CalendarClock },
   { label: "Clients", path: "clients", icon: Users },
   { label: "Services", path: "services", icon: Sparkles },
   { label: "Staff", path: "staff", icon: UserCog },
   { label: "Inventory", path: "inventory", icon: Package },
   { label: "Payments", path: "payments", icon: CreditCard },
+  { label: "Finance", path: "finance", icon: Wallet },
   { label: "Marketing", path: "marketing", icon: Megaphone },
-];
-
-// Structured but not yet implemented — shown so the IA reads complete,
-// never wired to fake functionality.
-const upcomingNav: { label: string; icon: LucideIcon }[] = [
-  { label: "Calendar", icon: CalendarDays },
-  { label: "Finance", icon: Wallet },
-  { label: "Reports", icon: BarChart3 },
-  { label: "AI Insights", icon: Brain },
+  { label: "AI Insights", path: "ai-insights", icon: Brain },
+  { label: "Reports", path: "reports", icon: BarChart3 },
 ];
 
 const quickAdd = [
@@ -133,29 +128,6 @@ export function AppShell({
           );
         })}
       </nav>
-
-      <div>
-        <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-white/30">
-          Coming soon
-        </div>
-        <div className="grid gap-0.5">
-          {upcomingNav.map((item) => {
-            const Icon = item.icon;
-            return (
-              <div
-                key={item.label}
-                className="flex min-h-9 cursor-default items-center gap-3 rounded-xl px-3 text-[13.5px] font-medium text-white/28"
-              >
-                <Icon size={17} strokeWidth={1.8} className="text-white/25" />
-                {item.label}
-                <span className="ml-auto rounded-full bg-white/[0.06] px-2 py-0.5 text-[9.5px] font-semibold uppercase tracking-wide text-white/40">
-                  Soon
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
 
       <div className="mt-auto grid gap-3">
         <div className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
