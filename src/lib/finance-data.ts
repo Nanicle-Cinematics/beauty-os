@@ -26,6 +26,77 @@ function shortDate(date: Date) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(date);
 }
 
+export type ExpenseFilters = { category?: string; from?: string; to?: string; q?: string };
+export type ExpenseRow = { id: string; category: string; description: string; amount: string; when: string };
+export type ExpensesList = {
+  tenant: { name: string; currency: string };
+  categories: string[];
+  filters: { category: string; from: string; to: string; q: string };
+  summary: { count: number; total: string };
+  expenses: ExpenseRow[];
+};
+
+function longDate(date: Date) {
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(date);
+}
+
+// Validate a YYYY-MM-DD string; return the trimmed value or "" so bad input
+// simply drops the filter rather than throwing.
+function cleanDate(value?: string) {
+  if (!value) return "";
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? "" : value.slice(0, 10);
+}
+
+export async function getExpensesList(businessSlug: string, filters: ExpenseFilters): Promise<ExpensesList | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug } });
+  if (!business) return null;
+
+  const currency = business.currency;
+  const category = (filters.category ?? "").trim();
+  const from = cleanDate(filters.from);
+  const to = cleanDate(filters.to);
+  const q = (filters.q ?? "").trim();
+
+  const incurredAt: { gte?: Date; lte?: Date } = {};
+  if (from) incurredAt.gte = new Date(from);
+  if (to) {
+    // Make the "to" bound inclusive of the whole day.
+    const end = new Date(to);
+    end.setHours(23, 59, 59, 999);
+    incurredAt.lte = end;
+  }
+
+  const where = {
+    businessId: business.id,
+    ...(category ? { category } : {}),
+    ...(from || to ? { incurredAt } : {}),
+    ...(q ? { description: { contains: q, mode: "insensitive" as const } } : {}),
+  };
+
+  const [distinctCats, rows, agg] = await Promise.all([
+    prisma.expense.findMany({ where: { businessId: business.id }, distinct: ["category"], select: { category: true }, orderBy: { category: "asc" } }),
+    prisma.expense.findMany({ where, orderBy: { incurredAt: "desc" }, take: 300, select: { id: true, category: true, description: true, amount: true, incurredAt: true } }),
+    prisma.expense.aggregate({ where, _sum: { amount: true }, _count: true }),
+  ]);
+
+  return {
+    tenant: { name: business.name, currency },
+    categories: distinctCats.map((c) => c.category).filter(Boolean),
+    filters: { category, from, to, q },
+    summary: { count: agg._count, total: money(Number(agg._sum.amount ?? 0), currency) },
+    expenses: rows.map((e) => ({
+      id: e.id,
+      category: e.category,
+      description: e.description ?? "—",
+      amount: money(Number(e.amount), currency),
+      when: longDate(e.incurredAt),
+    })),
+  };
+}
+
 export async function createExpense({
   businessSlug,
   category,

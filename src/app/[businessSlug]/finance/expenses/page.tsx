@@ -1,0 +1,105 @@
+import { notFound } from "next/navigation";
+import Link from "next/link";
+import { Receipt, Filter, ListFilter } from "lucide-react";
+import { PageHeader } from "@/components/page-header";
+import { EmptyState, Badge } from "@/components/ui";
+import { FinanceTabs } from "@/components/finance-tabs";
+import { getExpensesList } from "@/lib/finance-data";
+import { requireTenantAccess } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+
+type ExpensesPageProps = {
+  params: Promise<{ businessSlug: string }>;
+  searchParams: Promise<{ category?: string; from?: string; to?: string; q?: string }>;
+};
+
+export default async function ExpensesPage({ params, searchParams }: ExpensesPageProps) {
+  const { businessSlug } = await params;
+  const sp = await searchParams;
+  await requireTenantAccess(businessSlug);
+  const data = await getExpensesList(businessSlug, sp);
+  if (!data) notFound();
+
+  const { filters } = data;
+  const hasFilters = Boolean(filters.category || filters.from || filters.to || filters.q);
+
+  return (
+    <div className="grid gap-5">
+      <PageHeader title="Finance" description="Every expense you've logged — filter by category, date, or keyword." />
+
+      <FinanceTabs businessSlug={businessSlug} active="expenses" />
+
+      <form method="get" className="card grid gap-3 p-4 md:grid-cols-[1.2fr_1fr_1fr_1.4fr_auto] md:items-end">
+        <label className="field-label">
+          Category
+          <select name="category" defaultValue={filters.category} className="input">
+            <option value="">All categories</option>
+            {data.categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field-label">
+          From
+          <input name="from" type="date" defaultValue={filters.from} className="input" />
+        </label>
+        <label className="field-label">
+          To
+          <input name="to" type="date" defaultValue={filters.to} className="input" />
+        </label>
+        <label className="field-label">
+          Search
+          <input name="q" defaultValue={filters.q} placeholder="Description keyword" className="input" />
+        </label>
+        <div className="flex gap-2">
+          <button className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-gradient-to-r from-plum to-wine px-4 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
+            <Filter size={15} /> Filter
+          </button>
+          {hasFilters ? (
+            <Link href={`/${businessSlug}/finance/expenses`} className="inline-flex h-11 items-center rounded-xl border border-line px-4 text-sm font-medium text-muted hover:bg-sunken">
+              Clear
+            </Link>
+          ) : null}
+        </div>
+      </form>
+
+      <div className="card p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold"><ListFilter size={17} className="text-plum" /> Expenses</h2>
+            <p className="mt-0.5 text-[12.5px] text-muted">
+              {data.summary.count} {data.summary.count === 1 ? "expense" : "expenses"}{hasFilters ? " matching filters" : ""}
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Total</div>
+            <div className="text-[18px] font-semibold text-ink">{data.summary.total}</div>
+          </div>
+        </div>
+
+        {data.expenses.length === 0 ? (
+          <EmptyState
+            icon={Receipt}
+            title={hasFilters ? "No matching expenses" : "No expenses logged"}
+            body={hasFilters ? "Try widening your filters or clearing them." : "Log an expense from the Finance overview to see it here."}
+          />
+        ) : (
+          <div className="overflow-hidden rounded-2xl border border-line">
+            <div className="grid grid-cols-[160px_1fr_140px_120px] px-4 py-2.5 data-head max-[720px]:hidden">
+              <span>Category</span><span>Description</span><span>Date</span><span>Amount</span>
+            </div>
+            {data.expenses.map((e) => (
+              <div key={e.id} className="grid grid-cols-[160px_1fr_140px_120px] items-center gap-3 border-t border-line-2 px-4 py-3.5 text-sm max-[720px]:grid-cols-2">
+                <Badge tone="neutral">{e.category}</Badge>
+                <span className="truncate text-ink">{e.description}</span>
+                <span className="font-medium text-muted">{e.when}</span>
+                <span className="font-semibold text-ink">{e.amount}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

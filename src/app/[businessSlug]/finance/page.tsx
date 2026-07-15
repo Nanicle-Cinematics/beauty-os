@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Wallet, ArrowDownRight, Receipt, Plus, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatTile, statMetaFor, EmptyState, Badge } from "@/components/ui";
+import { FinanceTabs } from "@/components/finance-tabs";
 import { getFinanceData } from "@/lib/finance-data";
 import { createExpenseAction } from "@/lib/finance-actions";
 import { requireTenantAccess } from "@/lib/auth";
@@ -27,6 +28,8 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
   return (
     <div className="grid gap-5">
       <PageHeader title="Finance" description="Money in and out — revenue, expenses, and what you're owed." />
+
+      <FinanceTabs businessSlug={businessSlug} active="overview" />
 
       {logged ? (
         <div className="flex items-center gap-2 rounded-xl border border-success/20 bg-success-soft px-4 py-3 text-sm font-semibold text-success">
