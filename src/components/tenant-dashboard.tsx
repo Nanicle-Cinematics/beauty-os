@@ -22,6 +22,7 @@ const toneClasses: Record<string, string> = {
 type TenantDashboardProps = {
   data: TenantDashboardData;
   businessSlug: string;
+  account?: { email: string; canSwitch: boolean };
   currentSection?:
     | "dashboard"
     | "appointments"
@@ -33,7 +34,7 @@ type TenantDashboardProps = {
     | "marketing";
 };
 
-export function TenantDashboard({ data, businessSlug, currentSection = "dashboard" }: TenantDashboardProps) {
+export function TenantDashboard({ data, businessSlug, account, currentSection = "dashboard" }: TenantDashboardProps) {
   const { tenant, stats, pulse, pills, tasks, appointments, clientSignals, staff, inventory } = data;
 
   return (
@@ -71,13 +72,34 @@ export function TenantDashboard({ data, businessSlug, currentSection = "dashboar
             ))}
           </nav>
 
-          <div className="mt-auto rounded-2xl border border-white/10 bg-white/7 p-4">
-            <div className="text-xs font-black uppercase tracking-[0.14em] text-[#f2c66d]">
-              Plan
+          <div className="mt-auto grid gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/7 p-4">
+              <div className="text-xs font-black uppercase tracking-[0.14em] text-[#f2c66d]">
+                Plan
+              </div>
+              <div className="mt-2 text-sm font-bold">{tenant.planName}</div>
+              <div className="mt-1 text-xs leading-5 text-white/62">
+                {tenant.staffSeats} staff seats · {tenant.branchCount} branch · {tenant.automationStatus}
+              </div>
             </div>
-            <div className="mt-2 text-sm font-bold">{tenant.planName}</div>
-            <div className="mt-1 text-xs leading-5 text-white/62">
-              {tenant.staffSeats} staff seats · {tenant.branchCount} branch · {tenant.automationStatus}
+
+            <div className="grid gap-1.5 rounded-2xl border border-white/10 bg-white/7 p-3">
+              {account ? (
+                <div className="truncate px-1 pb-1 text-[11px] font-bold text-white/55" title={account.email}>
+                  {account.email}
+                </div>
+              ) : null}
+              <Link href="/settings" className="rounded-xl px-3 py-2 text-sm font-bold text-white/72 transition hover:bg-white/8 hover:text-white">
+                Settings
+              </Link>
+              {account?.canSwitch ? (
+                <Link href="/app" className="rounded-xl px-3 py-2 text-sm font-bold text-white/72 transition hover:bg-white/8 hover:text-white">
+                  Switch workspace
+                </Link>
+              ) : null}
+              <Link href="/logout" className="rounded-xl px-3 py-2 text-sm font-bold text-white/72 transition hover:bg-white/8 hover:text-white">
+                Sign out
+              </Link>
             </div>
           </div>
         </aside>

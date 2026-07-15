@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getWorkspaceSummaries } from "@/lib/tenant-data";
 import { requireUser } from "@/lib/auth";
 
@@ -7,6 +8,13 @@ export const dynamic = "force-dynamic";
 export default async function WorkspacesPage() {
   const user = await requireUser("/app");
   const workspaces = await getWorkspaceSummaries(user);
+
+  // A regular owner/staff with exactly one workspace has nothing to pick — drop
+  // them straight into it. The picker only earns its keep for multi-membership
+  // users and the platform admin (who sees every tenant).
+  if (!user.isPlatformAdmin && workspaces.length === 1) {
+    redirect(`/${workspaces[0].slug}`);
+  }
 
   return (
     <main className="min-h-screen bg-[#f6f8f6] px-6 py-6 text-[#111b17] max-[720px]:px-3">
