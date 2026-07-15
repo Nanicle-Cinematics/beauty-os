@@ -189,7 +189,7 @@ export function AppShell({
               <ChevronsUpDown size={15} /> Switch workspace
             </Link>
           ) : null}
-          <Link href="/logout" className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-[13px] font-medium text-white/60 hover:bg-white/[0.06] hover:text-white">
+          <Link href="/logout" prefetch={false} className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-[13px] font-medium text-white/60 hover:bg-white/[0.06] hover:text-white">
             <LogOut size={15} /> Sign out
           </Link>
         </div>

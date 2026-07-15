@@ -34,7 +34,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/app" className="rounded-xl border border-line px-4 py-2 text-sm font-medium hover:bg-sunken">Workspaces</Link>
-            <Link href="/logout" className="rounded-xl border border-line px-4 py-2 text-sm font-medium hover:bg-sunken">Sign out</Link>
+            <Link href="/logout" prefetch={false} className="rounded-xl border border-line px-4 py-2 text-sm font-medium hover:bg-sunken">Sign out</Link>
           </div>
         </header>
 

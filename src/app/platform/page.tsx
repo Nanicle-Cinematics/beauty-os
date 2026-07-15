@@ -76,7 +76,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
             <Link href="/platform/onboard" className="rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
               Add business
             </Link>
-            <Link href="/logout" className="rounded-xl border border-line px-4 py-2 text-sm font-medium hover:bg-sunken">
+            <Link href="/logout" prefetch={false} className="rounded-xl border border-line px-4 py-2 text-sm font-medium hover:bg-sunken">
               Sign out
             </Link>
           </div>

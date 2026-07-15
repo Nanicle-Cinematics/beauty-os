@@ -39,7 +39,7 @@ export default async function WorkspacesPage() {
               <Link href="/settings" className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10">
                 <Settings size={15} /> Settings
               </Link>
-              <Link href="/logout" className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10">
+              <Link href="/logout" prefetch={false} className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10">
                 <LogOut size={15} /> Sign out
               </Link>
             </div>

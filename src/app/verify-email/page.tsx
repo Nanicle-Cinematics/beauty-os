@@ -47,7 +47,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
                 Resend the link
               </button>
             </form>
-            <Link href="/logout" className="rounded-xl border border-line px-4 py-3 text-sm font-medium hover:bg-sunken">
+            <Link href="/logout" prefetch={false} className="rounded-xl border border-line px-4 py-3 text-sm font-medium hover:bg-sunken">
               Sign out
             </Link>
           </div>
