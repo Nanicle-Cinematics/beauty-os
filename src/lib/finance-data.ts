@@ -26,6 +26,52 @@ function shortDate(date: Date) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short" }).format(date);
 }
 
+export async function createExpense({
+  businessSlug,
+  category,
+  amount,
+  description,
+  incurredAt,
+}: {
+  businessSlug: string;
+  category: string;
+  amount: number;
+  description: string;
+  incurredAt: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "Not available." };
+  }
+  const trimmedCategory = category.trim();
+  if (!trimmedCategory) {
+    return { ok: false, error: "Add an expense category." };
+  }
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, error: "Enter an amount greater than zero." };
+  }
+
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
+  if (!business) {
+    return { ok: false, error: "Business not found." };
+  }
+
+  // Only accept a valid date; otherwise record it as incurred now.
+  const parsed = incurredAt ? new Date(incurredAt) : new Date();
+  const when = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+
+  await prisma.expense.create({
+    data: {
+      businessId: business.id,
+      category: trimmedCategory,
+      amount,
+      description: description.trim() || null,
+      incurredAt: when,
+    },
+  });
+
+  return { ok: true };
+}
+
 export async function getFinanceData(businessSlug: string): Promise<FinanceData | null> {
   if (!isDatabaseConfigured()) return null;
 

@@ -1,23 +1,41 @@
 import { notFound } from "next/navigation";
-import { Wallet, ArrowDownRight, Receipt } from "lucide-react";
+import { Wallet, ArrowDownRight, Receipt, Plus, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatTile, statMetaFor, EmptyState, Badge } from "@/components/ui";
 import { getFinanceData } from "@/lib/finance-data";
+import { createExpenseAction } from "@/lib/finance-actions";
 import { requireTenantAccess } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-type FinancePageProps = { params: Promise<{ businessSlug: string }> };
+const expenseCategories = ["Supplies", "Rent", "Salaries", "Utilities", "Marketing", "Equipment", "Transport", "Maintenance"];
 
-export default async function FinancePage({ params }: FinancePageProps) {
+type FinancePageProps = {
+  params: Promise<{ businessSlug: string }>;
+  searchParams: Promise<{ logged?: string; error?: string }>;
+};
+
+export default async function FinancePage({ params, searchParams }: FinancePageProps) {
   const { businessSlug } = await params;
+  const { logged, error } = await searchParams;
   await requireTenantAccess(businessSlug);
   const data = await getFinanceData(businessSlug);
   if (!data) notFound();
 
+  const today = new Date().toISOString().slice(0, 10);
+
   return (
     <div className="grid gap-5">
       <PageHeader title="Finance" description="Money in and out — revenue, expenses, and what you're owed." />
+
+      {logged ? (
+        <div className="flex items-center gap-2 rounded-xl border border-success/20 bg-success-soft px-4 py-3 text-sm font-semibold text-success">
+          <CheckCircle2 size={16} /> Expense logged.
+        </div>
+      ) : null}
+      {error ? (
+        <div className="rounded-xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm font-semibold text-danger">{error}</div>
+      ) : null}
 
       <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
         {data.kpis.map((stat) => {
@@ -45,7 +63,8 @@ export default async function FinancePage({ params }: FinancePageProps) {
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
+      <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
+        <div className="grid gap-5">
         <div className="card p-5">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold"><ArrowDownRight size={17} className="text-plum" /> Recent payments</h2>
           {data.recentPayments.length === 0 ? (
@@ -86,6 +105,46 @@ export default async function FinancePage({ params }: FinancePageProps) {
             </div>
           )}
         </div>
+        </div>
+
+        <form action={createExpenseAction} className="card grid h-fit gap-4 p-5">
+          <div>
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Plus size={17} className="text-plum" /> Log expense</h2>
+            <p className="mt-1 text-[12.5px] leading-5 text-muted">Record a cost to keep your net profit accurate.</p>
+          </div>
+
+          <input type="hidden" name="businessSlug" value={businessSlug} />
+
+          <label className="field-label">
+            Category
+            <input name="category" list="expense-categories" placeholder="e.g. Supplies" className="input" required />
+            <datalist id="expense-categories">
+              {expenseCategories.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="field-label">
+              Amount
+              <input name="amount" type="number" min="0" step="0.01" placeholder="0.00" className="input" required />
+            </label>
+            <label className="field-label">
+              Date
+              <input name="incurredAt" type="date" defaultValue={today} className="input" />
+            </label>
+          </div>
+
+          <label className="field-label">
+            Description (optional)
+            <input name="description" placeholder="What was it for?" className="input" />
+          </label>
+
+          <button className="rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
+            Log expense
+          </button>
+        </form>
       </section>
     </div>
   );
