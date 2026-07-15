@@ -3,8 +3,10 @@ import { requireUser } from "@/lib/auth";
 import { getAccount } from "@/lib/settings-data";
 import { updateProfileAction, changePasswordAction } from "@/lib/settings-actions";
 import { getMfaStatus, getPendingEnrollment } from "@/lib/mfa-data";
+import { getOwnedWorkspaces } from "@/lib/account-data";
 import { PasswordInput } from "@/components/password-input";
 import { TwoFactor } from "@/components/two-factor";
+import { DangerZone } from "@/components/danger-zone";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +20,12 @@ const cardClass = "grid gap-4 card p-5";
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const user = await requireUser("/settings");
-  const [{ updated, error }, account, mfaStatus, mfaEnrollment] = await Promise.all([
+  const [{ updated, error }, account, mfaStatus, mfaEnrollment, ownedWorkspaces] = await Promise.all([
     searchParams,
     getAccount(user.id),
     getMfaStatus(user.id),
     getPendingEnrollment(user.id, user.email),
+    getOwnedWorkspaces(user.id),
   ]);
   const name = account?.name ?? user.name;
   const phone = account?.phone ?? "";
@@ -105,6 +108,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
         {/* Two-factor authentication */}
         <TwoFactor status={mfaStatus} enrollment={mfaEnrollment} />
+
+        {/* Danger zone — self-service deletion */}
+        <DangerZone ownedWorkspaces={ownedWorkspaces} />
       </div>
     </main>
   );
