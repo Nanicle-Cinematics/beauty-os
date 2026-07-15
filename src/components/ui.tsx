@@ -37,7 +37,7 @@ const badgeTone: Record<BadgeTone, string> = {
 export function toneForStatus(status: string): BadgeTone {
   const s = status.toLowerCase();
   if (/(complete|active|success|paid|ok|confirmed)/.test(s)) return "success";
-  if (/(cancel|no.?show|fail|refund|removed|expired|out|suspend|past.?due|revoked)/.test(s)) return "danger";
+  if (/(cancel|no.?show|fail|refund|removed|expired|\bout\b|suspend|past.?due|revoked)/.test(s)) return "danger";
   if (/(pending|trial|invited|low|expiring|await|draft)/.test(s)) return "warning";
   if (/(service|checked|closed)/.test(s)) return "info";
   return "plum";
@@ -103,7 +103,7 @@ export function StatTile({
 export function statMetaFor(label: string): { icon: LucideIcon; tone: BadgeTone } {
   const s = label.toLowerCase();
   if (/(refund)/.test(s)) return { icon: RotateCcw, tone: "danger" };
-  if (/(out of stock|out)/.test(s)) return { icon: PackageX, tone: "danger" };
+  if (/(out of stock|\bout\b)/.test(s)) return { icon: PackageX, tone: "danger" };
   if (/(low|alert|reorder|expir)/.test(s)) return { icon: TriangleAlert, tone: "warning" };
   if (/(outstanding|owed|balance|due|deposit)/.test(s)) return { icon: Coins, tone: "warning" };
   if (/(invit|pending)/.test(s)) return { icon: Mail, tone: "warning" };
