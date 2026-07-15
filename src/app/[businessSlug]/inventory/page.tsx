@@ -43,7 +43,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
           {data.stats.map((stat) => (
-            <article key={stat.label} className="rounded-3xl border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.05)]">
+            <article key={stat.label} className="card p-5">
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">
                 {stat.label}
               </div>
@@ -55,7 +55,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
 
         <section className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-[1080px]:grid-cols-1">
           <div className="grid gap-5">
-            <div className="rounded-[24px] border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.06)]">
+            <div className="card p-5">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold">Stock on hand</h2>
                 <p className="mt-1 text-sm text-[#796e77]">
@@ -106,7 +106,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                           className="h-9 w-16 rounded-xl border border-[#e9dee5] bg-[#f7f2f5] px-2 text-sm outline-none focus:border-[#6d315f]"
                           required
                         />
-                        <button className="h-9 rounded-xl bg-[#54213f] px-3 text-xs font-semibold text-white">
+                        <button className="h-9 rounded-xl bg-gradient-to-r from-plum to-wine px-3 text-xs font-semibold text-white">
                           Apply
                         </button>
                       </form>
@@ -116,7 +116,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
               )}
             </div>
 
-            <div className="rounded-[24px] border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.06)]">
+            <div className="card p-5">
               <h2 className="text-lg font-semibold">Recent stock movements</h2>
               {data.movements.length === 0 ? (
                 <p className="mt-3 text-sm text-[#796e77]">No stock movements recorded yet.</p>
@@ -137,7 +137,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
             </div>
           </div>
 
-          <form action={addProductAction} className="rounded-[24px] border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.06)]">
+          <form action={addProductAction} className="card p-5">
             <h2 className="text-lg font-semibold">Add product</h2>
             <p className="mt-1 text-sm leading-6 text-[#796e77]">
               Opening stock is recorded as a movement in {data.tenant.name}.
@@ -204,7 +204,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                 </label>
               </div>
 
-              <button className="rounded-2xl bg-[#54213f] px-4 py-3 text-sm font-semibold text-white">
+              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">
                 Add product
               </button>
             </div>

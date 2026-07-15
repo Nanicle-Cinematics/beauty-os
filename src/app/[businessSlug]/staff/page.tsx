@@ -53,7 +53,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
           {data.stats.map((stat) => (
-            <article key={stat.label} className="rounded-3xl border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.05)]">
+            <article key={stat.label} className="card p-5">
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">
                 {stat.label}
               </div>
@@ -64,7 +64,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
         </section>
 
         <section className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-[1080px]:grid-cols-1">
-          <div className="rounded-[24px] border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.06)]">
+          <div className="card p-5">
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Team roster</h2>
               <p className="mt-1 text-sm text-[#796e77]">
@@ -117,7 +117,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
             </div>
           </div>
 
-          <form action={inviteStaffAction} className="rounded-[24px] border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.06)]">
+          <form action={inviteStaffAction} className="card p-5">
             <h2 className="text-lg font-semibold">Invite staff</h2>
             <p className="mt-1 text-sm leading-6 text-[#796e77]">
               Invites join {data.tenant.name} as pending until activated.
@@ -165,7 +165,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
                 <textarea name="bio" rows={2} className="rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 py-3 outline-none focus:border-[#6d315f]" />
               </label>
 
-              <button className="rounded-2xl bg-[#54213f] px-4 py-3 text-sm font-semibold text-white">
+              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">
                 Send invite
               </button>
             </div>

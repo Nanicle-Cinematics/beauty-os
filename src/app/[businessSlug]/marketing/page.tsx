@@ -26,7 +26,7 @@ const campaignStatusStyles: Record<string, string> = {
 };
 
 const inputClass = "h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]";
-const cardClass = "rounded-[24px] border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.06)]";
+const cardClass = "card p-5";
 
 export default async function MarketingPage({ params }: MarketingPageProps) {
   const { businessSlug } = await params;
@@ -43,7 +43,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
           {data.stats.map((stat) => (
-            <article key={stat.label} className="rounded-3xl border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.05)]">
+            <article key={stat.label} className="card p-5">
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">{stat.label}</div>
               <div className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</div>
               <div className="mt-2 text-sm font-semibold text-[#796e77]">{stat.detail}</div>
@@ -102,8 +102,8 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 Schedule (optional)
                 <input name="scheduledAt" type="datetime-local" className={inputClass} />
               </label>
-              <textarea name="content" rows={2} placeholder="Message content" className="rounded-2xl border border-[#e9dee5] bg-white px-4 py-3 outline-none focus:border-[#6d315f]" />
-              <button className="rounded-2xl bg-[#54213f] px-4 py-3 text-sm font-semibold text-white">Create campaign</button>
+              <textarea name="content" rows={2} placeholder="Message content" className="rounded-2xl border border-[#e9dee5] bg-card px-4 py-3 outline-none focus:border-[#6d315f]" />
+              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Create campaign</button>
             </form>
           </div>
 
@@ -130,7 +130,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 <input type="checkbox" name="active" defaultChecked={data.loyalty.active} className="size-4 accent-[#6d315f]" />
                 Program active
               </label>
-              <button className="rounded-2xl bg-[#54213f] px-4 py-3 text-sm font-semibold text-white">Save program</button>
+              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Save program</button>
             </form>
           </div>
         </section>
@@ -188,7 +188,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 <input name="maxUses" type="number" min="1" step="1" placeholder="Max uses" className={inputClass} />
                 <input name="expiresAt" type="date" className={inputClass} />
               </div>
-              <button className="rounded-2xl bg-[#54213f] px-4 py-3 text-sm font-semibold text-white">Create coupon</button>
+              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Create coupon</button>
             </form>
           </div>
 
@@ -226,7 +226,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 <input name="discountPercent" type="number" min="0" max="100" step="1" placeholder="Discount %" className={inputClass} />
               </div>
               <input name="perks" placeholder="Perks (optional)" className={inputClass} />
-              <button className="rounded-2xl bg-[#54213f] px-4 py-3 text-sm font-semibold text-white">Create tier</button>
+              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Create tier</button>
             </form>
           </div>
         </section>

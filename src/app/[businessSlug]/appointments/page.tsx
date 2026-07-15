@@ -31,7 +31,7 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
       <PageHeader title="Appointments" description="Every booking for this business — confirm, complete, and keep the day flowing." />
 
         <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
-          <div className="rounded-[24px] border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.06)]">
+          <div className="card p-5">
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Schedule</h2>
               <p className="mt-1 text-sm text-[#796e77]">
@@ -72,7 +72,7 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
             </div>
           </div>
 
-          <form action={createAppointmentAction} className="rounded-[24px] border border-[#e9dee5] bg-white p-5 shadow-[0_12px_35px_rgba(84,33,63,0.06)]">
+          <form action={createAppointmentAction} className="card p-5">
             <h2 className="text-lg font-semibold">Create booking</h2>
             <p className="mt-1 text-sm leading-6 text-[#796e77]">
               Creates a confirmed appointment scoped to {data.tenant.name}.
@@ -119,7 +119,7 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
                 />
               </label>
 
-              <button className="rounded-2xl bg-[#54213f] px-4 py-3 text-sm font-semibold text-white">
+              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">
                 Create appointment
               </button>
             </div>
