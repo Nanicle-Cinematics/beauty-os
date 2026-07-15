@@ -51,13 +51,9 @@ function cleanDate(value?: string) {
   return Number.isNaN(d.getTime()) ? "" : value.slice(0, 10);
 }
 
-export async function getExpensesList(businessSlug: string, filters: ExpenseFilters): Promise<ExpensesList | null> {
-  if (!isDatabaseConfigured()) return null;
-
-  const business = await prisma.business.findUnique({ where: { slug: businessSlug } });
-  if (!business) return null;
-
-  const currency = business.currency;
+// Shared filter → Prisma where builder, so the list, breakdown, and CSV export
+// all filter identically and can never drift apart.
+function buildExpenseWhere(businessId: string, filters: ExpenseFilters) {
   const category = (filters.category ?? "").trim();
   const from = cleanDate(filters.from);
   const to = cleanDate(filters.to);
@@ -73,11 +69,23 @@ export async function getExpensesList(businessSlug: string, filters: ExpenseFilt
   }
 
   const where = {
-    businessId: business.id,
+    businessId,
     ...(category ? { category } : {}),
     ...(from || to ? { incurredAt } : {}),
     ...(q ? { description: { contains: q, mode: "insensitive" as const } } : {}),
   };
+  return { where, normalized: { category, from, to, q } };
+}
+
+export async function getExpensesList(businessSlug: string, filters: ExpenseFilters): Promise<ExpensesList | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug } });
+  if (!business) return null;
+
+  const currency = business.currency;
+  const { where, normalized } = buildExpenseWhere(business.id, filters);
+  const { category, from, to, q } = normalized;
 
   const [distinctCats, rows, agg, grouped] = await Promise.all([
     prisma.expense.findMany({ where: { businessId: business.id }, distinct: ["category"], select: { category: true }, orderBy: { category: "asc" } }),
@@ -106,6 +114,33 @@ export async function getExpensesList(businessSlug: string, filters: ExpenseFilt
       description: e.description ?? "—",
       amount: money(Number(e.amount), currency),
       when: longDate(e.incurredAt),
+    })),
+  };
+}
+
+export type ExpenseCsvRow = { date: string; category: string; description: string; amount: number };
+
+// Full filtered set (chronological) for CSV export — same filters as the list.
+export async function getExpensesForExport(businessSlug: string, filters: ExpenseFilters): Promise<{ currency: string; rows: ExpenseCsvRow[] } | null> {
+  if (!isDatabaseConfigured()) return null;
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true, currency: true } });
+  if (!business) return null;
+
+  const { where } = buildExpenseWhere(business.id, filters);
+  const rows = await prisma.expense.findMany({
+    where,
+    orderBy: { incurredAt: "asc" },
+    take: 10000,
+    select: { category: true, description: true, amount: true, incurredAt: true },
+  });
+
+  return {
+    currency: business.currency,
+    rows: rows.map((e) => ({
+      date: e.incurredAt.toISOString().slice(0, 10),
+      category: e.category,
+      description: e.description ?? "",
+      amount: Number(e.amount),
     })),
   };
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Receipt, Filter, ListFilter, Pencil, CheckCircle2, PieChart } from "lucide-react";
+import { Receipt, Filter, ListFilter, Pencil, CheckCircle2, PieChart, Download } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, Badge } from "@/components/ui";
 import { FinanceTabs } from "@/components/finance-tabs";
@@ -24,6 +24,15 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
 
   const { filters } = data;
   const hasFilters = Boolean(filters.category || filters.from || filters.to || filters.q);
+
+  // Export link carries the currently-applied filters so the CSV matches the view.
+  const exportParams = new URLSearchParams();
+  if (filters.category) exportParams.set("category", filters.category);
+  if (filters.from) exportParams.set("from", filters.from);
+  if (filters.to) exportParams.set("to", filters.to);
+  if (filters.q) exportParams.set("q", filters.q);
+  const exportQuery = exportParams.toString();
+  const exportHref = `/${businessSlug}/finance/expenses/export${exportQuery ? `?${exportQuery}` : ""}`;
 
   return (
     <div className="grid gap-5">
@@ -115,9 +124,20 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
               {data.summary.count} {data.summary.count === 1 ? "expense" : "expenses"}{hasFilters ? " matching filters" : ""}
             </p>
           </div>
-          <div className="text-right">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Total</div>
-            <div className="text-[18px] font-semibold text-ink">{data.summary.total}</div>
+          <div className="flex items-center gap-3">
+            {data.expenses.length > 0 ? (
+              <a
+                href={exportHref}
+                download
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line px-3 text-[13px] font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum"
+              >
+                <Download size={15} /> Export CSV
+              </a>
+            ) : null}
+            <div className="text-right">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Total</div>
+              <div className="text-[18px] font-semibold text-ink">{data.summary.total}</div>
+            </div>
           </div>
         </div>
 
