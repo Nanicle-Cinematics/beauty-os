@@ -1,17 +1,97 @@
 @import "tailwindcss";
 
+/* ============================================================
+   Beauty OS — "Beauty Luxe Plum" design system
+   Premium, calm, operational. Plum builds identity + hierarchy;
+   the workspace stays light, spacious, and highly readable.
+   ============================================================ */
+
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
-  --accent: #9d4e7a;
+  /* Surfaces */
+  --canvas: #fbf7f4; /* warm ivory workspace */
+  --card: #fffdfc; /* card background */
+  --sunken: #f7f2f5; /* inputs, table heads, wells */
+  --sidebar: #1d1220; /* deep plum-black */
+  --sidebar-2: #2a172b; /* dark plum */
+
+  /* Brand plums */
+  --plum: #6d315f; /* primary plum */
+  --wine: #54213f; /* rich wine plum */
+  --mauve: #a8759b; /* soft mauve */
+  --rose: #c6789b; /* muted rose */
+  --gold: #c9a46a; /* champagne gold */
+
+  /* Tints */
+  --plum-soft: #f6edf2; /* accent-soft fill */
+  --plum-softer: #faf5f8;
+  --plum-line: #e9dee5; /* soft plum border */
+
+  /* Text */
+  --ink: #231c22; /* primary text */
+  --muted: #796e77; /* secondary text */
+  --faint: #a99fa6; /* tertiary / placeholder */
+
+  /* Lines */
+  --line: #e9dee5; /* default hairline */
+  --line-2: #f0e8ed; /* faintest divider */
+
+  /* Semantic */
+  --success: #3f7a5c;
+  --success-soft: #ecf4ef;
+  --warning: #b07d34;
+  --warning-soft: #f7efe1;
+  --danger: #b04a45;
+  --danger-soft: #f8ecea;
+
+  /* Back-compat aliases (existing code references these) */
+  --background: var(--canvas);
+  --foreground: var(--ink);
+  --accent: var(--plum);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-accent: var(--accent);
+  --color-canvas: var(--canvas);
+  --color-card: var(--card);
+  --color-sunken: var(--sunken);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-2: var(--sidebar-2);
+
+  --color-plum: var(--plum);
+  --color-wine: var(--wine);
+  --color-mauve: var(--mauve);
+  --color-rose: var(--rose);
+  --color-gold: var(--gold);
+
+  --color-plum-soft: var(--plum-soft);
+  --color-plum-softer: var(--plum-softer);
+  --color-plum-line: var(--plum-line);
+
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+
+  --color-background: var(--canvas);
+  --color-foreground: var(--ink);
+  --color-accent: var(--plum);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-serif: var(--font-serif);
+
+  /* Shared radii + shadows */
+  --radius-card: 20px;
+  --shadow-soft: 0 1px 2px rgba(35, 28, 34, 0.04), 0 12px 32px rgba(84, 33, 63, 0.06);
+  --shadow-lift: 0 2px 6px rgba(35, 28, 34, 0.06), 0 20px 48px rgba(84, 33, 63, 0.1);
 }
 
 * {
@@ -19,18 +99,24 @@
 }
 
 html {
-  background: var(--background);
+  background: var(--canvas);
   scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--canvas);
+  color: var(--ink);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   letter-spacing: -0.011em;
+}
+
+/* Luxury serif — brand + rare editorial moments only, never data/tables/forms */
+.font-serif {
+  font-family: var(--font-serif), Georgia, "Times New Roman", serif;
+  letter-spacing: -0.01em;
 }
 
 button,
@@ -41,15 +127,15 @@ select {
 }
 
 ::selection {
-  background: rgba(157, 78, 122, 0.18);
+  background: rgba(109, 49, 95, 0.16);
 }
 
 ::placeholder {
-  color: #a1a1aa;
+  color: var(--faint);
   opacity: 1;
 }
 
-/* Smooth micro-interactions on everything that already carries hover/focus state */
+/* Smooth, restrained micro-interactions */
 a,
 button,
 input,
@@ -77,32 +163,62 @@ button:disabled {
   opacity: 0.55;
 }
 
-/* Universal, color-agnostic hover feedback for real buttons */
 button:not(:disabled):hover {
-  filter: brightness(0.94);
+  filter: brightness(0.96);
 }
 
-/* Subtle tactile press */
 button:not(:disabled):active,
 a:active {
   transform: translateY(0.5px);
 }
 
-/* Keyboard focus ring in the accent — follows each element's own radius (box-shadow).
-   Only for keyboard users, so mouse clicks stay clean. */
+/* Keyboard focus ring in plum — keyboard users only */
 :focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(157, 78, 122, 0.35);
+  box-shadow: 0 0 0 3px rgba(109, 49, 95, 0.32);
 }
 
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  box-shadow: 0 0 0 3px rgba(157, 78, 122, 0.16);
+  box-shadow: 0 0 0 3px rgba(109, 49, 95, 0.15);
 }
 
 /* Refined thin scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #d4d4d8 transparent;
+  scrollbar-color: #d8ccd3 transparent;
+}
+
+/* Reusable primitives */
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+@keyframes bo-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-fade-up {
+  animation: bo-fade-up 0.32s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

@@ -56,6 +56,70 @@ function fallbackWorkspacesForUser(user: AppUser): WorkspaceSummary[] {
   return [];
 }
 
+export type TenantChrome = {
+  name: string;
+  slug: string;
+  planName: string;
+  status: string;
+  isTrial: boolean;
+  staffSeats: number;
+  branchCount: number;
+  account: { email: string; canSwitch: boolean; isAdmin: boolean };
+};
+
+// Lightweight data for the shared app shell (sidebar plan card + account footer).
+// Reuses per-tenant fields already available; keeps the layout query cheap.
+export async function getTenantChrome(user: AppUser, slug: string): Promise<TenantChrome | null> {
+  if (!isDatabaseConfigured()) {
+    const workspaces = fallbackWorkspacesForUser(user);
+    const current = workspaces.find((workspace) => workspace.slug === slug);
+    if (!current) {
+      return null;
+    }
+    return {
+      name: current.name,
+      slug: current.slug,
+      planName: current.plan,
+      status: current.status,
+      isTrial: current.status.toLowerCase() === "trial",
+      staffSeats: current.slug === "osu-glow-studio" ? 6 : 3,
+      branchCount: 1,
+      account: { email: user.email, canSwitch: user.isPlatformAdmin, isAdmin: user.isPlatformAdmin },
+    };
+  }
+
+  const business = await prisma.business.findUnique({
+    where: { slug },
+    include: {
+      subscription: { include: { plan: true } },
+      _count: { select: { staff: true } },
+    },
+  });
+
+  if (!business) {
+    return null;
+  }
+
+  let canSwitch = user.isPlatformAdmin;
+  if (!canSwitch) {
+    const memberships = await prisma.staffMember.count({
+      where: { userId: user.id, status: "ACTIVE" },
+    });
+    canSwitch = memberships > 1;
+  }
+
+  return {
+    name: business.name,
+    slug: business.slug,
+    planName: business.subscription?.plan.name ?? "No plan",
+    status: readableStatus(business.status),
+    isTrial: business.status === "TRIAL",
+    staffSeats: business._count.staff,
+    branchCount: 1,
+    account: { email: user.email, canSwitch, isAdmin: user.isPlatformAdmin },
+  };
+}
+
 export async function getWorkspaceSummaries(user: AppUser): Promise<WorkspaceSummary[]> {
   if (!isDatabaseConfigured()) {
     return fallbackWorkspacesForUser(user);
