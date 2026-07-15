@@ -2,7 +2,9 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth";
 import { getAccount } from "@/lib/settings-data";
 import { updateProfileAction, changePasswordAction } from "@/lib/settings-actions";
+import { getMfaStatus, getPendingEnrollment } from "@/lib/mfa-data";
 import { PasswordInput } from "@/components/password-input";
+import { TwoFactor } from "@/components/two-factor";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +18,12 @@ const cardClass = "grid gap-4 card p-5";
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const user = await requireUser("/settings");
-  const [{ updated, error }, account] = await Promise.all([searchParams, getAccount(user.id)]);
+  const [{ updated, error }, account, mfaStatus, mfaEnrollment] = await Promise.all([
+    searchParams,
+    getAccount(user.id),
+    getMfaStatus(user.id),
+    getPendingEnrollment(user.id, user.email),
+  ]);
   const name = account?.name ?? user.name;
   const phone = account?.phone ?? "";
   const email = account?.email ?? user.email;
@@ -95,6 +102,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <button className="mt-1 w-fit rounded-2xl bg-gradient-to-r from-plum to-wine px-6 py-3 text-sm font-semibold text-white">Change password</button>
           </form>
         </section>
+
+        {/* Two-factor authentication */}
+        <TwoFactor status={mfaStatus} enrollment={mfaEnrollment} />
       </div>
     </main>
   );

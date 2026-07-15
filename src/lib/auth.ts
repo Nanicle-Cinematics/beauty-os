@@ -8,6 +8,12 @@ import { verifyPassword } from "@/lib/password";
 import { setTenantContext } from "@/lib/tenant-context";
 
 export const sessionCookieName = "beauty_os_session";
+export const mfaChallengeCookieName = "beauty_os_mfa";
+
+export type SignInResult =
+  | { status: "ok" }
+  | { status: "mfa"; userId: string }
+  | { status: "invalid" };
 
 export type AppUser = {
   id: string;
@@ -104,14 +110,14 @@ export async function getCurrentUser(): Promise<AppUser | null> {
   };
 }
 
-export async function signIn(email: string, password: string) {
+export async function signIn(email: string, password: string): Promise<SignInResult> {
   const normalizedEmail = email.trim().toLowerCase();
 
   if (!isDatabaseConfigured()) {
     const demoUser = demoUsers[normalizedEmail];
 
     if (!demoUser || demoUser.password !== password) {
-      return null;
+      return { status: "invalid" };
     }
 
     const cookieStore = await cookies();
@@ -123,17 +129,23 @@ export async function signIn(email: string, password: string) {
       maxAge: 60 * 60 * 24 * 7,
     });
 
-    return demoUser;
+    return { status: "ok" };
   }
 
   const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
 
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
-    return null;
+    return { status: "invalid" };
+  }
+
+  // Password is correct. If 2FA is on, don't start a session yet — the caller
+  // issues a short-lived challenge and requires a code first.
+  if (user.mfaEnabled) {
+    return { status: "mfa", userId: user.id };
   }
 
   await startSession(user.id);
-  return user;
+  return { status: "ok" };
 }
 
 /// Create a server session for a user and set the session cookie. Used by

@@ -32,6 +32,7 @@ model User {
   avatarUrl        String?
   isPlatformAdmin  Boolean   @default(false)
   mfaEnabled       Boolean   @default(false)
+  mfaSecret        String?
   emailVerifiedAt  DateTime?
   lastLoginAt      DateTime?
   createdAt        DateTime  @default(now())
@@ -42,6 +43,7 @@ model User {
   auditLogs        AuditLog[]
   sessions         Session[]
   emailVerificationTokens EmailVerificationToken[]
+  mfaRecoveryCodes MfaRecoveryCode[]
 
   @@index([isPlatformAdmin])
 }
@@ -73,6 +75,17 @@ model EmailVerificationToken {
 
 /// Server-side session record (supports session listing/revocation from
 /// Settings → Security, and the "Session Management" requirement).
+model MfaRecoveryCode {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codeHash  String
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
 model Session {
   id           String   @id @default(cuid())
   userId       String
