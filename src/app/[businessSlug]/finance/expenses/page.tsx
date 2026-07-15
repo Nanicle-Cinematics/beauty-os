@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Receipt, Filter, ListFilter, Pencil, CheckCircle2 } from "lucide-react";
+import { Receipt, Filter, ListFilter, Pencil, CheckCircle2, PieChart } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, Badge } from "@/components/ui";
 import { FinanceTabs } from "@/components/finance-tabs";
@@ -75,6 +75,37 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
           ) : null}
         </div>
       </form>
+
+      {data.byCategory.length > 0 ? (
+        <div className="card p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-[15px] font-semibold"><PieChart size={17} className="text-plum" /> By category</h2>
+              <p className="mt-0.5 text-[12.5px] text-muted">{hasFilters ? "Totals for the current filters." : "Totals across all expenses."}</p>
+            </div>
+            <div className="text-right">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Total</div>
+              <div className="text-[16px] font-semibold text-ink">{data.summary.total}</div>
+            </div>
+          </div>
+          <div className="mt-5 grid gap-x-6 gap-y-3.5 sm:grid-cols-2">
+            {data.byCategory.map((c) => (
+              <div key={c.category}>
+                <div className="mb-1.5 flex items-center justify-between gap-3 text-[13px]">
+                  <Badge tone="neutral">{c.category}</Badge>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[12px] text-muted">{c.percent}%</span>
+                    <span className="font-semibold text-ink">{c.amount}</span>
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-sunken">
+                  <div className="h-full rounded-full bg-warning" style={{ width: `${Math.max(c.share, 3)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="card p-5">
         <div className="mb-4 flex items-center justify-between gap-3">

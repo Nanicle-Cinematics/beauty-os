@@ -35,6 +35,7 @@ export type ExpensesList = {
   categories: string[];
   filters: { category: string; from: string; to: string; q: string };
   summary: { count: number; total: string };
+  byCategory: CategoryTotal[];
   expenses: ExpenseRow[];
 };
 
@@ -78,17 +79,27 @@ export async function getExpensesList(businessSlug: string, filters: ExpenseFilt
     ...(q ? { description: { contains: q, mode: "insensitive" as const } } : {}),
   };
 
-  const [distinctCats, rows, agg] = await Promise.all([
+  const [distinctCats, rows, agg, grouped] = await Promise.all([
     prisma.expense.findMany({ where: { businessId: business.id }, distinct: ["category"], select: { category: true }, orderBy: { category: "asc" } }),
     prisma.expense.findMany({ where, orderBy: { incurredAt: "desc" }, take: 300, select: { id: true, category: true, description: true, amount: true, incurredAt: true } }),
     prisma.expense.aggregate({ where, _sum: { amount: true }, _count: true }),
+    // Exact per-category totals for the SAME filtered set (not capped by take).
+    prisma.expense.groupBy({ by: ["category"], where, _sum: { amount: true } }),
   ]);
+
+  const total = Number(agg._sum.amount ?? 0);
+  const catSums = grouped.map((g) => ({ category: g.category, sum: Number(g._sum.amount ?? 0) }));
+  const catMax = Math.max(1, ...catSums.map((c) => c.sum));
+  const byCategory: CategoryTotal[] = catSums
+    .sort((a, b) => b.sum - a.sum)
+    .map((c) => ({ category: c.category, amount: money(c.sum, currency), percent: pct(c.sum, total), share: pct(c.sum, catMax) }));
 
   return {
     tenant: { name: business.name, currency },
     categories: distinctCats.map((c) => c.category).filter(Boolean),
     filters: { category, from, to, q },
-    summary: { count: agg._count, total: money(Number(agg._sum.amount ?? 0), currency) },
+    summary: { count: agg._count, total: money(total, currency) },
+    byCategory,
     expenses: rows.map((e) => ({
       id: e.id,
       category: e.category,
