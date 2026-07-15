@@ -9,9 +9,9 @@ type OnboardPageProps = {
   searchParams: Promise<{ error?: string }>;
 };
 
-const inputClass = "h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]";
-const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#71717a]";
-const cardClass = "grid gap-4 rounded-[24px] border border-[#e7e7ea] bg-white p-5 shadow-[0_12px_35px_rgba(24,24,27,0.06)]";
+const inputClass = "h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]";
+const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]";
+const cardClass = "grid gap-4 card p-5";
 
 export default async function OnboardPage({ searchParams }: OnboardPageProps) {
   await requirePlatformAdmin();
@@ -19,15 +19,18 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
   const { categories, plans, currencies, timezones } = await getOnboardingOptions();
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-6 py-6 text-[#18181b] max-[720px]:px-3">
+    <main className="min-h-screen bg-[#fbf7f4] px-6 py-6 text-[#231c22] max-[720px]:px-3">
       <div className="mx-auto grid max-w-3xl gap-5">
-        <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">Beauty OS Platform</div>
-            <h1 className="text-2xl font-semibold tracking-tight">Onboard a business</h1>
-            <p className="mt-1 text-sm font-semibold text-[#71717a]">Create a new tenant and its owner account.</p>
+        <header className="card flex items-center justify-between gap-4 px-5 py-4 max-[720px]:flex-col max-[720px]:items-start">
+          <div className="flex items-center gap-3.5">
+            <span className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-plum to-wine font-serif text-lg font-semibold text-white shadow-[0_6px_18px_rgba(84,33,63,0.4)]">B</span>
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-plum">Beauty OS Platform</div>
+              <h1 className="text-2xl font-semibold tracking-tight">Onboard a business</h1>
+              <p className="mt-0.5 text-sm text-muted">Create a new tenant and its owner account.</p>
+            </div>
           </div>
-          <Link href="/platform" className="rounded-2xl border border-[#e7e7ea] px-4 py-2 text-sm font-semibold">
+          <Link href="/platform" className="rounded-xl border border-line px-4 py-2 text-sm font-medium hover:bg-sunken">
             Back to portal
           </Link>
         </header>
@@ -42,7 +45,7 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
           <section className={cardClass}>
             <div>
               <h2 className="text-lg font-semibold">Business details</h2>
-              <p className="mt-1 text-sm text-[#71717a]">Starts on a free trial — assign a plan below if you like.</p>
+              <p className="mt-1 text-sm text-[#796e77]">Starts on a free trial — assign a plan below if you like.</p>
             </div>
 
             <label className={labelClass}>
@@ -110,7 +113,7 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
           <section className={cardClass}>
             <div>
               <h2 className="text-lg font-semibold">Owner account</h2>
-              <p className="mt-1 text-sm text-[#71717a]">
+              <p className="mt-1 text-sm text-[#796e77]">
                 We generate a secure invite link so the owner sets their own password — no temporary password to share.
               </p>
             </div>
@@ -128,10 +131,10 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
           </section>
 
           <div className="flex items-center justify-end gap-3">
-            <Link href="/platform" className="rounded-2xl border border-[#e7e7ea] px-5 py-3 text-sm font-semibold">
+            <Link href="/platform" className="rounded-2xl border border-[#e9dee5] px-5 py-3 text-sm font-semibold">
               Cancel
             </Link>
-            <button className="rounded-2xl bg-[#18181b] px-6 py-3 text-sm font-semibold text-white">Create business</button>
+            <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-6 py-3 text-sm font-semibold text-white">Create business</button>
           </div>
         </form>
       </div>
