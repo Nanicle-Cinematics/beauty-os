@@ -47,27 +47,67 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
         })}
       </section>
 
-      <section className="card p-5">
-        <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Wallet size={17} className="text-plum" /> Cash flow (30 days)</h2>
-        <p className="mt-0.5 text-[12.5px] text-muted">Revenue against expenses, and what&apos;s left.</p>
-        <div className="mt-5 grid gap-4">
-          <div>
-            <div className="mb-1.5 flex justify-between text-[13px]"><span className="font-medium text-muted">Revenue</span><span className="font-semibold text-ink">{data.flow.revenueLabel}</span></div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-sunken"><div className="h-full rounded-full bg-gradient-to-r from-plum to-mauve" style={{ width: `${Math.max(data.flow.revenueShare, 2)}%` }} /></div>
-          </div>
-          <div>
-            <div className="mb-1.5 flex justify-between text-[13px]"><span className="font-medium text-muted">Expenses</span><span className="font-semibold text-ink">{data.flow.expensesLabel}</span></div>
-            <div className="h-2.5 overflow-hidden rounded-full bg-sunken"><div className="h-full rounded-full bg-warning" style={{ width: `${Math.max(data.flow.expensesShare, 2)}%` }} /></div>
-          </div>
-          <div className="flex items-center justify-between rounded-2xl border border-line-2 bg-plum-softer px-4 py-3">
-            <span className="text-[13px] font-semibold text-ink">Net profit</span>
-            <span className={`text-[17px] font-semibold ${data.flow.net >= 0 ? "text-success" : "text-danger"}`}>{data.flow.netLabel}</span>
+      <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
+        <div className="card p-5">
+          <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Wallet size={17} className="text-plum" /> Cash flow (30 days)</h2>
+          <p className="mt-0.5 text-[12.5px] text-muted">Revenue against expenses, and what&apos;s left.</p>
+          <div className="mt-5 grid gap-4">
+            <div>
+              <div className="mb-1.5 flex justify-between text-[13px]"><span className="font-medium text-muted">Revenue</span><span className="font-semibold text-ink">{data.flow.revenueLabel}</span></div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-sunken"><div className="h-full rounded-full bg-gradient-to-r from-plum to-mauve" style={{ width: `${Math.max(data.flow.revenueShare, 2)}%` }} /></div>
+            </div>
+            <div>
+              <div className="mb-1.5 flex justify-between text-[13px]"><span className="font-medium text-muted">Expenses</span><span className="font-semibold text-ink">{data.flow.expensesLabel}</span></div>
+              <div className="h-2.5 overflow-hidden rounded-full bg-sunken"><div className="h-full rounded-full bg-warning" style={{ width: `${Math.max(data.flow.expensesShare, 2)}%` }} /></div>
+            </div>
+            <div className="flex items-center justify-between rounded-2xl border border-line-2 bg-plum-softer px-4 py-3">
+              <span className="text-[13px] font-semibold text-ink">Net profit</span>
+              <span className={`text-[17px] font-semibold ${data.flow.net >= 0 ? "text-success" : "text-danger"}`}>{data.flow.netLabel}</span>
+            </div>
           </div>
         </div>
+
+        <form action={createExpenseAction} className="card grid h-fit gap-4 p-5">
+          <div>
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Plus size={17} className="text-plum" /> Log expense</h2>
+            <p className="mt-1 text-[12.5px] leading-5 text-muted">Record a cost — it updates your totals right away.</p>
+          </div>
+
+          <input type="hidden" name="businessSlug" value={businessSlug} />
+
+          <label className="field-label">
+            Category
+            <input name="category" list="expense-categories" placeholder="e.g. Supplies" className="input" required />
+            <datalist id="expense-categories">
+              {expenseCategories.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="field-label">
+              Amount
+              <input name="amount" type="number" min="0" step="0.01" placeholder="0.00" className="input" required />
+            </label>
+            <label className="field-label">
+              Date
+              <input name="incurredAt" type="date" defaultValue={today} className="input" />
+            </label>
+          </div>
+
+          <label className="field-label">
+            Description (optional)
+            <input name="description" placeholder="What was it for?" className="input" />
+          </label>
+
+          <button className="rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
+            Log expense
+          </button>
+        </form>
       </section>
 
-      <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
-        <div className="grid gap-5">
+      <section className="grid gap-5 lg:grid-cols-2">
         <div className="card p-5">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold"><ArrowDownRight size={17} className="text-plum" /> Recent payments</h2>
           {data.recentPayments.length === 0 ? (
@@ -108,46 +148,6 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
             </div>
           )}
         </div>
-        </div>
-
-        <form action={createExpenseAction} className="card grid h-fit gap-4 p-5">
-          <div>
-            <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Plus size={17} className="text-plum" /> Log expense</h2>
-            <p className="mt-1 text-[12.5px] leading-5 text-muted">Record a cost to keep your net profit accurate.</p>
-          </div>
-
-          <input type="hidden" name="businessSlug" value={businessSlug} />
-
-          <label className="field-label">
-            Category
-            <input name="category" list="expense-categories" placeholder="e.g. Supplies" className="input" required />
-            <datalist id="expense-categories">
-              {expenseCategories.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
-          </label>
-
-          <div className="grid grid-cols-2 gap-3">
-            <label className="field-label">
-              Amount
-              <input name="amount" type="number" min="0" step="0.01" placeholder="0.00" className="input" required />
-            </label>
-            <label className="field-label">
-              Date
-              <input name="incurredAt" type="date" defaultValue={today} className="input" />
-            </label>
-          </div>
-
-          <label className="field-label">
-            Description (optional)
-            <input name="description" placeholder="What was it for?" className="input" />
-          </label>
-
-          <button className="rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
-            Log expense
-          </button>
-        </form>
       </section>
     </div>
   );
