@@ -8,7 +8,12 @@ import { AsyncLocalStorage } from "node:async_hooks";
 // already set on the current interactive transaction (so ops don't re-wrap).
 export type TenantContext = { businessId?: string; bypass?: boolean; inTx?: boolean };
 
-const storage = new AsyncLocalStorage<TenantContext>();
+// Keep a single AsyncLocalStorage instance across dev HMR reloads, otherwise the
+// Prisma extension and setTenantContext can end up reading/writing different
+// stores and the tenant context appears empty.
+const globalForTenant = globalThis as unknown as { __tenantStorage?: AsyncLocalStorage<TenantContext> };
+const storage = globalForTenant.__tenantStorage ?? new AsyncLocalStorage<TenantContext>();
+globalForTenant.__tenantStorage = storage;
 
 export function getTenantContext(): TenantContext | undefined {
   return storage.getStore();

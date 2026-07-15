@@ -24,6 +24,7 @@ import {
   ChevronsUpDown,
   Settings,
   PanelLeft,
+  Download,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -161,6 +162,13 @@ export function AppShell({
               <ChevronsUpDown size={15} /> Switch workspace
             </Link>
           ) : null}
+          <a
+            href={`/${slug}/data-export`}
+            download
+            className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-[13px] font-medium text-white/60 hover:bg-white/[0.06] hover:text-white"
+          >
+            <Download size={15} /> Export data
+          </a>
           <Link href="/logout" prefetch={false} className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-[13px] font-medium text-white/60 hover:bg-white/[0.06] hover:text-white">
             <LogOut size={15} /> Sign out
           </Link>
