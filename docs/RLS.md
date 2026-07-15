@@ -3,18 +3,22 @@
 Defense-in-depth so a missing `businessId` filter can never leak one tenant's
 data to another. App-layer scoping stays; the database enforces it too.
 
-## Status
+## Status — ✅ LIVE IN PRODUCTION (2026-07-15)
 
-- ✅ **Policies designed & verified** — `prisma/rls.sql` (33 tables: 24 direct
-  `businessId`, `Business` by `id`, 8 child tables via parent `EXISTS`).
-- ✅ **Restricted role verified** — `prisma/rls-role.sql` (`app_rls`, no
-  `BYPASSRLS`). Neon's `neondb_owner` has `BYPASSRLS`, which defeats RLS — the
-  app must connect as `app_rls` at runtime.
-- ✅ **Proven on a Neon branch** connecting as `app_rls`: deny-by-default,
-  unfiltered tenant reads return only the current tenant, admin bypass sees
-  all, cross-tenant read returns null, cross-tenant insert blocked by
-  `WITH CHECK`.
-- ⏳ **App integration + prod cutover — not yet done** (deliberately; see below).
+- ✅ **Policies** — `prisma/rls.sql` (33 tables: 24 direct `businessId`,
+  `Business` by `id`, 8 child tables via parent `EXISTS`). Applied to prod.
+- ✅ **Restricted role** — `prisma/rls-role.sql` (`app_rls`, no `BYPASSRLS`).
+  Neon's `neondb_owner` has `BYPASSRLS`, which defeats RLS — the app connects
+  as `app_rls` at runtime.
+- ✅ **App integration** — `tenant-context.ts` + the `prisma.ts` extension +
+  `tenantTransaction`, wired through the auth guards. Active when `DB_RLS=on`.
+- ✅ **Production cutover done** — prod (and local `.env`) now connect as
+  `app_rls` with `DB_RLS=on`; `MIGRATE_DATABASE_URL` holds the owner URL for
+  DDL. Verified live: every module + auth + platform admin works, cross-tenant
+  read/write blocked, own-tenant writes succeed, zero runtime errors.
+
+**Rollback (instant):** set prod `DATABASE_URL` back to the owner URL (owner
+has `BYPASSRLS`, so RLS lifts immediately) and redeploy; or unset `DB_RLS`.
 
 ## How it works
 
