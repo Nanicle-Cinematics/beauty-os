@@ -107,6 +107,41 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
         </form>
       </section>
 
+      <section className="card p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Receipt size={17} className="text-plum" /> Expenses by category</h2>
+            <p className="mt-0.5 text-[12.5px] text-muted">Where your money went over the last 30 days.</p>
+          </div>
+          {data.expensesByCategory.length > 0 ? (
+            <div className="text-right">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-muted">Total</div>
+              <div className="text-[16px] font-semibold text-ink">{data.flow.expensesLabel}</div>
+            </div>
+          ) : null}
+        </div>
+        {data.expensesByCategory.length === 0 ? (
+          <div className="mt-4"><EmptyState icon={Receipt} title="No expenses in the last 30 days" body="Logged expenses will break down here by category." /></div>
+        ) : (
+          <div className="mt-5 grid gap-3.5">
+            {data.expensesByCategory.map((c) => (
+              <div key={c.category}>
+                <div className="mb-1.5 flex items-center justify-between gap-3 text-[13px]">
+                  <Badge tone="neutral">{c.category}</Badge>
+                  <span className="flex items-baseline gap-2">
+                    <span className="text-[12px] text-muted">{c.percent}%</span>
+                    <span className="font-semibold text-ink">{c.amount}</span>
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-sunken">
+                  <div className="h-full rounded-full bg-warning" style={{ width: `${Math.max(c.share, 3)}%` }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="grid gap-5 lg:grid-cols-2">
         <div className="card p-5">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold"><ArrowDownRight size={17} className="text-plum" /> Recent payments</h2>

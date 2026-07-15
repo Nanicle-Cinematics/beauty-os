@@ -6,6 +6,7 @@ import { money, titleCase, pct, deltaLabel } from "@/lib/format";
 export type FinanceKpi = { label: string; value: string; detail: string };
 export type FinancePayment = { id: string; client: string; method: string; type: string; amount: string; isRefund: boolean; when: string };
 export type FinanceExpense = { id: string; category: string; description: string; amount: string; when: string };
+export type CategoryTotal = { category: string; amount: string; percent: number; share: number };
 
 export type FinanceData = {
   tenant: { name: string; currency: string };
@@ -13,6 +14,7 @@ export type FinanceData = {
   flow: { revenue: number; expenses: number; net: number; revenueLabel: string; expensesLabel: string; netLabel: string; revenueShare: number; expensesShare: number };
   recentPayments: FinancePayment[];
   recentExpenses: FinanceExpense[];
+  expensesByCategory: CategoryTotal[];
 };
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -226,7 +228,7 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
     }),
     prisma.expense.findMany({
       where: { businessId: business.id, incurredAt: { gte: since60 } },
-      select: { amount: true, incurredAt: true },
+      select: { amount: true, incurredAt: true, category: true },
     }),
     prisma.payment.findMany({
       where: { businessId: business.id },
@@ -251,6 +253,21 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
   const net30 = rev30 - exp30;
   const outstanding = Number(outstandingAgg._sum.outstandingBalance ?? 0);
   const flowMax = Math.max(1, rev30, exp30);
+
+  // Expenses grouped by category over the last 30 days, largest first.
+  const catMap = new Map<string, number>();
+  for (const e of expenses) {
+    if (e.incurredAt >= since30) catMap.set(e.category, (catMap.get(e.category) ?? 0) + Number(e.amount));
+  }
+  const catMax = Math.max(1, ...catMap.values());
+  const expensesByCategory: CategoryTotal[] = [...catMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([category, total]) => ({
+      category,
+      amount: money(total, currency),
+      percent: pct(total, exp30),
+      share: pct(total, catMax),
+    }));
 
   return {
     tenant: { name: business.name, currency },
@@ -286,5 +303,6 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
       amount: money(Number(e.amount), currency),
       when: shortDate(e.incurredAt),
     })),
+    expensesByCategory,
   };
 }
