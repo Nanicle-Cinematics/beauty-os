@@ -1,4 +1,6 @@
+import { Coins } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { StatTile, statMetaFor, EmptyState, Badge, toneForStatus } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { recordPaymentAction } from "@/lib/payment-actions";
 import { getPaymentModuleData } from "@/lib/payment-data";
@@ -10,13 +12,6 @@ type PaymentsPageProps = {
   params: Promise<{
     businessSlug: string;
   }>;
-};
-
-const statusStyles: Record<string, string> = {
-  SUCCESS: "bg-[#f6edf2] text-[#6d315f]",
-  PENDING: "bg-amber-50 text-amber-700",
-  FAILED: "bg-rose-50 text-rose-700",
-  REFUNDED: "bg-[#f0eaee] text-[#796e77]",
 };
 
 export default async function PaymentsPage({ params }: PaymentsPageProps) {
@@ -33,26 +28,25 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
       <PageHeader title="Payments" description="Money in — deposits, checkouts, and outstanding balances." />
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
-          {data.stats.map((stat) => (
-            <article key={stat.label} className="card p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">
-                {stat.label}
-              </div>
-              <div className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</div>
-              <div className="mt-2 text-sm font-semibold text-[#796e77]">{stat.detail}</div>
-            </article>
-          ))}
+          {data.stats.map((stat) => {
+            const meta = statMetaFor(stat.label);
+            return (
+              <StatTile key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} icon={meta.icon} tone={meta.tone} />
+            );
+          })}
         </section>
 
         <section className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-[1080px]:grid-cols-1">
           <div className="grid gap-5">
             {data.depositsDue.length > 0 ? (
-              <div className="rounded-[24px] border border-amber-200 bg-amber-50/60 p-5 shadow-[0_12px_35px_rgba(84,33,63,0.06)]">
-                <h2 className="text-lg font-semibold">Awaiting deposit</h2>
-                <p className="mt-1 text-sm text-[#796e77]">Collect the deposit in one click (records a cash payment).</p>
+              <div className="rounded-[20px] border border-warning/25 bg-warning-soft p-5 shadow-[var(--shadow-soft)]">
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-ink">
+                  <Coins size={18} className="text-warning" /> Awaiting deposit
+                </h2>
+                <p className="mt-1 text-sm text-muted">Collect the deposit in one click (records a cash payment).</p>
                 <div className="mt-4 grid gap-2">
                   {data.depositsDue.map((deposit) => (
-                    <div key={deposit.appointmentId} className="flex items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-card px-4 py-3 text-sm">
+                    <div key={deposit.appointmentId} className="flex items-center justify-between gap-3 rounded-xl border border-warning/20 bg-card px-4 py-3 text-sm">
                       <div className="min-w-0">
                         <div className="truncate font-semibold">{deposit.client}</div>
                         <div className="truncate text-xs font-semibold text-[#796e77]">{deposit.service} · {deposit.when}</div>
@@ -84,9 +78,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
               </div>
 
               {data.payments.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#e9dee5] bg-[#f7f2f5] px-4 py-10 text-center text-sm font-semibold text-[#796e77]">
-                  No payments recorded yet. Record one from the panel on the right.
-                </div>
+                <EmptyState icon={Coins} title="No payments yet" body="Record your first payment from the panel on the right." />
               ) : (
                 <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
                   <div className="grid grid-cols-[1.3fr_1fr_120px_110px_90px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[940px]:hidden">
@@ -98,12 +90,10 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                         <div className="truncate font-semibold">{payment.client}</div>
                         <div className="text-xs font-semibold text-[#796e77]">{payment.when}</div>
                       </div>
-                      <span className="font-bold text-[#796e77]">{payment.method}</span>
-                      <span className="font-bold">{payment.type}</span>
-                      <span className={`font-semibold ${payment.isRefund ? "text-rose-700" : ""}`}>{payment.amount}</span>
-                      <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[payment.statusKey] ?? "bg-[#f0eaee] text-[#796e77]"}`}>
-                        {payment.status}
-                      </span>
+                      <span className="font-medium text-muted">{payment.method}</span>
+                      <span className="font-medium text-ink">{payment.type}</span>
+                      <span className={`font-semibold ${payment.isRefund ? "text-danger" : "text-ink"}`}>{payment.amount}</span>
+                      <Badge tone={toneForStatus(payment.status)}>{payment.status}</Badge>
                     </div>
                   ))}
                 </div>
@@ -120,9 +110,9 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
             <input type="hidden" name="businessSlug" value={businessSlug} />
 
             <div className="mt-5 grid gap-4">
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Client
-                <select name="customerId" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]">
+                <select name="customerId" className="input">
                   <option value="">— Walk-in —</option>
                   {data.customers.map((customer) => (
                     <option key={customer.id} value={customer.id}>{customer.label}</option>
@@ -130,9 +120,9 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Appointment (optional)
-                <select name="appointmentId" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]">
+                <select name="appointmentId" className="input">
                   <option value="">— None —</option>
                   {data.appointments.map((appointment) => (
                     <option key={appointment.id} value={appointment.id}>{appointment.label}</option>
@@ -140,23 +130,23 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Amount
-                <input name="amount" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" required />
+                <input name="amount" type="number" min="0" step="0.01" className="input" required />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Method
-                  <select name="method" defaultValue="CASH" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]">
+                  <select name="method" defaultValue="CASH" className="input">
                     {data.methods.map((method) => (
                       <option key={method.value} value={method.value}>{method.label}</option>
                     ))}
                   </select>
                 </label>
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Type
-                  <select name="type" defaultValue="FULL_PAYMENT" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]">
+                  <select name="type" defaultValue="FULL_PAYMENT" className="input">
                     {data.types.map((type) => (
                       <option key={type.value} value={type.value}>{type.label}</option>
                     ))}
@@ -164,9 +154,9 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                 </label>
               </div>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Reference
-                <input name="reference" placeholder="Provider / receipt reference" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                <input name="reference" placeholder="Provider / receipt reference" className="input" />
               </label>
 
               <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">

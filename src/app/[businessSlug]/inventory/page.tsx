@@ -1,4 +1,6 @@
+import { Package } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { StatTile, statMetaFor, EmptyState, Badge, toneForStatus } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { addProductAction, adjustStockAction } from "@/lib/inventory-actions";
 import { getInventoryModuleData, type ProductStatus } from "@/lib/inventory-data";
@@ -12,20 +14,12 @@ type InventoryPageProps = {
   }>;
 };
 
-const statusStyles: Record<ProductStatus, string> = {
-  OK: "bg-[#f6edf2] text-[#6d315f]",
-  LOW: "bg-amber-50 text-amber-700",
-  OUT: "bg-rose-50 text-rose-700",
-  EXPIRING: "bg-amber-50 text-amber-700",
-  EXPIRED: "bg-rose-50 text-rose-700",
-};
-
 const barStyles: Record<ProductStatus, string> = {
-  OK: "bg-emerald-500",
-  LOW: "bg-amber-500",
-  OUT: "bg-rose-500",
-  EXPIRING: "bg-amber-500",
-  EXPIRED: "bg-rose-500",
+  OK: "bg-success",
+  LOW: "bg-warning",
+  OUT: "bg-danger",
+  EXPIRING: "bg-warning",
+  EXPIRED: "bg-danger",
 };
 
 export default async function InventoryPage({ params }: InventoryPageProps) {
@@ -42,15 +36,12 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
       <PageHeader title="Inventory" description="Stock on hand, movement, and reorder risk." />
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
-          {data.stats.map((stat) => (
-            <article key={stat.label} className="card p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">
-                {stat.label}
-              </div>
-              <div className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</div>
-              <div className="mt-2 text-sm font-semibold text-[#796e77]">{stat.detail}</div>
-            </article>
-          ))}
+          {data.stats.map((stat) => {
+            const meta = statMetaFor(stat.label);
+            return (
+              <StatTile key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} icon={meta.icon} tone={meta.tone} />
+            );
+          })}
         </section>
 
         <section className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-[1080px]:grid-cols-1">
@@ -64,9 +55,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
               </div>
 
               {data.products.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-[#e9dee5] bg-[#f7f2f5] px-4 py-10 text-center text-sm font-semibold text-[#796e77]">
-                  No products yet. Add your first product from the panel on the right.
-                </div>
+                <EmptyState icon={Package} title="No products yet" body="Add your first product from the panel on the right." />
               ) : (
                 <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
                   <div className="grid grid-cols-[1.4fr_140px_100px_110px_150px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[980px]:hidden">
@@ -90,9 +79,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                       </div>
                       <div className="font-semibold">{product.value}</div>
                       <div>
-                        <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[product.status]}`}>
-                          {product.statusLabel}
-                        </span>
+                        <Badge tone={toneForStatus(product.statusLabel)}>{product.statusLabel}</Badge>
                       </div>
                       <form action={adjustStockAction} className="flex items-center gap-1">
                         <input type="hidden" name="businessSlug" value={businessSlug} />
@@ -146,41 +133,41 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
             <input type="hidden" name="businessSlug" value={businessSlug} />
 
             <div className="mt-5 grid gap-4">
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Name
-                <input name="name" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" required />
+                <input name="name" className="input" required />
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Category
-                <input name="category" placeholder="e.g. Hair, Nails" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                <input name="category" placeholder="e.g. Hair, Nails" className="input" />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Cost price
-                  <input name="costPrice" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" required />
+                  <input name="costPrice" type="number" min="0" step="0.01" className="input" required />
                 </label>
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Selling price
-                  <input name="sellingPrice" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                  <input name="sellingPrice" type="number" min="0" step="0.01" className="input" />
                 </label>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Opening qty
-                  <input name="quantityOnHand" type="number" min="0" step="1" defaultValue={0} className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                  <input name="quantityOnHand" type="number" min="0" step="1" defaultValue={0} className="input" />
                 </label>
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Reorder at
-                  <input name="reorderThreshold" type="number" min="0" step="1" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                  <input name="reorderThreshold" type="number" min="0" step="1" className="input" />
                 </label>
               </div>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Supplier
-                <select name="supplierId" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]">
+                <select name="supplierId" className="input">
                   <option value="">— None —</option>
                   {data.suppliers.map((supplier) => (
                     <option key={supplier.id} value={supplier.id}>{supplier.label}</option>
@@ -188,19 +175,19 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Or new supplier
-                <input name="newSupplierName" placeholder="e.g. Accra Beauty Supply" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                <input name="newSupplierName" placeholder="e.g. Accra Beauty Supply" className="input" />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Expiry
-                  <input name="expiryDate" type="date" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                  <input name="expiryDate" type="date" className="input" />
                 </label>
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Barcode
-                  <input name="barcode" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                  <input name="barcode" className="input" />
                 </label>
               </div>
 

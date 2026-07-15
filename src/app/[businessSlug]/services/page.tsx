@@ -1,4 +1,6 @@
+import { Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { StatTile, statMetaFor, EmptyState, Badge } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { createServiceAction, toggleServiceActiveAction } from "@/lib/service-actions";
 import { getServiceModuleData } from "@/lib/service-data";
@@ -26,15 +28,12 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
       <PageHeader title="Services" description="The menu you sell — pricing, duration, and categories." />
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
-          {data.stats.map((stat) => (
-            <article key={stat.label} className="card p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">
-                {stat.label}
-              </div>
-              <div className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</div>
-              <div className="mt-2 text-sm font-semibold text-[#796e77]">{stat.detail}</div>
-            </article>
-          ))}
+          {data.stats.map((stat) => {
+            const meta = statMetaFor(stat.label);
+            return (
+              <StatTile key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} icon={meta.icon} tone={meta.tone} />
+            );
+          })}
         </section>
 
         <section className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-[1080px]:grid-cols-1">
@@ -47,9 +46,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
             </div>
 
             {data.services.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#e9dee5] bg-[#f7f2f5] px-4 py-10 text-center text-sm font-semibold text-[#796e77]">
-                No services yet. Add your first service from the panel on the right.
-              </div>
+              <EmptyState icon={Sparkles} title="No services yet" body="Add your first service from the panel on the right." />
             ) : (
               <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
                 <div className="grid grid-cols-[1.5fr_1fr_100px_90px_120px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[940px]:hidden">
@@ -66,12 +63,8 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                       <span className="mt-1 size-3 shrink-0 rounded-full" style={{ backgroundColor: service.colorHex }} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold">{service.name}</span>
-                          {!service.isActive ? (
-                            <span className="rounded-full bg-[#f0eaee] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#796e77]">
-                              Archived
-                            </span>
-                          ) : null}
+                          <span className="font-semibold text-ink">{service.name}</span>
+                          {!service.isActive ? <Badge tone="neutral">Archived</Badge> : null}
                         </div>
                         <div className="mt-1 text-xs font-semibold text-[#796e77]">{service.category}</div>
                       </div>
@@ -89,7 +82,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                       <form action={toggleServiceActiveAction}>
                         <input type="hidden" name="businessSlug" value={businessSlug} />
                         <input type="hidden" name="serviceId" value={service.id} />
-                        <button className="rounded-xl border border-[#e9dee5] px-3 py-2 text-xs font-semibold">
+                        <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
                           {service.isActive ? "Archive" : "Restore"}
                         </button>
                       </form>
@@ -109,41 +102,41 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
             <input type="hidden" name="businessSlug" value={businessSlug} />
 
             <div className="mt-5 grid gap-4">
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Name
-                <input name="name" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" required />
+                <input name="name" className="input" required />
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Description
-                <textarea name="description" rows={2} className="rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 py-3 outline-none focus:border-[#6d315f]" />
+                <textarea name="description" rows={2} className="input" />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Price
-                  <input name="price" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" required />
+                  <input name="price" type="number" min="0" step="0.01" className="input" required />
                 </label>
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Deposit
-                  <input name="depositAmount" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                  <input name="depositAmount" type="number" min="0" step="0.01" className="input" />
                 </label>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Duration (min)
-                  <input name="durationMinutes" type="number" min="5" step="5" defaultValue={60} className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" required />
+                  <input name="durationMinutes" type="number" min="5" step="5" defaultValue={60} className="input" required />
                 </label>
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Colour
-                  <input name="colorHex" type="color" defaultValue="#6d315f" className="h-12 w-full rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-2 outline-none" />
+                  <input name="colorHex" type="color" defaultValue="#6d315f" className="input" />
                 </label>
               </div>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Category
-                <select name="categoryId" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]">
+                <select name="categoryId" className="input">
                   <option value="">— None —</option>
                   {data.categories.map((category) => (
                     <option key={category.id} value={category.id}>{category.label}</option>
@@ -151,14 +144,14 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Or new category
-                <input name="newCategoryName" placeholder="e.g. Bridal" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                <input name="newCategoryName" placeholder="e.g. Bridal" className="input" />
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Assign staff
-                <select name="staffIds" multiple size={Math.min(4, Math.max(2, data.staff.length))} className="rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 py-2 outline-none focus:border-[#6d315f]">
+                <select name="staffIds" multiple size={Math.min(4, Math.max(2, data.staff.length))} className="input">
                   {data.staff.map((member) => (
                     <option key={member.id} value={member.id}>{member.label}</option>
                   ))}

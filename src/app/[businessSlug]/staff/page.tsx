@@ -1,4 +1,5 @@
 import { PageHeader } from "@/components/page-header";
+import { StatTile, statMetaFor, Badge, toneForStatus, Avatar } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { inviteStaffAction, setStaffStatusAction } from "@/lib/staff-actions";
 import { getStaffModuleData } from "@/lib/staff-data";
@@ -10,13 +11,6 @@ type StaffPageProps = {
   params: Promise<{
     businessSlug: string;
   }>;
-};
-
-const statusStyles: Record<string, string> = {
-  ACTIVE: "bg-[#f6edf2] text-[#6d315f]",
-  INVITED: "bg-amber-50 text-amber-700",
-  SUSPENDED: "bg-rose-50 text-rose-700",
-  REMOVED: "bg-[#f0eaee] text-[#796e77]",
 };
 
 function statusActions(statusKey: string): { label: string; value: string; tone?: "danger" }[] {
@@ -52,15 +46,12 @@ export default async function StaffPage({ params }: StaffPageProps) {
       <PageHeader title="Staff" description="Your team — roles, access, and who is on the floor." />
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
-          {data.stats.map((stat) => (
-            <article key={stat.label} className="card p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">
-                {stat.label}
-              </div>
-              <div className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</div>
-              <div className="mt-2 text-sm font-semibold text-[#796e77]">{stat.detail}</div>
-            </article>
-          ))}
+          {data.stats.map((stat) => {
+            const meta = statMetaFor(stat.label);
+            return (
+              <StatTile key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} icon={meta.icon} tone={meta.tone} />
+            );
+          })}
         </section>
 
         <section className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-[1080px]:grid-cols-1">
@@ -79,32 +70,28 @@ export default async function StaffPage({ params }: StaffPageProps) {
               {data.staff.map((member) => (
                 <div key={member.id} className="grid grid-cols-[1.5fr_1fr_110px_80px_120px_150px] items-center gap-3 border-t border-[#f0e8ed] px-4 py-4 text-sm max-[980px]:grid-cols-1">
                   <div className="flex min-w-0 items-center gap-3">
-                    <span className="grid size-9 shrink-0 place-items-center rounded-full text-xs font-semibold text-white" style={{ backgroundColor: member.colorHex }}>
-                      {member.name.slice(0, 2).toUpperCase()}
-                    </span>
+                    <Avatar name={member.name} colorHex={member.colorHex} />
                     <div className="min-w-0">
-                      <div className="truncate font-semibold">{member.name}</div>
-                      <div className="truncate text-xs font-semibold text-[#796e77]">{member.email}</div>
+                      <div className="truncate font-semibold text-ink">{member.name}</div>
+                      <div className="truncate text-xs text-muted">{member.email}</div>
                     </div>
                   </div>
-                  <div className="font-bold">{member.role}</div>
-                  <div className="font-bold text-[#796e77]">{member.commission}</div>
-                  <div className="font-semibold">{member.bookings}</div>
-                  <div className="font-semibold">{member.revenue}</div>
+                  <div className="font-medium text-ink">{member.role}</div>
+                  <div className="font-medium text-muted">{member.commission}</div>
+                  <div className="font-semibold text-ink">{member.bookings}</div>
+                  <div className="font-semibold text-ink">{member.revenue}</div>
                   <div className="flex flex-col items-start gap-2">
-                    <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[member.statusKey]}`}>
-                      {member.status}
-                    </span>
+                    <Badge tone={toneForStatus(member.status)}>{member.status}</Badge>
                     <div className="flex flex-wrap gap-1">
                       {(member.isSoleOwner ? [] : statusActions(member.statusKey)).map((action) => (
                         <form key={action.value} action={setStaffStatusAction}>
                           <input type="hidden" name="businessSlug" value={businessSlug} />
                           <input type="hidden" name="staffId" value={member.id} />
                           <input type="hidden" name="status" value={action.value} />
-                          <button className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${
+                          <button className={`rounded-lg border px-2.5 py-1 text-xs font-medium ${
                             action.tone === "danger"
-                              ? "border-rose-200 text-rose-700"
-                              : "border-[#e9dee5] text-[#231c22]"
+                              ? "border-danger/25 text-danger hover:bg-danger-soft"
+                              : "border-line text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum"
                           }`}>
                             {action.label}
                           </button>
@@ -126,14 +113,14 @@ export default async function StaffPage({ params }: StaffPageProps) {
             <input type="hidden" name="businessSlug" value={businessSlug} />
 
             <div className="mt-5 grid gap-4">
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Email
-                <input name="email" type="email" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" required />
+                <input name="email" type="email" className="input" required />
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Role
-                <select name="role" defaultValue="ARTIST" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" required>
+                <select name="role" defaultValue="ARTIST" className="input" required>
                   {data.roles.map((role) => (
                     <option key={role.value} value={role.value}>{role.label}</option>
                   ))}
@@ -141,28 +128,28 @@ export default async function StaffPage({ params }: StaffPageProps) {
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Commission
-                  <select name="commissionType" defaultValue="NONE" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]">
+                  <select name="commissionType" defaultValue="NONE" className="input">
                     <option value="NONE">None</option>
                     <option value="PERCENTAGE">Percentage</option>
                     <option value="FIXED">Fixed</option>
                   </select>
                 </label>
-                <label className="grid gap-2 text-sm font-bold">
+                <label className="field-label">
                   Value
-                  <input name="commissionValue" type="number" min="0" step="0.01" placeholder="e.g. 15" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]" />
+                  <input name="commissionValue" type="number" min="0" step="0.01" placeholder="e.g. 15" className="input" />
                 </label>
               </div>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Colour
-                <input name="colorHex" type="color" defaultValue="#6d315f" className="h-12 w-full rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-2 outline-none" />
+                <input name="colorHex" type="color" defaultValue="#6d315f" className="input" />
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Bio
-                <textarea name="bio" rows={2} className="rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 py-3 outline-none focus:border-[#6d315f]" />
+                <textarea name="bio" rows={2} className="input" />
               </label>
 
               <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">

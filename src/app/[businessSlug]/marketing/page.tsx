@@ -1,4 +1,6 @@
+import { Megaphone, Ticket, Crown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { StatTile, statMetaFor, EmptyState, Badge, toneForStatus } from "@/components/ui";
 import { notFound } from "next/navigation";
 import {
   createCampaignAction,
@@ -18,14 +20,7 @@ type MarketingPageProps = {
   }>;
 };
 
-const campaignStatusStyles: Record<string, string> = {
-  DRAFT: "bg-[#f0eaee] text-[#796e77]",
-  SCHEDULED: "bg-amber-50 text-amber-700",
-  SENT: "bg-[#f6edf2] text-[#6d315f]",
-  CANCELLED: "bg-rose-50 text-rose-700",
-};
-
-const inputClass = "h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]";
+const inputClass = "input";
 const cardClass = "card p-5";
 
 export default async function MarketingPage({ params }: MarketingPageProps) {
@@ -42,13 +37,12 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
       <PageHeader title="Marketing" description="Campaigns, offers, and loyalty to keep chairs full." />
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
-          {data.stats.map((stat) => (
-            <article key={stat.label} className="card p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">{stat.label}</div>
-              <div className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</div>
-              <div className="mt-2 text-sm font-semibold text-[#796e77]">{stat.detail}</div>
-            </article>
-          ))}
+          {data.stats.map((stat) => {
+            const meta = statMetaFor(stat.label);
+            return (
+              <StatTile key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} icon={meta.icon} tone={meta.tone} />
+            );
+          })}
         </section>
 
         {/* Campaigns + Loyalty */}
@@ -60,23 +54,19 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
             </div>
 
             {data.campaigns.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#e9dee5] bg-[#f7f2f5] px-4 py-8 text-center text-sm font-semibold text-[#796e77]">
-                No campaigns yet. Create your first below.
-              </div>
+              <EmptyState icon={Megaphone} title="No campaigns yet" body="Create your first campaign below." />
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
-                <div className="grid grid-cols-[1.6fr_1fr_1fr_100px_90px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[940px]:hidden">
+              <div className="overflow-hidden rounded-2xl border border-line">
+                <div className="grid grid-cols-[1.6fr_1fr_1fr_100px_90px] px-4 py-2.5 data-head max-[940px]:hidden">
                   <span>Name</span><span>Channel</span><span>Type</span><span>When</span><span>Status</span>
                 </div>
                 {data.campaigns.map((campaign) => (
-                  <div key={campaign.id} className="grid grid-cols-[1.6fr_1fr_1fr_100px_90px] items-center gap-3 border-t border-[#f0e8ed] px-4 py-4 text-sm max-[940px]:grid-cols-1">
-                    <span className="font-semibold">{campaign.name}</span>
-                    <span className="font-bold text-[#796e77]">{campaign.channel}</span>
-                    <span className="font-bold">{campaign.type}</span>
-                    <span className="font-bold text-[#796e77]">{campaign.when}</span>
-                    <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${campaignStatusStyles[campaign.statusKey] ?? "bg-[#f0eaee] text-[#796e77]"}`}>
-                      {campaign.status}
-                    </span>
+                  <div key={campaign.id} className="grid grid-cols-[1.6fr_1fr_1fr_100px_90px] items-center gap-3 border-t border-line-2 px-4 py-3.5 text-sm max-[940px]:grid-cols-1">
+                    <span className="font-semibold text-ink">{campaign.name}</span>
+                    <span className="font-medium text-muted">{campaign.channel}</span>
+                    <span className="font-medium text-ink">{campaign.type}</span>
+                    <span className="font-medium text-muted">{campaign.when}</span>
+                    <Badge tone={toneForStatus(campaign.status)}>{campaign.status}</Badge>
                   </div>
                 ))}
               </div>
@@ -102,7 +92,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 Schedule (optional)
                 <input name="scheduledAt" type="datetime-local" className={inputClass} />
               </label>
-              <textarea name="content" rows={2} placeholder="Message content" className="rounded-2xl border border-[#e9dee5] bg-card px-4 py-3 outline-none focus:border-[#6d315f]" />
+              <textarea name="content" rows={2} placeholder="Message content" className="rounded-xl border border-line bg-card px-3.5 py-2.5 text-ink outline-none focus:border-plum" />
               <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Create campaign</button>
             </form>
           </div>
@@ -112,8 +102,8 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
             <p className="mt-1 text-sm text-[#796e77]">
               {data.loyalty.pointsIssued.toLocaleString("en-US")} points issued · {data.loyalty.members} members
             </p>
-            <div className="mt-3 inline-flex rounded-full bg-[#f6edf2] px-3 py-1 text-xs font-semibold text-[#6d315f]">
-              {data.loyalty.active ? "Active" : "Inactive"}
+            <div className="mt-3">
+              <Badge tone={data.loyalty.active ? "success" : "neutral"}>{data.loyalty.active ? "Active" : "Inactive"}</Badge>
             </div>
 
             <form action={updateLoyaltyAction} className="mt-5 grid gap-3">
@@ -144,27 +134,23 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
             </div>
 
             {data.coupons.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#e9dee5] bg-[#f7f2f5] px-4 py-8 text-center text-sm font-semibold text-[#796e77]">
-                No coupons yet. Create your first below.
-              </div>
+              <EmptyState icon={Ticket} title="No coupons yet" body="Create your first coupon below." />
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
-                <div className="grid grid-cols-[1.3fr_100px_90px_100px_110px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[940px]:hidden">
+              <div className="overflow-hidden rounded-2xl border border-line">
+                <div className="grid grid-cols-[1.3fr_100px_90px_100px_110px] px-4 py-2.5 data-head max-[940px]:hidden">
                   <span>Code</span><span>Discount</span><span>Uses</span><span>Expiry</span><span>Status</span>
                 </div>
                 {data.coupons.map((coupon) => (
-                  <div key={coupon.id} className={`grid grid-cols-[1.3fr_100px_90px_100px_110px] items-center gap-3 border-t border-[#f0e8ed] px-4 py-4 text-sm max-[940px]:grid-cols-1 ${coupon.active ? "" : "opacity-60"}`}>
-                    <span className="font-semibold tracking-wide">{coupon.code}</span>
-                    <span className="font-bold">{coupon.discount}</span>
-                    <span className="font-bold text-[#796e77]">{coupon.uses}</span>
-                    <span className="font-bold text-[#796e77]">{coupon.expiry}</span>
+                  <div key={coupon.id} className={`grid grid-cols-[1.3fr_100px_90px_100px_110px] items-center gap-3 border-t border-line-2 px-4 py-3.5 text-sm max-[940px]:grid-cols-1 ${coupon.active ? "" : "opacity-60"}`}>
+                    <span className="font-mono text-[13px] font-semibold uppercase tracking-wide text-plum">{coupon.code}</span>
+                    <span className="font-semibold text-ink">{coupon.discount}</span>
+                    <span className="font-medium text-muted">{coupon.uses}</span>
+                    <span className="font-medium text-muted">{coupon.expiry}</span>
                     <form action={toggleCouponAction} className="flex items-center gap-2">
                       <input type="hidden" name="businessSlug" value={businessSlug} />
                       <input type="hidden" name="couponId" value={coupon.id} />
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${coupon.active ? "bg-[#f6edf2] text-[#6d315f]" : "bg-[#f0eaee] text-[#796e77]"}`}>
-                        {coupon.active ? "Active" : "Off"}
-                      </span>
-                      <button className="rounded-lg border border-[#e9dee5] px-2.5 py-1 text-xs font-semibold">
+                      <Badge tone={coupon.active ? "success" : "neutral"}>{coupon.active ? "Active" : "Off"}</Badge>
+                      <button className="rounded-lg border border-line px-2.5 py-1 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
                         {coupon.active ? "Disable" : "Enable"}
                       </button>
                     </form>
@@ -199,19 +185,19 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
             </div>
 
             {data.tiers.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#e9dee5] bg-[#f7f2f5] px-4 py-6 text-center text-sm font-semibold text-[#796e77]">
-                No tiers yet.
-              </div>
+              <EmptyState icon={Crown} title="No tiers yet" body="Reward your best clients with a membership tier." />
             ) : (
               <div className="grid gap-2">
                 {data.tiers.map((tier) => (
-                  <div key={tier.id} className="rounded-2xl border border-[#f0e8ed] p-3">
+                  <div key={tier.id} className="rounded-2xl border border-line-2 p-3.5 hover:border-plum-line">
                     <div className="flex items-center justify-between gap-2">
-                      <strong>{tier.name}</strong>
-                      <span className="rounded-full bg-[#f6edf2] px-2 py-1 text-[11px] font-semibold text-rose-700">{tier.discount}</span>
+                      <strong className="flex items-center gap-2 text-ink">
+                        <Crown size={14} className="text-gold" /> {tier.name}
+                      </strong>
+                      <Badge>{tier.discount}</Badge>
                     </div>
-                    <div className="mt-1 text-xs font-semibold text-[#796e77]">{tier.threshold}</div>
-                    {tier.perks !== "—" ? <div className="mt-1 text-xs text-[#796e77]">{tier.perks}</div> : null}
+                    <div className="mt-1 text-xs font-medium text-muted">{tier.threshold}</div>
+                    {tier.perks !== "—" ? <div className="mt-1 text-xs text-muted">{tier.perks}</div> : null}
                   </div>
                 ))}
               </div>

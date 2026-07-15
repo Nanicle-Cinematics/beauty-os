@@ -1,4 +1,6 @@
+import { CalendarPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Badge, toneForStatus, EmptyState, Avatar } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { createAppointmentAction, updateAppointmentStatusAction } from "@/lib/appointment-actions";
 import { getAppointmentModuleData } from "@/lib/appointment-data";
@@ -39,37 +41,42 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
               </p>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
-              <div className="grid grid-cols-[82px_1fr_1fr_130px_110px_220px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[940px]:hidden">
-                <span>Time</span><span>Client</span><span>Service</span><span>Status</span><span>Value</span><span>Actions</span>
-              </div>
-              {data.appointments.map((appointment) => (
-                <div key={appointment.id} className="grid grid-cols-[82px_1fr_1fr_130px_110px_220px] items-center gap-3 border-t border-[#f0e8ed] px-4 py-4 text-sm max-[940px]:grid-cols-1">
-                  <span className="font-semibold text-[#6d315f]">{appointment.time}</span>
-                  <div>
-                    <div className="font-semibold">{appointment.client}</div>
-                    <div className="mt-1 text-xs font-semibold text-[#796e77]">{appointment.staff}</div>
-                  </div>
-                  <span className="font-bold">{appointment.service}</span>
-                  <span className="w-fit rounded-full bg-[#f6edf2] px-3 py-1 text-xs font-semibold text-[#6d315f]">
-                    {appointment.status}
-                  </span>
-                  <span className="font-semibold">{appointment.value}</span>
-                  <div className="flex flex-wrap gap-2">
-                    {statusOptions.map((option) => (
-                      <form key={option.value} action={updateAppointmentStatusAction}>
-                        <input type="hidden" name="businessSlug" value={businessSlug} />
-                        <input type="hidden" name="appointmentId" value={appointment.id} />
-                        <input type="hidden" name="status" value={option.value} />
-                        <button className="rounded-xl border border-[#e9dee5] px-3 py-2 text-xs font-semibold">
-                          {option.label}
-                        </button>
-                      </form>
-                    ))}
-                  </div>
+            {data.appointments.length === 0 ? (
+              <EmptyState icon={CalendarPlus} title="No appointments yet" body="Create your first booking from the panel on the right." />
+            ) : (
+              <div className="overflow-hidden rounded-2xl border border-line">
+                <div className="grid grid-cols-[82px_1fr_1fr_130px_110px_220px] px-4 py-2.5 data-head max-[940px]:hidden">
+                  <span>Time</span><span>Client</span><span>Service</span><span>Status</span><span>Value</span><span>Actions</span>
                 </div>
-              ))}
-            </div>
+                {data.appointments.map((appointment) => (
+                  <div key={appointment.id} className="grid grid-cols-[82px_1fr_1fr_130px_110px_220px] items-center gap-3 border-t border-line-2 px-4 py-3.5 text-sm max-[940px]:grid-cols-1">
+                    <span className="font-semibold text-plum">{appointment.time}</span>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <Avatar name={appointment.client} size={30} />
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold text-ink">{appointment.client}</div>
+                        <div className="mt-0.5 truncate text-xs text-muted">{appointment.staff}</div>
+                      </div>
+                    </div>
+                    <span className="font-medium text-ink">{appointment.service}</span>
+                    <Badge tone={toneForStatus(appointment.status)}>{appointment.status}</Badge>
+                    <span className="font-semibold text-ink">{appointment.value}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {statusOptions.map((option) => (
+                        <form key={option.value} action={updateAppointmentStatusAction}>
+                          <input type="hidden" name="businessSlug" value={businessSlug} />
+                          <input type="hidden" name="appointmentId" value={appointment.id} />
+                          <input type="hidden" name="status" value={option.value} />
+                          <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
+                            {option.label}
+                          </button>
+                        </form>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <form action={createAppointmentAction} className="card p-5">
@@ -81,40 +88,40 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
             <input type="hidden" name="businessSlug" value={businessSlug} />
 
             <div className="mt-5 grid gap-4">
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Client
-                <select name="customerId" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none" required>
+                <select name="customerId" className="input" required>
                   {data.customers.map((customer) => (
                     <option key={customer.id} value={customer.id}>{customer.label}</option>
                   ))}
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Service
-                <select name="serviceId" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none" required>
+                <select name="serviceId" className="input" required>
                   {data.services.map((service) => (
                     <option key={service.id} value={service.id}>{service.label}</option>
                   ))}
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Staff
-                <select name="staffMemberId" className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none" required>
+                <select name="staffMemberId" className="input" required>
                   {data.staff.map((person) => (
                     <option key={person.id} value={person.id}>{person.label}</option>
                   ))}
                 </select>
               </label>
 
-              <label className="grid gap-2 text-sm font-bold">
+              <label className="field-label">
                 Start time
                 <input
                   name="startAt"
                   type="datetime-local"
                   defaultValue="2026-07-13T14:00"
-                  className="h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none"
+                  className="input"
                   required
                 />
               </label>
