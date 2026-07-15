@@ -1,9 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowRight, Settings, LogOut } from "lucide-react";
 import { getWorkspaceSummaries } from "@/lib/tenant-data";
 import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
+
+const tenantFacts = [
+  "Shared login identity",
+  "Per-business staff roles",
+  "Tenant-scoped data by businessId",
+  "Owner platform controls",
+];
 
 export default async function WorkspacesPage() {
   const user = await requireUser("/app");
@@ -17,61 +25,57 @@ export default async function WorkspacesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#fafafa] px-6 py-6 text-[#18181b] max-[720px]:px-3">
+    <main className="min-h-screen bg-canvas px-6 py-6 text-ink max-[720px]:px-3">
       <div className="mx-auto grid min-h-[calc(100vh-48px)] max-w-6xl content-center gap-6">
-        <section className="rounded-[32px] bg-[#18181b] p-8 text-white shadow-[0_24px_60px_rgba(24,24,27,0.18)] max-[720px]:p-5">
+        <section className="brand-dark relative overflow-hidden rounded-[28px] p-8 shadow-[var(--shadow-lift)] max-[720px]:p-5">
           <div className="mb-6 flex items-center justify-between gap-3 max-[640px]:flex-col max-[640px]:items-start">
-            <div className="text-sm font-bold text-white/72">
-              Signed in as <span className="text-white">{user.email}</span>
+            <div className="flex items-center gap-3">
+              <span className="grid size-10 place-items-center rounded-2xl bg-gradient-to-br from-plum to-wine font-serif text-base font-semibold text-white shadow-[0_6px_18px_rgba(84,33,63,0.4)]">B</span>
+              <div className="text-sm text-white/70">
+                Signed in as <span className="font-semibold text-white">{user.email}</span>
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Link href="/settings" className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold">
-                Settings
+              <Link href="/settings" className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10">
+                <Settings size={15} /> Settings
               </Link>
-              <Link href="/logout" className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-semibold">
-                Sign out
+              <Link href="/logout" className="inline-flex items-center gap-1.5 rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-white/80 hover:bg-white/10">
+                <LogOut size={15} /> Sign out
               </Link>
             </div>
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-8 max-[860px]:grid-cols-1">
             <div>
-              <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9d4e7a]">
+              <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-rose">
                 Your workspaces
               </div>
-              <h1 className="max-w-3xl text-5xl font-bold leading-tight tracking-tight max-[720px]:text-3xl">
+              <h1 className="max-w-3xl font-serif text-5xl font-semibold leading-tight tracking-tight max-[720px]:text-3xl">
                 Welcome back. Pick a workspace to get to work.
               </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72">
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-white/70">
                 Each business has its own staff, clients, services, inventory, payments, and reports.
               </p>
             </div>
-            <div className="rounded-3xl border border-white/12 bg-white/10 p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-white/55">
-                Tenant model
-              </div>
-              <div className="mt-5 grid gap-3 text-sm font-bold text-white/82">
-                <div className="rounded-2xl bg-white/10 p-3">Shared login identity</div>
-                <div className="rounded-2xl bg-white/10 p-3">Per-business staff roles</div>
-                <div className="rounded-2xl bg-white/10 p-3">Tenant-scoped data by businessId</div>
-                <div className="rounded-2xl bg-white/10 p-3">Owner platform controls</div>
+            <div className="rounded-2xl border border-white/12 bg-white/[0.06] p-5">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-white/50">Tenant model</div>
+              <div className="mt-4 grid gap-2.5 text-sm font-medium text-white/85">
+                {tenantFacts.map((fact) => (
+                  <div key={fact} className="rounded-xl bg-white/[0.07] px-3 py-2.5">{fact}</div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
         <section className="grid grid-cols-[minmax(0,1fr)_320px] gap-5 max-[980px]:grid-cols-1">
-          <div className="rounded-[24px] border border-[#e7e7ea] bg-white p-5 shadow-[0_12px_35px_rgba(24,24,27,0.06)]">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">Choose workspace</h2>
-                <p className="mt-1 text-sm text-[#71717a]">
-                  Only workspaces your account can access are shown here.
-                </p>
-              </div>
+          <div className="card p-5">
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold">Choose workspace</h2>
+              <p className="mt-1 text-sm text-muted">Only workspaces your account can access are shown here.</p>
             </div>
 
             {workspaces.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#e2e0f7] bg-[#f7f7f8] px-4 py-8 text-center text-sm font-semibold text-[#71717a]">
+              <div className="rounded-2xl border border-dashed border-line bg-plum-softer px-4 py-8 text-center text-sm text-muted">
                 No workspaces yet. If you were invited, use the link in your email to activate your account.
               </div>
             ) : (
@@ -80,34 +84,38 @@ export default async function WorkspacesPage() {
                   <Link
                     key={workspace.slug}
                     href={`/${workspace.slug}`}
-                    className="grid grid-cols-[1fr_auto] items-center gap-4 rounded-2xl border border-[#efeff2] p-4 transition hover:border-[#9d4e7a] hover:bg-[#f7f7f8] max-[640px]:grid-cols-1"
+                    className="group grid grid-cols-[1fr_auto] items-center gap-4 rounded-2xl border border-line-2 p-4 transition hover:border-plum-line hover:bg-plum-softer max-[640px]:grid-cols-1"
                   >
-                    <div>
-                      <div className="font-semibold">{workspace.name}</div>
-                      <div className="mt-1 text-sm font-semibold text-[#71717a]">
-                        {workspace.category} · {workspace.plan}
+                    <div className="flex items-center gap-3">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-plum-soft text-[13px] font-semibold text-plum">
+                        {workspace.name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
+                      </span>
+                      <div>
+                        <div className="font-semibold text-ink">{workspace.name}</div>
+                        <div className="mt-0.5 text-sm text-muted">{workspace.category} · {workspace.plan}</div>
                       </div>
                     </div>
-                    <span className="w-fit rounded-full bg-[#faf1f6] px-3 py-1 text-xs font-semibold text-[#9d4e7a]">
-                      {workspace.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-full bg-plum-soft px-3 py-1 text-xs font-semibold text-plum">{workspace.status}</span>
+                      <ArrowRight size={16} className="text-faint transition group-hover:translate-x-0.5 group-hover:text-plum" />
+                    </div>
                   </Link>
                 ))}
               </div>
             )}
           </div>
 
-          <aside className="rounded-[24px] border border-[#e7e7ea] bg-white p-5 shadow-[0_12px_35px_rgba(24,24,27,0.06)]">
+          <aside className="card p-5">
             <h2 className="text-lg font-semibold">Platform owner</h2>
-            <p className="mt-2 text-sm leading-6 text-[#71717a]">
+            <p className="mt-2 text-sm leading-6 text-muted">
               Manage plans, tenant status, billing, onboarding, support, and system-wide controls.
             </p>
             <Link
               href="/platform"
-              className={`mt-5 inline-flex rounded-2xl px-4 py-3 text-sm font-semibold ${
+              className={`mt-5 inline-flex rounded-xl px-4 py-3 text-sm font-semibold ${
                 user.isPlatformAdmin
-                  ? "bg-[#18181b] text-white"
-                  : "pointer-events-none bg-[#f2f2f4] text-[#71717a]"
+                  ? "bg-gradient-to-r from-plum to-wine text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]"
+                  : "pointer-events-none bg-sunken text-faint"
               }`}
             >
               {user.isPlatformAdmin ? "Open admin portal" : "Admin only"}

@@ -198,6 +198,14 @@ textarea:focus-visible {
   box-shadow: var(--shadow-soft);
 }
 
+/* Deep plum-black brand surface — hero panels, auth split screens, pricing highlight */
+.brand-dark {
+  color: #fff;
+  background:
+    radial-gradient(circle at 86% -12%, rgba(198, 120, 155, 0.3), transparent 17rem),
+    linear-gradient(135deg, #1d1220, #2a172b 55%, #54213f);
+}
+
 @keyframes bo-fade-up {
   from {
     opacity: 0;

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Check, TriangleAlert } from "lucide-react";
 import { verifyEmail } from "@/lib/verification-data";
 
 export const dynamic = "force-dynamic";
@@ -19,22 +20,22 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
   const { title, body, tone } = copy[result];
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#fafafa] px-4 py-10 text-[#18181b]">
+    <main className="grid min-h-screen place-items-center bg-canvas px-4 py-10 text-ink">
       <div className="w-full max-w-md">
         <div className="mb-5 text-center">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">Beauty OS</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-plum">Beauty OS</div>
         </div>
-        <div className="grid gap-4 rounded-[28px] border border-[#e7e7ea] bg-white p-6 text-center shadow-[0_18px_45px_rgba(24,24,27,0.08)]">
+        <div className="grid gap-4 rounded-[24px] border border-line bg-card p-6 text-center shadow-[var(--shadow-soft)]">
           <div
-            className={`mx-auto grid size-12 place-items-center rounded-full text-lg font-semibold ${
-              tone === "ok" ? "bg-[#faf1f6] text-[#9d4e7a]" : "bg-rose-50 text-rose-700"
+            className={`mx-auto grid size-12 place-items-center rounded-full ${
+              tone === "ok" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"
             }`}
           >
-            {tone === "ok" ? "✓" : "!"}
+            {tone === "ok" ? <Check size={22} strokeWidth={2.5} /> : <TriangleAlert size={22} />}
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          <p className="text-sm font-semibold text-[#71717a]">{body}</p>
-          <Link href="/app" className="mt-1 rounded-2xl bg-[#18181b] px-4 py-3 text-sm font-semibold text-white">
+          <h1 className="font-serif text-2xl font-semibold tracking-tight">{title}</h1>
+          <p className="text-sm text-muted">{body}</p>
+          <Link href="/app" className="mt-1 rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
             Go to your workspaces
           </Link>
         </div>
