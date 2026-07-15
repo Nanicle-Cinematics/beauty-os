@@ -97,6 +97,71 @@ export async function getExpensesList(businessSlug: string, filters: ExpenseFilt
   };
 }
 
+export type EditableExpense = { id: string; category: string; amount: string; description: string; incurredAt: string };
+
+export async function getExpense(businessSlug: string, id: string): Promise<EditableExpense | null> {
+  if (!isDatabaseConfigured()) return null;
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
+  if (!business) return null;
+
+  const expense = await prisma.expense.findFirst({
+    where: { id, businessId: business.id },
+    select: { id: true, category: true, amount: true, description: true, incurredAt: true },
+  });
+  if (!expense) return null;
+
+  return {
+    id: expense.id,
+    category: expense.category,
+    amount: String(Number(expense.amount)),
+    description: expense.description ?? "",
+    incurredAt: expense.incurredAt.toISOString().slice(0, 10),
+  };
+}
+
+export async function updateExpense({
+  businessSlug,
+  id,
+  category,
+  amount,
+  description,
+  incurredAt,
+}: {
+  businessSlug: string;
+  id: string;
+  category: string;
+  amount: number;
+  description: string;
+  incurredAt: string;
+}): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Not available." };
+  const trimmedCategory = category.trim();
+  if (!trimmedCategory) return { ok: false, error: "Add an expense category." };
+  if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "Enter an amount greater than zero." };
+
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
+  if (!business) return { ok: false, error: "Business not found." };
+
+  const parsed = incurredAt ? new Date(incurredAt) : new Date();
+  const when = Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+
+  // Scope the write to this business so an id from another tenant can't be edited.
+  const result = await prisma.expense.updateMany({
+    where: { id, businessId: business.id },
+    data: { category: trimmedCategory, amount, description: description.trim() || null, incurredAt: when },
+  });
+  if (result.count === 0) return { ok: false, error: "Expense not found." };
+  return { ok: true };
+}
+
+export async function deleteExpense(businessSlug: string, id: string): Promise<{ ok: boolean }> {
+  if (!isDatabaseConfigured()) return { ok: false };
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
+  if (!business) return { ok: false };
+  const result = await prisma.expense.deleteMany({ where: { id, businessId: business.id } });
+  return { ok: result.count > 0 };
+}
+
 export async function createExpense({
   businessSlug,
   category,

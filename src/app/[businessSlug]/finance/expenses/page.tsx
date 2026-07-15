@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { Receipt, Filter, ListFilter } from "lucide-react";
+import { Receipt, Filter, ListFilter, Pencil, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState, Badge } from "@/components/ui";
 import { FinanceTabs } from "@/components/finance-tabs";
+import { DeleteExpenseButton } from "@/components/delete-expense-button";
 import { getExpensesList } from "@/lib/finance-data";
 import { requireTenantAccess } from "@/lib/auth";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 
 type ExpensesPageProps = {
   params: Promise<{ businessSlug: string }>;
-  searchParams: Promise<{ category?: string; from?: string; to?: string; q?: string }>;
+  searchParams: Promise<{ category?: string; from?: string; to?: string; q?: string; updated?: string; removed?: string }>;
 };
 
 export default async function ExpensesPage({ params, searchParams }: ExpensesPageProps) {
@@ -29,6 +30,17 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
       <PageHeader title="Finance" description="Every expense you've logged — filter by category, date, or keyword." />
 
       <FinanceTabs businessSlug={businessSlug} active="expenses" />
+
+      {sp.updated ? (
+        <div className="flex items-center gap-2 rounded-xl border border-success/20 bg-success-soft px-4 py-3 text-sm font-semibold text-success">
+          <CheckCircle2 size={16} /> Expense updated.
+        </div>
+      ) : null}
+      {sp.removed ? (
+        <div className="flex items-center gap-2 rounded-xl border border-line bg-sunken px-4 py-3 text-sm font-semibold text-muted">
+          <CheckCircle2 size={16} /> Expense deleted.
+        </div>
+      ) : null}
 
       <form method="get" className="card grid gap-3 p-4 md:grid-cols-[1.2fr_1fr_1fr_1.4fr_auto] md:items-end">
         <label className="field-label">
@@ -86,15 +98,25 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
           />
         ) : (
           <div className="overflow-hidden rounded-2xl border border-line">
-            <div className="grid grid-cols-[160px_1fr_140px_120px] px-4 py-2.5 data-head max-[720px]:hidden">
-              <span>Category</span><span>Description</span><span>Date</span><span>Amount</span>
+            <div className="grid grid-cols-[150px_1fr_130px_110px_84px] px-4 py-2.5 data-head max-[720px]:hidden">
+              <span>Category</span><span>Description</span><span>Date</span><span>Amount</span><span className="text-right">Actions</span>
             </div>
             {data.expenses.map((e) => (
-              <div key={e.id} className="grid grid-cols-[160px_1fr_140px_120px] items-center gap-3 border-t border-line-2 px-4 py-3.5 text-sm max-[720px]:grid-cols-2">
+              <div key={e.id} className="grid grid-cols-[150px_1fr_130px_110px_84px] items-center gap-3 border-t border-line-2 px-4 py-3 text-sm max-[720px]:grid-cols-2">
                 <Badge tone="neutral">{e.category}</Badge>
                 <span className="truncate text-ink">{e.description}</span>
                 <span className="font-medium text-muted">{e.when}</span>
                 <span className="font-semibold text-ink">{e.amount}</span>
+                <div className="flex items-center justify-end gap-1.5">
+                  <Link
+                    href={`/${businessSlug}/finance/expenses/${e.id}/edit`}
+                    aria-label="Edit expense"
+                    className="grid size-8 place-items-center rounded-lg border border-line text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum"
+                  >
+                    <Pencil size={15} />
+                  </Link>
+                  <DeleteExpenseButton businessSlug={businessSlug} expenseId={e.id} label={`${e.category} · ${e.amount}`} />
+                </div>
               </div>
             ))}
           </div>

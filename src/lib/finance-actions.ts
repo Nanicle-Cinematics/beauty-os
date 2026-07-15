@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createExpense } from "@/lib/finance-data";
+import { createExpense, updateExpense, deleteExpense } from "@/lib/finance-data";
 import { requireTenantAccess } from "@/lib/auth";
 
 function getString(formData: FormData, key: string) {
@@ -36,4 +36,39 @@ export async function createExpenseAction(formData: FormData) {
     redirect(`/${businessSlug}/finance?error=${encodeURIComponent(result.error)}`);
   }
   redirect(`/${businessSlug}/finance?logged=1`);
+}
+
+export async function updateExpenseAction(formData: FormData) {
+  const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
+  await requireTenantAccess(businessSlug);
+  const id = getString(formData, "expenseId");
+
+  const result = await updateExpense({
+    businessSlug,
+    id,
+    category: getString(formData, "category"),
+    amount: parseMoney(getString(formData, "amount")),
+    description: getString(formData, "description"),
+    incurredAt: getString(formData, "incurredAt"),
+  });
+
+  revalidatePath(`/${businessSlug}/finance`);
+  revalidatePath(`/${businessSlug}/finance/expenses`);
+
+  if (!result.ok) {
+    redirect(`/${businessSlug}/finance/expenses/${id}/edit?error=${encodeURIComponent(result.error)}`);
+  }
+  redirect(`/${businessSlug}/finance/expenses?updated=1`);
+}
+
+export async function deleteExpenseAction(formData: FormData) {
+  const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
+  await requireTenantAccess(businessSlug);
+  const id = getString(formData, "expenseId");
+
+  await deleteExpense(businessSlug, id);
+
+  revalidatePath(`/${businessSlug}/finance`);
+  revalidatePath(`/${businessSlug}/finance/expenses`);
+  redirect(`/${businessSlug}/finance/expenses?removed=1`);
 }
