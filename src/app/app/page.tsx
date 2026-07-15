@@ -35,7 +35,7 @@ export default async function WorkspacesPage() {
           </div>
           <div className="grid grid-cols-[minmax(0,1fr)_280px] gap-8 max-[860px]:grid-cols-1">
             <div>
-              <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6d5cf5]">
+              <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9d4e7a]">
                 Your workspaces
               </div>
               <h1 className="max-w-3xl text-5xl font-semibold leading-tight tracking-tight max-[720px]:text-3xl">
@@ -80,7 +80,7 @@ export default async function WorkspacesPage() {
                   <Link
                     key={workspace.slug}
                     href={`/${workspace.slug}`}
-                    className="grid grid-cols-[1fr_auto] items-center gap-4 rounded-2xl border border-[#efeff2] p-4 transition hover:border-[#6d5cf5] hover:bg-[#f7f7f8] max-[640px]:grid-cols-1"
+                    className="grid grid-cols-[1fr_auto] items-center gap-4 rounded-2xl border border-[#efeff2] p-4 transition hover:border-[#9d4e7a] hover:bg-[#f7f7f8] max-[640px]:grid-cols-1"
                   >
                     <div>
                       <div className="font-semibold">{workspace.name}</div>
@@ -88,7 +88,7 @@ export default async function WorkspacesPage() {
                         {workspace.category} · {workspace.plan}
                       </div>
                     </div>
-                    <span className="w-fit rounded-full bg-[#f1effe] px-3 py-1 text-xs font-semibold text-[#6d5cf5]">
+                    <span className="w-fit rounded-full bg-[#faf1f6] px-3 py-1 text-xs font-semibold text-[#9d4e7a]">
                       {workspace.status}
                     </span>
                   </Link>

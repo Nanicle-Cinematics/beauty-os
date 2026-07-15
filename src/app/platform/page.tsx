@@ -14,14 +14,14 @@ import { DeleteBusinessButton } from "@/components/delete-business-button";
 export const dynamic = "force-dynamic";
 
 const statusPill: Record<string, string> = {
-  ACTIVE: "bg-[#f1effe] text-[#6d5cf5]",
+  ACTIVE: "bg-[#faf1f6] text-[#9d4e7a]",
   TRIAL: "bg-amber-50 text-amber-700",
   SUSPENDED: "bg-rose-50 text-rose-700",
   CLOSED: "bg-[#f2f2f4] text-[#71717a]",
 };
 
 const subPill: Record<string, string> = {
-  ACTIVE: "bg-[#f1effe] text-[#6d5cf5]",
+  ACTIVE: "bg-[#faf1f6] text-[#9d4e7a]",
   TRIALING: "bg-amber-50 text-amber-700",
   PAST_DUE: "bg-rose-50 text-rose-700",
   CANCELED: "bg-[#f2f2f4] text-[#71717a]",
@@ -34,7 +34,7 @@ const inviteStateLabel: Record<string, string> = {
   none: "No invite",
 };
 
-const inputClass = "h-11 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-3 text-sm outline-none focus:border-[#6d5cf5]";
+const inputClass = "h-11 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-3 text-sm outline-none focus:border-[#9d4e7a]";
 const cardClass = "rounded-[24px] border border-[#e7e7ea] bg-white p-5 shadow-[0_12px_35px_rgba(24,24,27,0.06)]";
 
 type PlatformPageProps = {
@@ -63,7 +63,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">Beauty OS Platform</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">Beauty OS Platform</div>
             <h1 className="text-2xl font-semibold tracking-tight">Owner admin portal</h1>
             <p className="mt-1 text-sm font-semibold text-[#71717a]">
               Signed in as <span className="font-semibold text-[#18181b]">{user.email}</span>
@@ -80,7 +80,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
         </header>
 
         {inviteUrl ? (
-          <div className="grid gap-2 rounded-2xl border border-[#ddd8fc] bg-[#f1effe] px-4 py-3 text-sm font-bold text-[#6d5cf5]">
+          <div className="grid gap-2 rounded-2xl border border-[#efd6e4] bg-[#faf1f6] px-4 py-3 text-sm font-bold text-[#9d4e7a]">
             <span>
               {emailed ? (
                 created ? (
@@ -97,9 +97,9 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
             <input
               readOnly
               value={inviteUrl}
-              className="w-full select-all rounded-xl border border-[#ddd8fc] bg-white px-3 py-2 font-mono text-xs text-[#18181b]"
+              className="w-full select-all rounded-xl border border-[#efd6e4] bg-white px-3 py-2 font-mono text-xs text-[#18181b]"
             />
-            <span className="text-xs font-semibold text-[#6d5cf5]">
+            <span className="text-xs font-semibold text-[#9d4e7a]">
               {emailed ? "Emailed via Resend · " : ""}The link expires in 7 days.
             </span>
           </div>

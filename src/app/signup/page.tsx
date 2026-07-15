@@ -9,7 +9,7 @@ type SignupPageProps = {
   searchParams: Promise<{ error?: string }>;
 };
 
-const inputClass = "h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]";
+const inputClass = "h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]";
 const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#71717a]";
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
@@ -21,7 +21,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
       <section className="grid w-full max-w-5xl grid-cols-[420px_minmax(0,1fr)] overflow-hidden rounded-[32px] border border-[#e7e7ea] bg-white shadow-[0_24px_60px_rgba(24,24,27,0.12)] max-[900px]:grid-cols-1">
         <div className="bg-[#18181b] p-8 text-white max-[720px]:p-5">
           <Link href="/" className="inline-flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-[#6d5cf5] text-lg font-semibold text-white">BO</span>
+            <span className="grid size-11 place-items-center rounded-2xl bg-[#9d4e7a] text-lg font-semibold text-white">BO</span>
             <span>
               <span className="block text-sm font-semibold">Beauty OS</span>
               <span className="block text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">Start free</span>
@@ -42,7 +42,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
           <h2 className="text-xl font-semibold tracking-tight">Create your workspace</h2>
           <p className="mt-1 text-sm text-[#71717a]">
             Already have an account?{" "}
-            <Link href="/login" className="font-semibold text-[#6d5cf5]">Sign in</Link>
+            <Link href="/login" className="font-semibold text-[#9d4e7a]">Sign in</Link>
           </p>
 
           {error ? (

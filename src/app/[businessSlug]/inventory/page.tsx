@@ -13,7 +13,7 @@ type InventoryPageProps = {
 };
 
 const statusStyles: Record<ProductStatus, string> = {
-  OK: "bg-[#f1effe] text-[#6d5cf5]",
+  OK: "bg-[#faf1f6] text-[#9d4e7a]",
   LOW: "bg-amber-50 text-amber-700",
   OUT: "bg-rose-50 text-rose-700",
   EXPIRING: "bg-amber-50 text-amber-700",
@@ -42,7 +42,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">
               {data.tenant.name}
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Inventory</h1>
@@ -122,7 +122,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                           step="1"
                           placeholder="+/-"
                           aria-label={`Adjust ${product.name} stock`}
-                          className="h-9 w-16 rounded-xl border border-[#e7e7ea] bg-[#f7f7f8] px-2 text-sm outline-none focus:border-[#6d5cf5]"
+                          className="h-9 w-16 rounded-xl border border-[#e7e7ea] bg-[#f7f7f8] px-2 text-sm outline-none focus:border-[#9d4e7a]"
                           required
                         />
                         <button className="h-9 rounded-xl bg-[#18181b] px-3 text-xs font-semibold text-white">
@@ -145,7 +145,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                     <div key={movement.id} className="grid grid-cols-[1.4fr_1fr_80px_90px] items-center gap-3 border-b border-[#efeff2] px-4 py-3 text-sm last:border-b-0">
                       <span className="font-semibold">{movement.product}</span>
                       <span className="font-semibold text-[#71717a]">{movement.type}</span>
-                      <span className={`font-semibold ${movement.quantity.startsWith("-") ? "text-rose-700" : "text-[#6d5cf5]"}`}>
+                      <span className={`font-semibold ${movement.quantity.startsWith("-") ? "text-rose-700" : "text-[#9d4e7a]"}`}>
                         {movement.quantity}
                       </span>
                       <span className="text-right text-xs font-bold text-[#71717a]">{movement.when}</span>
@@ -167,39 +167,39 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
             <div className="mt-5 grid gap-4">
               <label className="grid gap-2 text-sm font-bold">
                 Name
-                <input name="name" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" required />
+                <input name="name" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" required />
               </label>
 
               <label className="grid gap-2 text-sm font-bold">
                 Category
-                <input name="category" placeholder="e.g. Hair, Nails" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                <input name="category" placeholder="e.g. Hair, Nails" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-2 text-sm font-bold">
                   Cost price
-                  <input name="costPrice" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" required />
+                  <input name="costPrice" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold">
                   Selling price
-                  <input name="sellingPrice" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="sellingPrice" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-2 text-sm font-bold">
                   Opening qty
-                  <input name="quantityOnHand" type="number" min="0" step="1" defaultValue={0} className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="quantityOnHand" type="number" min="0" step="1" defaultValue={0} className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
                 <label className="grid gap-2 text-sm font-bold">
                   Reorder at
-                  <input name="reorderThreshold" type="number" min="0" step="1" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="reorderThreshold" type="number" min="0" step="1" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
               </div>
 
               <label className="grid gap-2 text-sm font-bold">
                 Supplier
-                <select name="supplierId" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]">
+                <select name="supplierId" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]">
                   <option value="">— None —</option>
                   {data.suppliers.map((supplier) => (
                     <option key={supplier.id} value={supplier.id}>{supplier.label}</option>
@@ -209,17 +209,17 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
 
               <label className="grid gap-2 text-sm font-bold">
                 Or new supplier
-                <input name="newSupplierName" placeholder="e.g. Accra Beauty Supply" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                <input name="newSupplierName" placeholder="e.g. Accra Beauty Supply" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-2 text-sm font-bold">
                   Expiry
-                  <input name="expiryDate" type="date" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="expiryDate" type="date" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
                 <label className="grid gap-2 text-sm font-bold">
                   Barcode
-                  <input name="barcode" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="barcode" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
               </div>
 

@@ -22,12 +22,12 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
     <main className="grid min-h-screen place-items-center bg-[#fafafa] px-4 py-10 text-[#18181b]">
       <div className="w-full max-w-md">
         <div className="mb-5 text-center">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">Beauty OS</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">Beauty OS</div>
         </div>
         <div className="grid gap-4 rounded-[28px] border border-[#e7e7ea] bg-white p-6 text-center shadow-[0_18px_45px_rgba(24,24,27,0.08)]">
           <div
             className={`mx-auto grid size-12 place-items-center rounded-full text-lg font-semibold ${
-              tone === "ok" ? "bg-[#f1effe] text-[#6d5cf5]" : "bg-rose-50 text-rose-700"
+              tone === "ok" ? "bg-[#faf1f6] text-[#9d4e7a]" : "bg-rose-50 text-rose-700"
             }`}
           >
             {tone === "ok" ? "✓" : "!"}

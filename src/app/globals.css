@@ -3,7 +3,7 @@
 :root {
   --background: #fafafa;
   --foreground: #18181b;
-  --accent: #6d5cf5;
+  --accent: #9d4e7a;
 }
 
 @theme inline {
@@ -40,5 +40,5 @@ select {
 }
 
 ::selection {
-  background: rgba(109, 92, 245, 0.18);
+  background: rgba(157, 78, 122, 0.18);
 }

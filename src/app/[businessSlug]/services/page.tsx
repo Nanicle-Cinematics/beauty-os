@@ -26,7 +26,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">
               {data.tenant.name}
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Services</h1>
@@ -130,39 +130,39 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
             <div className="mt-5 grid gap-4">
               <label className="grid gap-2 text-sm font-bold">
                 Name
-                <input name="name" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" required />
+                <input name="name" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" required />
               </label>
 
               <label className="grid gap-2 text-sm font-bold">
                 Description
-                <textarea name="description" rows={2} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-3 outline-none focus:border-[#6d5cf5]" />
+                <textarea name="description" rows={2} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-3 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-2 text-sm font-bold">
                   Price
-                  <input name="price" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" required />
+                  <input name="price" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold">
                   Deposit
-                  <input name="depositAmount" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="depositAmount" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-2 text-sm font-bold">
                   Duration (min)
-                  <input name="durationMinutes" type="number" min="5" step="5" defaultValue={60} className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" required />
+                  <input name="durationMinutes" type="number" min="5" step="5" defaultValue={60} className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold">
                   Colour
-                  <input name="colorHex" type="color" defaultValue="#6d5cf5" className="h-12 w-full rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-2 outline-none" />
+                  <input name="colorHex" type="color" defaultValue="#9d4e7a" className="h-12 w-full rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-2 outline-none" />
                 </label>
               </div>
 
               <label className="grid gap-2 text-sm font-bold">
                 Category
-                <select name="categoryId" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]">
+                <select name="categoryId" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]">
                   <option value="">— None —</option>
                   {data.categories.map((category) => (
                     <option key={category.id} value={category.id}>{category.label}</option>
@@ -172,12 +172,12 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
 
               <label className="grid gap-2 text-sm font-bold">
                 Or new category
-                <input name="newCategoryName" placeholder="e.g. Bridal" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                <input name="newCategoryName" placeholder="e.g. Bridal" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <label className="grid gap-2 text-sm font-bold">
                 Assign staff
-                <select name="staffIds" multiple size={Math.min(4, Math.max(2, data.staff.length))} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-2 outline-none focus:border-[#6d5cf5]">
+                <select name="staffIds" multiple size={Math.min(4, Math.max(2, data.staff.length))} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-2 outline-none focus:border-[#9d4e7a]">
                   {data.staff.map((member) => (
                     <option key={member.id} value={member.id}>{member.label}</option>
                   ))}

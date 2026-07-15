@@ -10,7 +10,7 @@ type SettingsPageProps = {
   searchParams: Promise<{ updated?: string; error?: string }>;
 };
 
-const inputClass = "h-12 w-full rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]";
+const inputClass = "h-12 w-full rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]";
 const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#71717a]";
 const cardClass = "grid gap-4 rounded-[24px] border border-[#e7e7ea] bg-white p-5 shadow-[0_12px_35px_rgba(24,24,27,0.06)]";
 
@@ -26,7 +26,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       <div className="mx-auto grid max-w-2xl gap-5">
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)]">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">Account</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">Account</div>
             <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -36,7 +36,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </header>
 
         {updated ? (
-          <div className="rounded-2xl border border-[#ddd8fc] bg-[#f1effe] px-4 py-3 text-sm font-bold text-[#6d5cf5]">
+          <div className="rounded-2xl border border-[#efd6e4] bg-[#faf1f6] px-4 py-3 text-sm font-bold text-[#9d4e7a]">
             {updated === "password" ? "Password changed." : "Profile updated."}
           </div>
         ) : null}
@@ -51,7 +51,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <p className="mt-1 text-sm text-[#71717a]">
               Signed in as <span className="font-semibold text-[#18181b]">{email}</span>
               {account?.verified ? (
-                <span className="ml-2 rounded-full bg-[#f1effe] px-2 py-0.5 text-[11px] font-semibold text-[#6d5cf5]">Verified</span>
+                <span className="ml-2 rounded-full bg-[#faf1f6] px-2 py-0.5 text-[11px] font-semibold text-[#9d4e7a]">Verified</span>
               ) : null}
             </p>
           </div>

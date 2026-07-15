@@ -42,7 +42,7 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
       <div className="grid min-h-screen grid-cols-[248px_minmax(0,1fr)] max-[920px]:grid-cols-1">
         <aside className="sticky top-0 flex h-screen flex-col gap-5 overflow-y-auto border-r border-[#e7e7ea] bg-[#18181b] px-4 py-5 text-white max-[920px]:static max-[920px]:h-auto">
           <div className="flex items-center gap-3 border-b border-white/10 pb-5">
-            <div className="grid size-11 place-items-center rounded-2xl bg-[#6d5cf5] text-lg font-semibold text-white">
+            <div className="grid size-11 place-items-center rounded-2xl bg-[#9d4e7a] text-lg font-semibold text-white">
               BO
             </div>
             <div>
@@ -74,7 +74,7 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
 
           <div className="mt-auto grid gap-3">
             <div className="rounded-2xl border border-white/10 bg-white/7 p-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#6d5cf5]">
+              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#9d4e7a]">
                 Plan
               </div>
               <div className="mt-2 text-sm font-bold">{tenant.planName}</div>
@@ -107,7 +107,7 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
         <section className="min-w-0 px-6 py-5 max-[720px]:px-3">
           <header className="sticky top-3 z-20 mb-5 flex min-h-16 items-center gap-3 rounded-3xl border border-[#e7e7ea] bg-white/88 px-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] backdrop-blur max-[720px]:static max-[720px]:flex-wrap">
             <div className="min-w-0 border-r border-[#e7e7ea] pr-5 max-[720px]:border-r-0">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6d5cf5]">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9d4e7a]">
                 {tenant.name}
               </div>
               <h1 className="text-xl font-semibold tracking-tight">Operations dashboard</h1>
@@ -119,7 +119,7 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
                 placeholder="Search clients, bookings, products..."
               />
             </label>
-            <Link href={`/${businessSlug}/appointments`} className="grid h-11 place-items-center rounded-2xl border border-[#e7e7ea] bg-white px-3 text-[#6d5cf5]">
+            <Link href={`/${businessSlug}/appointments`} className="grid h-11 place-items-center rounded-2xl border border-[#e7e7ea] bg-white px-3 text-[#9d4e7a]">
               ◐
             </Link>
             <Link href={`/${businessSlug}/appointments`} className="rounded-2xl bg-[#18181b] px-4 py-3 text-sm font-semibold text-white">
@@ -130,10 +130,10 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
           <div className="grid gap-5">
             <section className="grid grid-cols-[minmax(0,1.25fr)_360px] gap-5 max-[1180px]:grid-cols-1">
               <div className="overflow-hidden rounded-[28px] bg-[#18181b] text-white shadow-[0_24px_60px_rgba(24,24,27,0.18)]">
-                <div className="grid min-h-[235px] grid-cols-[minmax(0,1fr)_230px] gap-6 bg-[radial-gradient(circle_at_85%_12%,rgba(109,92,245,0.26),transparent_15rem),linear-gradient(125deg,#18181b,#3f3f46)] p-7 max-[720px]:grid-cols-1">
+                <div className="grid min-h-[235px] grid-cols-[minmax(0,1fr)_230px] gap-6 bg-[radial-gradient(circle_at_85%_12%,rgba(157,78,122,0.26),transparent_15rem),linear-gradient(125deg,#18181b,#3f3f46)] p-7 max-[720px]:grid-cols-1">
                   <div className="flex flex-col justify-between gap-8">
                     <div>
-                      <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6d5cf5]">
+                      <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9d4e7a]">
                         {data.todayLabel}
                       </div>
                       <h2 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight max-[720px]:text-3xl">
@@ -162,7 +162,7 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
                           </div>
                           <div className="h-2 rounded-full bg-white/15">
                             <div
-                              className="h-full rounded-full bg-[#6d5cf5]"
+                              className="h-full rounded-full bg-[#9d4e7a]"
                               style={{ width: `${bar.value}%` }}
                             />
                           </div>
@@ -186,7 +186,7 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
                 <div className="mt-5 grid gap-3">
                   {tasks.map((task) => (
                     <label key={task} className="flex items-start gap-3 rounded-2xl border border-[#efeff2] p-3 text-sm font-semibold">
-                      <input type="checkbox" className="mt-1 accent-[#6d5cf5]" />
+                      <input type="checkbox" className="mt-1 accent-[#9d4e7a]" />
                       <span>{task}</span>
                     </label>
                   ))}
@@ -226,14 +226,14 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
                     </div>
                     {appointments.map((appt) => (
                       <div key={appt.id} className="grid grid-cols-[88px_1.2fr_1fr_110px_120px] items-center gap-3 border-t border-[#efeff2] px-4 py-4 text-sm max-[760px]:grid-cols-1">
-                        <div className="font-semibold text-[#6d5cf5]">{appt.time}</div>
+                        <div className="font-semibold text-[#9d4e7a]">{appt.time}</div>
                         <div>
                           <div className="font-semibold">{appt.client}</div>
                           <div className="mt-1 text-xs font-semibold text-[#71717a]">{appt.service}</div>
                         </div>
                         <div className="font-bold">{appt.staff}</div>
                         <div>
-                          <span className="rounded-full bg-[#f1effe] px-3 py-1 text-xs font-semibold text-[#6d5cf5]">
+                          <span className="rounded-full bg-[#faf1f6] px-3 py-1 text-xs font-semibold text-[#9d4e7a]">
                             {appt.status}
                           </span>
                         </div>

@@ -152,7 +152,7 @@ export async function sendInviteEmail({
   const html = `
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fafafa;padding:32px">
     <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e7e7ea;border-radius:24px;padding:28px">
-      <div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#6d5cf5">Beauty OS</div>
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#9d4e7a">Beauty OS</div>
       <h1 style="margin:8px 0 16px;font-size:22px;color:#18181b">Set up your account</h1>
       <p style="margin:0 0 16px;font-size:14px;color:#71717a">
         Hi ${safeName}, you've been invited to run <strong style="color:#18181b">${safeBusiness}</strong> on Beauty OS.
@@ -192,7 +192,7 @@ export async function sendVerificationEmail({
   const html = `
   <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fafafa;padding:32px">
     <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e7e7ea;border-radius:24px;padding:28px">
-      <div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#6d5cf5">Beauty OS</div>
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#9d4e7a">Beauty OS</div>
       <h1 style="margin:8px 0 16px;font-size:22px;color:#18181b">Verify your email</h1>
       <p style="margin:0 0 16px;font-size:14px;color:#71717a">
         Hi ${safeName}, confirm your email address to secure your account.

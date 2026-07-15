@@ -10,7 +10,7 @@ type InvitePageProps = {
   searchParams: Promise<{ error?: string }>;
 };
 
-const inputClass = "h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]";
+const inputClass = "h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]";
 const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#71717a]";
 
 export default async function InvitePage({ params, searchParams }: InvitePageProps) {
@@ -22,7 +22,7 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
     <main className="grid min-h-screen place-items-center bg-[#fafafa] px-4 py-10 text-[#18181b]">
       <div className="w-full max-w-md">
         <div className="mb-5 text-center">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">Beauty OS</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">Beauty OS</div>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight">Set up your account</h1>
         </div>
 

@@ -13,7 +13,7 @@ type PaymentsPageProps = {
 };
 
 const statusStyles: Record<string, string> = {
-  SUCCESS: "bg-[#f1effe] text-[#6d5cf5]",
+  SUCCESS: "bg-[#faf1f6] text-[#9d4e7a]",
   PENDING: "bg-amber-50 text-amber-700",
   FAILED: "bg-rose-50 text-rose-700",
   REFUNDED: "bg-[#f2f2f4] text-[#71717a]",
@@ -33,7 +33,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">
               {data.tenant.name}
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Payments</h1>
@@ -141,7 +141,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
             <div className="mt-5 grid gap-4">
               <label className="grid gap-2 text-sm font-bold">
                 Client
-                <select name="customerId" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]">
+                <select name="customerId" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]">
                   <option value="">— Walk-in —</option>
                   {data.customers.map((customer) => (
                     <option key={customer.id} value={customer.id}>{customer.label}</option>
@@ -151,7 +151,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
 
               <label className="grid gap-2 text-sm font-bold">
                 Appointment (optional)
-                <select name="appointmentId" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]">
+                <select name="appointmentId" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]">
                   <option value="">— None —</option>
                   {data.appointments.map((appointment) => (
                     <option key={appointment.id} value={appointment.id}>{appointment.label}</option>
@@ -161,13 +161,13 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
 
               <label className="grid gap-2 text-sm font-bold">
                 Amount
-                <input name="amount" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" required />
+                <input name="amount" type="number" min="0" step="0.01" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" required />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-2 text-sm font-bold">
                   Method
-                  <select name="method" defaultValue="CASH" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]">
+                  <select name="method" defaultValue="CASH" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]">
                     {data.methods.map((method) => (
                       <option key={method.value} value={method.value}>{method.label}</option>
                     ))}
@@ -175,7 +175,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                 </label>
                 <label className="grid gap-2 text-sm font-bold">
                   Type
-                  <select name="type" defaultValue="FULL_PAYMENT" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]">
+                  <select name="type" defaultValue="FULL_PAYMENT" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]">
                     {data.types.map((type) => (
                       <option key={type.value} value={type.value}>{type.label}</option>
                     ))}
@@ -185,7 +185,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
 
               <label className="grid gap-2 text-sm font-bold">
                 Reference
-                <input name="reference" placeholder="Provider / receipt reference" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                <input name="reference" placeholder="Provider / receipt reference" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <button className="rounded-2xl bg-[#18181b] px-4 py-3 text-sm font-semibold text-white">

@@ -31,7 +31,7 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">
               {data.tenant.name}
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Appointments</h1>
@@ -61,13 +61,13 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
               </div>
               {data.appointments.map((appointment) => (
                 <div key={appointment.id} className="grid grid-cols-[82px_1fr_1fr_130px_110px_220px] items-center gap-3 border-t border-[#efeff2] px-4 py-4 text-sm max-[940px]:grid-cols-1">
-                  <span className="font-semibold text-[#6d5cf5]">{appointment.time}</span>
+                  <span className="font-semibold text-[#9d4e7a]">{appointment.time}</span>
                   <div>
                     <div className="font-semibold">{appointment.client}</div>
                     <div className="mt-1 text-xs font-semibold text-[#71717a]">{appointment.staff}</div>
                   </div>
                   <span className="font-bold">{appointment.service}</span>
-                  <span className="w-fit rounded-full bg-[#f1effe] px-3 py-1 text-xs font-semibold text-[#6d5cf5]">
+                  <span className="w-fit rounded-full bg-[#faf1f6] px-3 py-1 text-xs font-semibold text-[#9d4e7a]">
                     {appointment.status}
                   </span>
                   <span className="font-semibold">{appointment.value}</span>

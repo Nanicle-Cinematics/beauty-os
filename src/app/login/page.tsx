@@ -32,7 +32,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <section className="grid w-full max-w-5xl grid-cols-[minmax(0,1fr)_420px] overflow-hidden rounded-[32px] border border-[#e7e7ea] bg-white shadow-[0_24px_60px_rgba(24,24,27,0.12)] max-[900px]:grid-cols-1">
         <div className="bg-[#18181b] p-8 text-white max-[720px]:p-5">
           <Link href="/" className="inline-flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-[#6d5cf5] text-lg font-semibold text-white">
+            <span className="grid size-11 place-items-center rounded-2xl bg-[#9d4e7a] text-lg font-semibold text-white">
               BO
             </span>
             <span>
@@ -44,7 +44,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </Link>
 
           <div className="mt-12 max-w-md">
-            <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#6d5cf5]">
+            <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9d4e7a]">
               Multi-tenant login
             </div>
             <h1 className="text-4xl font-semibold leading-tight tracking-tight max-[720px]:text-3xl">
@@ -57,7 +57,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
           <div className="mt-10 rounded-2xl border border-white/10 bg-white/8 p-4 text-sm text-white/72">
             New to Beauty OS?{" "}
-            <Link href="/signup" className="font-semibold text-[#6d5cf5]">Start a free trial</Link> and get your own workspace in a minute.
+            <Link href="/signup" className="font-semibold text-[#9d4e7a]">Start a free trial</Link> and get your own workspace in a minute.
           </div>
         </div>
 
@@ -66,7 +66,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <h2 className="text-2xl font-semibold tracking-tight">Welcome back</h2>
             <p className="mt-2 text-sm leading-6 text-[#71717a]">
               Sign in to your workspace, or{" "}
-              <Link href="/signup" className="font-semibold text-[#6d5cf5]">create a new one</Link>.
+              <Link href="/signup" className="font-semibold text-[#9d4e7a]">create a new one</Link>.
             </p>
           </div>
 
@@ -84,7 +84,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               name="email"
               type="email"
               placeholder="you@studio.com"
-              className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]"
+              className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]"
               required
             />
           </label>
@@ -95,7 +95,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               name="password"
               placeholder="Your password"
               autoComplete="current-password"
-              className="h-12 w-full rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]"
+              className="h-12 w-full rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]"
               required
             />
           </label>

@@ -21,11 +21,11 @@ type MarketingPageProps = {
 const campaignStatusStyles: Record<string, string> = {
   DRAFT: "bg-[#f2f2f4] text-[#71717a]",
   SCHEDULED: "bg-amber-50 text-amber-700",
-  SENT: "bg-[#f1effe] text-[#6d5cf5]",
+  SENT: "bg-[#faf1f6] text-[#9d4e7a]",
   CANCELLED: "bg-rose-50 text-rose-700",
 };
 
-const inputClass = "h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]";
+const inputClass = "h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]";
 const cardClass = "rounded-[24px] border border-[#e7e7ea] bg-white p-5 shadow-[0_12px_35px_rgba(24,24,27,0.06)]";
 
 export default async function MarketingPage({ params }: MarketingPageProps) {
@@ -42,7 +42,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">
               {data.tenant.name}
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Marketing</h1>
@@ -121,7 +121,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 Schedule (optional)
                 <input name="scheduledAt" type="datetime-local" className={inputClass} />
               </label>
-              <textarea name="content" rows={2} placeholder="Message content" className="rounded-2xl border border-[#e7e7ea] bg-white px-4 py-3 outline-none focus:border-[#6d5cf5]" />
+              <textarea name="content" rows={2} placeholder="Message content" className="rounded-2xl border border-[#e7e7ea] bg-white px-4 py-3 outline-none focus:border-[#9d4e7a]" />
               <button className="rounded-2xl bg-[#18181b] px-4 py-3 text-sm font-semibold text-white">Create campaign</button>
             </form>
           </div>
@@ -131,7 +131,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
             <p className="mt-1 text-sm text-[#71717a]">
               {data.loyalty.pointsIssued.toLocaleString("en-US")} points issued · {data.loyalty.members} members
             </p>
-            <div className="mt-3 inline-flex rounded-full bg-[#f1effe] px-3 py-1 text-xs font-semibold text-[#6d5cf5]">
+            <div className="mt-3 inline-flex rounded-full bg-[#faf1f6] px-3 py-1 text-xs font-semibold text-[#9d4e7a]">
               {data.loyalty.active ? "Active" : "Inactive"}
             </div>
 
@@ -146,7 +146,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 <input name="redemptionRate" type="number" min="0" step="0.1" defaultValue={data.loyalty.redemptionRate} className={inputClass} />
               </label>
               <label className="flex items-center gap-2 text-sm font-bold">
-                <input type="checkbox" name="active" defaultChecked={data.loyalty.active} className="size-4 accent-[#6d5cf5]" />
+                <input type="checkbox" name="active" defaultChecked={data.loyalty.active} className="size-4 accent-[#9d4e7a]" />
                 Program active
               </label>
               <button className="rounded-2xl bg-[#18181b] px-4 py-3 text-sm font-semibold text-white">Save program</button>
@@ -180,7 +180,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                     <form action={toggleCouponAction} className="flex items-center gap-2">
                       <input type="hidden" name="businessSlug" value={businessSlug} />
                       <input type="hidden" name="couponId" value={coupon.id} />
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${coupon.active ? "bg-[#f1effe] text-[#6d5cf5]" : "bg-[#f2f2f4] text-[#71717a]"}`}>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${coupon.active ? "bg-[#faf1f6] text-[#9d4e7a]" : "bg-[#f2f2f4] text-[#71717a]"}`}>
                         {coupon.active ? "Active" : "Off"}
                       </span>
                       <button className="rounded-lg border border-[#e7e7ea] px-2.5 py-1 text-xs font-semibold">

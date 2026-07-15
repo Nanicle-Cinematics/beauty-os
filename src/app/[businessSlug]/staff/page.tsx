@@ -13,7 +13,7 @@ type StaffPageProps = {
 };
 
 const statusStyles: Record<string, string> = {
-  ACTIVE: "bg-[#f1effe] text-[#6d5cf5]",
+  ACTIVE: "bg-[#faf1f6] text-[#9d4e7a]",
   INVITED: "bg-amber-50 text-amber-700",
   SUSPENDED: "bg-rose-50 text-rose-700",
   REMOVED: "bg-[#f2f2f4] text-[#71717a]",
@@ -52,7 +52,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">
               {data.tenant.name}
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Staff</h1>
@@ -147,12 +147,12 @@ export default async function StaffPage({ params }: StaffPageProps) {
             <div className="mt-5 grid gap-4">
               <label className="grid gap-2 text-sm font-bold">
                 Email
-                <input name="email" type="email" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" required />
+                <input name="email" type="email" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" required />
               </label>
 
               <label className="grid gap-2 text-sm font-bold">
                 Role
-                <select name="role" defaultValue="ARTIST" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" required>
+                <select name="role" defaultValue="ARTIST" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" required>
                   {data.roles.map((role) => (
                     <option key={role.value} value={role.value}>{role.label}</option>
                   ))}
@@ -162,7 +162,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-2 text-sm font-bold">
                   Commission
-                  <select name="commissionType" defaultValue="NONE" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]">
+                  <select name="commissionType" defaultValue="NONE" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]">
                     <option value="NONE">None</option>
                     <option value="PERCENTAGE">Percentage</option>
                     <option value="FIXED">Fixed</option>
@@ -170,18 +170,18 @@ export default async function StaffPage({ params }: StaffPageProps) {
                 </label>
                 <label className="grid gap-2 text-sm font-bold">
                   Value
-                  <input name="commissionValue" type="number" min="0" step="0.01" placeholder="e.g. 15" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="commissionValue" type="number" min="0" step="0.01" placeholder="e.g. 15" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
               </div>
 
               <label className="grid gap-2 text-sm font-bold">
                 Colour
-                <input name="colorHex" type="color" defaultValue="#6d5cf5" className="h-12 w-full rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-2 outline-none" />
+                <input name="colorHex" type="color" defaultValue="#9d4e7a" className="h-12 w-full rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-2 outline-none" />
               </label>
 
               <label className="grid gap-2 text-sm font-bold">
                 Bio
-                <textarea name="bio" rows={2} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-3 outline-none focus:border-[#6d5cf5]" />
+                <textarea name="bio" rows={2} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-3 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <button className="rounded-2xl bg-[#18181b] px-4 py-3 text-sm font-semibold text-white">

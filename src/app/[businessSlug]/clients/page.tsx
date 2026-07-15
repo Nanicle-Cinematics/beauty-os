@@ -26,7 +26,7 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">
               {data.tenant.name}
             </div>
             <h1 className="text-2xl font-semibold tracking-tight">Clients</h1>
@@ -113,49 +113,49 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-2 text-sm font-bold">
                   First name
-                  <input name="firstName" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" required />
+                  <input name="firstName" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold">
                   Last name
-                  <input name="lastName" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="lastName" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
               </div>
 
               <label className="grid gap-2 text-sm font-bold">
                 Phone
-                <input name="phone" type="tel" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                <input name="phone" type="tel" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <label className="grid gap-2 text-sm font-bold">
                 Email
-                <input name="email" type="email" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                <input name="email" type="email" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
                 <label className="grid gap-2 text-sm font-bold">
                   City
-                  <input name="city" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="city" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
                 <label className="grid gap-2 text-sm font-bold">
                   Birthdate
-                  <input name="birthdate" type="date" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                  <input name="birthdate" type="date" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 </label>
               </div>
 
               <label className="grid gap-2 text-sm font-bold">
                 Tags
-                <input name="tags" placeholder="VIP, bridal, referral" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]" />
+                <input name="tags" placeholder="VIP, bridal, referral" className="h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#9d4e7a]" />
                 <span className="text-xs font-semibold text-[#71717a]">Comma-separated.</span>
               </label>
 
               <label className="grid gap-2 text-sm font-bold">
                 Skin notes
-                <textarea name="skinNotes" rows={2} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-3 outline-none focus:border-[#6d5cf5]" />
+                <textarea name="skinNotes" rows={2} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-3 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <label className="grid gap-2 text-sm font-bold">
                 Allergies
-                <textarea name="allergies" rows={2} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-3 outline-none focus:border-[#6d5cf5]" />
+                <textarea name="allergies" rows={2} className="rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 py-3 outline-none focus:border-[#9d4e7a]" />
               </label>
 
               <button className="rounded-2xl bg-[#18181b] px-4 py-3 text-sm font-semibold text-white">
