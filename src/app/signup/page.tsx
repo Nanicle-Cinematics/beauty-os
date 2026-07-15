@@ -9,25 +9,25 @@ type SignupPageProps = {
   searchParams: Promise<{ error?: string }>;
 };
 
-const inputClass = "h-12 rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-4 outline-none focus:border-[#1d7b5d]";
-const labelClass = "grid gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-[#6b7c73]";
+const inputClass = "h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]";
+const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#71717a]";
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const { error } = await searchParams;
   const categories = await getSignupCategories();
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#f6f8f6] px-6 py-8 text-[#111b17] max-[720px]:px-3">
-      <section className="grid w-full max-w-5xl grid-cols-[420px_minmax(0,1fr)] overflow-hidden rounded-[32px] border border-[#dbe4de] bg-white shadow-[0_24px_60px_rgba(16,38,31,0.12)] max-[900px]:grid-cols-1">
-        <div className="bg-[#10261f] p-8 text-white max-[720px]:p-5">
+    <main className="grid min-h-screen place-items-center bg-[#fafafa] px-6 py-8 text-[#18181b] max-[720px]:px-3">
+      <section className="grid w-full max-w-5xl grid-cols-[420px_minmax(0,1fr)] overflow-hidden rounded-[32px] border border-[#e7e7ea] bg-white shadow-[0_24px_60px_rgba(24,24,27,0.12)] max-[900px]:grid-cols-1">
+        <div className="bg-[#18181b] p-8 text-white max-[720px]:p-5">
           <Link href="/" className="inline-flex items-center gap-3">
-            <span className="grid size-11 place-items-center rounded-2xl bg-[#f2c66d] text-lg font-black text-[#10261f]">BO</span>
+            <span className="grid size-11 place-items-center rounded-2xl bg-[#6d5cf5] text-lg font-semibold text-white">BO</span>
             <span>
-              <span className="block text-sm font-black">Beauty OS</span>
+              <span className="block text-sm font-semibold">Beauty OS</span>
               <span className="block text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">Start free</span>
             </span>
           </Link>
-          <h1 className="mt-8 text-3xl font-black leading-tight tracking-tight">Run your studio on one calm system.</h1>
+          <h1 className="mt-8 text-3xl font-semibold leading-tight tracking-tight">Run your studio on one calm system.</h1>
           <p className="mt-4 text-sm leading-6 text-white/72">
             Bookings, clients, staff, inventory, payments and marketing — set up in a minute, free while you trial.
           </p>
@@ -39,10 +39,10 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
         </div>
 
         <div className="p-8 max-[720px]:p-5">
-          <h2 className="text-xl font-black tracking-tight">Create your workspace</h2>
-          <p className="mt-1 text-sm text-[#6b7c73]">
+          <h2 className="text-xl font-semibold tracking-tight">Create your workspace</h2>
+          <p className="mt-1 text-sm text-[#71717a]">
             Already have an account?{" "}
-            <Link href="/login" className="font-black text-[#1d7b5d]">Sign in</Link>
+            <Link href="/login" className="font-semibold text-[#6d5cf5]">Sign in</Link>
           </p>
 
           {error ? (
@@ -79,10 +79,10 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               Password (min 8 characters)
               <PasswordInput name="ownerPassword" minLength={8} placeholder="Create a password" autoComplete="new-password" className={`${inputClass} w-full`} required />
             </label>
-            <button className="mt-2 rounded-2xl bg-[#10261f] px-6 py-3 text-sm font-black text-white">
+            <button className="mt-2 rounded-2xl bg-[#18181b] px-6 py-3 text-sm font-semibold text-white">
               Start free trial
             </button>
-            <p className="text-center text-xs font-semibold text-[#8a978f]">
+            <p className="text-center text-xs font-semibold text-[#a1a1aa]">
               By continuing you agree to run this workspace responsibly.
             </p>
           </form>

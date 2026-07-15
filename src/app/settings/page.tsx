@@ -10,9 +10,9 @@ type SettingsPageProps = {
   searchParams: Promise<{ updated?: string; error?: string }>;
 };
 
-const inputClass = "h-12 w-full rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-4 outline-none focus:border-[#1d7b5d]";
-const labelClass = "grid gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-[#6b7c73]";
-const cardClass = "grid gap-4 rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]";
+const inputClass = "h-12 w-full rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]";
+const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#71717a]";
+const cardClass = "grid gap-4 rounded-[24px] border border-[#e7e7ea] bg-white p-5 shadow-[0_12px_35px_rgba(24,24,27,0.06)]";
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const user = await requireUser("/settings");
@@ -22,21 +22,21 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const email = account?.email ?? user.email;
 
   return (
-    <main className="min-h-screen bg-[#f6f8f6] px-6 py-6 text-[#111b17] max-[720px]:px-3">
+    <main className="min-h-screen bg-[#fafafa] px-6 py-6 text-[#18181b] max-[720px]:px-3">
       <div className="mx-auto grid max-w-2xl gap-5">
-        <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#dbe4de] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(16,38,31,0.08)]">
+        <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)]">
           <div>
-            <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[#1d7b5d]">Account</div>
-            <h1 className="text-2xl font-black tracking-tight">Settings</h1>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">Account</div>
+            <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/app" className="rounded-2xl border border-[#dbe4de] px-4 py-2 text-sm font-black">Workspaces</Link>
-            <Link href="/logout" className="rounded-2xl border border-[#dbe4de] px-4 py-2 text-sm font-black">Sign out</Link>
+            <Link href="/app" className="rounded-2xl border border-[#e7e7ea] px-4 py-2 text-sm font-semibold">Workspaces</Link>
+            <Link href="/logout" className="rounded-2xl border border-[#e7e7ea] px-4 py-2 text-sm font-semibold">Sign out</Link>
           </div>
         </header>
 
         {updated ? (
-          <div className="rounded-2xl border border-[#bfe3d1] bg-[#eff7f2] px-4 py-3 text-sm font-bold text-[#1d7b5d]">
+          <div className="rounded-2xl border border-[#ddd8fc] bg-[#f1effe] px-4 py-3 text-sm font-bold text-[#6d5cf5]">
             {updated === "password" ? "Password changed." : "Profile updated."}
           </div>
         ) : null}
@@ -47,11 +47,11 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         {/* Profile */}
         <section className={cardClass}>
           <div>
-            <h2 className="text-lg font-black">Profile</h2>
-            <p className="mt-1 text-sm text-[#6b7c73]">
-              Signed in as <span className="font-black text-[#111b17]">{email}</span>
+            <h2 className="text-lg font-semibold">Profile</h2>
+            <p className="mt-1 text-sm text-[#71717a]">
+              Signed in as <span className="font-semibold text-[#18181b]">{email}</span>
               {account?.verified ? (
-                <span className="ml-2 rounded-full bg-[#eff7f2] px-2 py-0.5 text-[11px] font-black text-[#1d7b5d]">Verified</span>
+                <span className="ml-2 rounded-full bg-[#f1effe] px-2 py-0.5 text-[11px] font-semibold text-[#6d5cf5]">Verified</span>
               ) : null}
             </p>
           </div>
@@ -64,15 +64,15 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               Phone (optional)
               <input name="phone" defaultValue={phone} placeholder="+233 …" className={inputClass} />
             </label>
-            <button className="mt-1 w-fit rounded-2xl bg-[#10261f] px-6 py-3 text-sm font-black text-white">Save profile</button>
+            <button className="mt-1 w-fit rounded-2xl bg-[#18181b] px-6 py-3 text-sm font-semibold text-white">Save profile</button>
           </form>
         </section>
 
         {/* Password */}
         <section className={cardClass}>
           <div>
-            <h2 className="text-lg font-black">Password</h2>
-            <p className="mt-1 text-sm text-[#6b7c73]">Use a strong password you don&rsquo;t reuse elsewhere.</p>
+            <h2 className="text-lg font-semibold">Password</h2>
+            <p className="mt-1 text-sm text-[#71717a]">Use a strong password you don&rsquo;t reuse elsewhere.</p>
           </div>
           <form action={changePasswordAction} className="grid gap-3">
             <label className={labelClass}>
@@ -89,7 +89,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                 <PasswordInput name="confirmPassword" minLength={8} autoComplete="new-password" className={inputClass} required />
               </label>
             </div>
-            <button className="mt-1 w-fit rounded-2xl bg-[#10261f] px-6 py-3 text-sm font-black text-white">Change password</button>
+            <button className="mt-1 w-fit rounded-2xl bg-[#18181b] px-6 py-3 text-sm font-semibold text-white">Change password</button>
           </form>
         </section>
       </div>

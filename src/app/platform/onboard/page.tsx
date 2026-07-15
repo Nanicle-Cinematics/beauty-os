@@ -9,9 +9,9 @@ type OnboardPageProps = {
   searchParams: Promise<{ error?: string }>;
 };
 
-const inputClass = "h-12 rounded-2xl border border-[#dbe4de] bg-[#f8faf8] px-4 outline-none focus:border-[#1d7b5d]";
-const labelClass = "grid gap-1.5 text-xs font-black uppercase tracking-[0.12em] text-[#6b7c73]";
-const cardClass = "grid gap-4 rounded-[24px] border border-[#dbe4de] bg-white p-5 shadow-[0_12px_35px_rgba(16,38,31,0.06)]";
+const inputClass = "h-12 rounded-2xl border border-[#e7e7ea] bg-[#f7f7f8] px-4 outline-none focus:border-[#6d5cf5]";
+const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#71717a]";
+const cardClass = "grid gap-4 rounded-[24px] border border-[#e7e7ea] bg-white p-5 shadow-[0_12px_35px_rgba(24,24,27,0.06)]";
 
 export default async function OnboardPage({ searchParams }: OnboardPageProps) {
   await requirePlatformAdmin();
@@ -19,15 +19,15 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
   const { categories, plans, currencies, timezones } = await getOnboardingOptions();
 
   return (
-    <main className="min-h-screen bg-[#f6f8f6] px-6 py-6 text-[#111b17] max-[720px]:px-3">
+    <main className="min-h-screen bg-[#fafafa] px-6 py-6 text-[#18181b] max-[720px]:px-3">
       <div className="mx-auto grid max-w-3xl gap-5">
-        <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#dbe4de] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(16,38,31,0.08)] max-[720px]:flex-col max-[720px]:items-start">
+        <header className="flex items-center justify-between gap-4 rounded-3xl border border-[#e7e7ea] bg-white px-5 py-4 shadow-[0_18px_45px_rgba(24,24,27,0.08)] max-[720px]:flex-col max-[720px]:items-start">
           <div>
-            <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[#1d7b5d]">Beauty OS Platform</div>
-            <h1 className="text-2xl font-black tracking-tight">Onboard a business</h1>
-            <p className="mt-1 text-sm font-semibold text-[#6b7c73]">Create a new tenant and its owner account.</p>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">Beauty OS Platform</div>
+            <h1 className="text-2xl font-semibold tracking-tight">Onboard a business</h1>
+            <p className="mt-1 text-sm font-semibold text-[#71717a]">Create a new tenant and its owner account.</p>
           </div>
-          <Link href="/platform" className="rounded-2xl border border-[#dbe4de] px-4 py-2 text-sm font-black">
+          <Link href="/platform" className="rounded-2xl border border-[#e7e7ea] px-4 py-2 text-sm font-semibold">
             Back to portal
           </Link>
         </header>
@@ -41,8 +41,8 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
         <form action={createBusinessAction} className="grid gap-5">
           <section className={cardClass}>
             <div>
-              <h2 className="text-lg font-black">Business details</h2>
-              <p className="mt-1 text-sm text-[#6b7c73]">Starts on a free trial — assign a plan below if you like.</p>
+              <h2 className="text-lg font-semibold">Business details</h2>
+              <p className="mt-1 text-sm text-[#71717a]">Starts on a free trial — assign a plan below if you like.</p>
             </div>
 
             <label className={labelClass}>
@@ -109,8 +109,8 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
 
           <section className={cardClass}>
             <div>
-              <h2 className="text-lg font-black">Owner account</h2>
-              <p className="mt-1 text-sm text-[#6b7c73]">
+              <h2 className="text-lg font-semibold">Owner account</h2>
+              <p className="mt-1 text-sm text-[#71717a]">
                 We generate a secure invite link so the owner sets their own password — no temporary password to share.
               </p>
             </div>
@@ -128,10 +128,10 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
           </section>
 
           <div className="flex items-center justify-end gap-3">
-            <Link href="/platform" className="rounded-2xl border border-[#dbe4de] px-5 py-3 text-sm font-black">
+            <Link href="/platform" className="rounded-2xl border border-[#e7e7ea] px-5 py-3 text-sm font-semibold">
               Cancel
             </Link>
-            <button className="rounded-2xl bg-[#10261f] px-6 py-3 text-sm font-black text-white">Create business</button>
+            <button className="rounded-2xl bg-[#18181b] px-6 py-3 text-sm font-semibold text-white">Create business</button>
           </div>
         </form>
       </div>

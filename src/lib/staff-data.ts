@@ -154,7 +154,7 @@ export async function getStaffModuleData(businessSlug: string): Promise<StaffMod
       services: member._count.assignedServices,
       bookings: realised.length,
       revenue: money(revenue, currency),
-      colorHex: member.colorHex ?? "#1d7b5d",
+      colorHex: member.colorHex ?? "#6d5cf5",
       isSoleOwner: member.role === "OWNER" && member.status === "ACTIVE" && activeOwnerCount === 1,
     };
   });

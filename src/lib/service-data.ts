@@ -156,7 +156,7 @@ export async function getServiceModuleData(businessSlug: string): Promise<Servic
         (link) => link.staffMember.user?.name ?? link.staffMember.invitedEmail ?? "Staff",
       ),
       bookings: service._count.appointments,
-      colorHex: service.colorHex ?? "#1d7b5d",
+      colorHex: service.colorHex ?? "#6d5cf5",
       isActive: service.isActive,
     })),
     categories: categories.map((category) => ({ id: category.id, label: category.name })),

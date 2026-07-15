@@ -20,7 +20,7 @@ export function DeleteBusinessButton({ businessId, slug, action }: DeleteBusines
             e.preventDefault();
           }
         }}
-        className="rounded-xl border border-[#e6c6cd] bg-white px-3 py-2 text-xs font-black text-rose-700"
+        className="rounded-xl border border-[#e6c6cd] bg-white px-3 py-2 text-xs font-semibold text-rose-700"
       >
         Delete
       </button>

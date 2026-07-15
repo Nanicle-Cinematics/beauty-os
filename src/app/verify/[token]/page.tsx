@@ -19,22 +19,22 @@ export default async function VerifyPage({ params }: VerifyPageProps) {
   const { title, body, tone } = copy[result];
 
   return (
-    <main className="grid min-h-screen place-items-center bg-[#f6f8f6] px-4 py-10 text-[#111b17]">
+    <main className="grid min-h-screen place-items-center bg-[#fafafa] px-4 py-10 text-[#18181b]">
       <div className="w-full max-w-md">
         <div className="mb-5 text-center">
-          <div className="text-[11px] font-black uppercase tracking-[0.16em] text-[#1d7b5d]">Beauty OS</div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6d5cf5]">Beauty OS</div>
         </div>
-        <div className="grid gap-4 rounded-[28px] border border-[#dbe4de] bg-white p-6 text-center shadow-[0_18px_45px_rgba(16,38,31,0.08)]">
+        <div className="grid gap-4 rounded-[28px] border border-[#e7e7ea] bg-white p-6 text-center shadow-[0_18px_45px_rgba(24,24,27,0.08)]">
           <div
-            className={`mx-auto grid size-12 place-items-center rounded-full text-lg font-black ${
-              tone === "ok" ? "bg-[#eff7f2] text-[#1d7b5d]" : "bg-rose-50 text-rose-700"
+            className={`mx-auto grid size-12 place-items-center rounded-full text-lg font-semibold ${
+              tone === "ok" ? "bg-[#f1effe] text-[#6d5cf5]" : "bg-rose-50 text-rose-700"
             }`}
           >
             {tone === "ok" ? "✓" : "!"}
           </div>
-          <h1 className="text-2xl font-black tracking-tight">{title}</h1>
-          <p className="text-sm font-semibold text-[#6b7c73]">{body}</p>
-          <Link href="/app" className="mt-1 rounded-2xl bg-[#10261f] px-4 py-3 text-sm font-black text-white">
+          <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+          <p className="text-sm font-semibold text-[#71717a]">{body}</p>
+          <Link href="/app" className="mt-1 rounded-2xl bg-[#18181b] px-4 py-3 text-sm font-semibold text-white">
             Go to your workspaces
           </Link>
         </div>
