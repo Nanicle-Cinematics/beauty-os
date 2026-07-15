@@ -35,7 +35,7 @@ export default async function LandingPage() {
           <div className="inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9d4e7a]">
             The operating system for beauty businesses
           </div>
-          <h1 className="mt-5 max-w-3xl text-6xl font-semibold leading-[1.02] tracking-tight max-[900px]:text-5xl max-[720px]:text-4xl">
+          <h1 className="mt-5 max-w-3xl text-6xl font-bold leading-[1.02] tracking-tight max-[900px]:text-5xl max-[720px]:text-4xl">
             Everything your studio runs on, in one calm place.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-white/75">
@@ -55,7 +55,7 @@ export default async function LandingPage() {
 
       {/* Features */}
       <section className="mx-auto max-w-6xl px-6 pb-16 max-[720px]:px-4">
-        <h2 className="text-3xl font-semibold tracking-tight">One system, every part of the business</h2>
+        <h2 className="text-3xl font-bold tracking-tight">One system, every part of the business</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#71717a]">
           Stop stitching together a booking app, a spreadsheet and a notebook. Beauty OS does it all, per workspace.
         </p>
@@ -72,7 +72,7 @@ export default async function LandingPage() {
 
       {/* Pricing */}
       <section className="mx-auto max-w-6xl px-6 pb-16 max-[720px]:px-4">
-        <h2 className="text-3xl font-semibold tracking-tight">Simple pricing</h2>
+        <h2 className="text-3xl font-bold tracking-tight">Simple pricing</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-[#71717a]">
           Start free, then pick the plan that fits. Prices in Ghana Cedis, billed monthly or yearly.
         </p>
@@ -95,7 +95,7 @@ export default async function LandingPage() {
                 ) : null}
               </div>
               <div className="mt-4 flex items-end gap-2">
-                <span className="text-4xl font-semibold tracking-tight">{plan.priceMonthly}</span>
+                <span className="text-4xl font-bold tracking-tight">{plan.priceMonthly}</span>
                 <span className={`pb-1 text-sm font-bold ${plan.highlighted ? "text-white/60" : "text-[#71717a]"}`}>/mo</span>
               </div>
               <div className={`mt-1 text-xs font-bold ${plan.highlighted ? "text-white/55" : "text-[#a1a1aa]"}`}>

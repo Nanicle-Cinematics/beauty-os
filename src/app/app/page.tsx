@@ -38,7 +38,7 @@ export default async function WorkspacesPage() {
               <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9d4e7a]">
                 Your workspaces
               </div>
-              <h1 className="max-w-3xl text-5xl font-semibold leading-tight tracking-tight max-[720px]:text-3xl">
+              <h1 className="max-w-3xl text-5xl font-bold leading-tight tracking-tight max-[720px]:text-3xl">
                 Welcome back. Pick a workspace to get to work.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-white/72">

@@ -136,7 +136,7 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
                       <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9d4e7a]">
                         {data.todayLabel}
                       </div>
-                      <h2 className="max-w-2xl text-4xl font-semibold leading-tight tracking-tight max-[720px]:text-3xl">
+                      <h2 className="max-w-2xl text-4xl font-bold leading-tight tracking-tight max-[720px]:text-3xl">
                         Keep the studio full, calm, and profitable.
                       </h2>
                       <p className="mt-4 max-w-xl text-sm leading-6 text-white/72">
@@ -200,7 +200,7 @@ export function TenantDashboard({ data, businessSlug, account, currentSection = 
                   <div className={`mb-5 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${toneClasses[stat.tone]}`}>
                     {stat.label}
                   </div>
-                  <div className="text-3xl font-semibold tracking-tight">{stat.value}</div>
+                  <div className="text-3xl font-bold tracking-tight">{stat.value}</div>
                   <div className="mt-2 text-sm font-semibold text-[#71717a]">{stat.detail}</div>
                 </article>
               ))}

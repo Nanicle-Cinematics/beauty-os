@@ -76,7 +76,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#71717a]">
                 {stat.label}
               </div>
-              <div className="mt-4 text-3xl font-semibold tracking-tight">{stat.value}</div>
+              <div className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</div>
               <div className="mt-2 text-sm font-semibold text-[#71717a]">{stat.detail}</div>
             </article>
           ))}

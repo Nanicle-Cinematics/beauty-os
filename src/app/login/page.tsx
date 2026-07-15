@@ -47,7 +47,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <div className="mb-4 inline-flex rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#9d4e7a]">
               Multi-tenant login
             </div>
-            <h1 className="text-4xl font-semibold leading-tight tracking-tight max-[720px]:text-3xl">
+            <h1 className="text-4xl font-bold leading-tight tracking-tight max-[720px]:text-3xl">
               Sign in once, then work inside the right business.
             </h1>
             <p className="mt-4 text-sm leading-6 text-white/72">

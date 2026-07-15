@@ -20,6 +20,7 @@
 
 html {
   background: var(--background);
+  scroll-behavior: smooth;
 }
 
 body {
@@ -41,4 +42,67 @@ select {
 
 ::selection {
   background: rgba(157, 78, 122, 0.18);
+}
+
+::placeholder {
+  color: #a1a1aa;
+  opacity: 1;
+}
+
+/* Smooth micro-interactions on everything that already carries hover/focus state */
+a,
+button,
+input,
+select,
+textarea,
+summary,
+[role="button"] {
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease,
+    filter 0.16s ease,
+    transform 0.1s ease;
+}
+
+button:not(:disabled),
+[role="button"] {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Universal, color-agnostic hover feedback for real buttons */
+button:not(:disabled):hover {
+  filter: brightness(0.94);
+}
+
+/* Subtle tactile press */
+button:not(:disabled):active,
+a:active {
+  transform: translateY(0.5px);
+}
+
+/* Keyboard focus ring in the accent — follows each element's own radius (box-shadow).
+   Only for keyboard users, so mouse clicks stay clean. */
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(157, 78, 122, 0.35);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: 0 0 0 3px rgba(157, 78, 122, 0.16);
+}
+
+/* Refined thin scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d8 transparent;
 }

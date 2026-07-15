@@ -27,7 +27,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               <span className="block text-[11px] font-bold uppercase tracking-[0.18em] text-white/50">Start free</span>
             </span>
           </Link>
-          <h1 className="mt-8 text-3xl font-semibold leading-tight tracking-tight">Run your studio on one calm system.</h1>
+          <h1 className="mt-8 text-3xl font-bold leading-tight tracking-tight">Run your studio on one calm system.</h1>
           <p className="mt-4 text-sm leading-6 text-white/72">
             Bookings, clients, staff, inventory, payments and marketing — set up in a minute, free while you trial.
           </p>

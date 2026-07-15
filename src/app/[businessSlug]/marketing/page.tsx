@@ -64,7 +64,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
           {data.stats.map((stat) => (
             <article key={stat.label} className="rounded-3xl border border-[#e7e7ea] bg-white p-5 shadow-[0_12px_35px_rgba(24,24,27,0.05)]">
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#71717a]">{stat.label}</div>
-              <div className="mt-4 text-3xl font-semibold tracking-tight">{stat.value}</div>
+              <div className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</div>
               <div className="mt-2 text-sm font-semibold text-[#71717a]">{stat.detail}</div>
             </article>
           ))}
