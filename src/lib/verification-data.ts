@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createHash, randomBytes } from "crypto";
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -16,15 +16,15 @@ export async function issueVerificationToken(userId: string): Promise<string | n
     return null;
   }
   const token = randomBytes(32).toString("hex");
-  await prisma.$transaction([
-    prisma.emailVerificationToken.updateMany({
+  await tenantTransaction(async (tx) => {
+    await tx.emailVerificationToken.updateMany({
       where: { userId, usedAt: null },
       data: { usedAt: new Date() },
-    }),
-    prisma.emailVerificationToken.create({
+    });
+    await tx.emailVerificationToken.create({
       data: { userId, tokenHash: hashToken(token), expiresAt: new Date(Date.now() + VERIFY_TTL_MS) },
-    }),
-  ]);
+    });
+  });
   return token;
 }
 
@@ -43,12 +43,12 @@ export async function verifyEmail(token: string): Promise<VerifyResult> {
   }
 
   const alreadyVerified = record.user.emailVerifiedAt != null;
-  await prisma.$transaction([
-    prisma.emailVerificationToken.update({ where: { id: record.id }, data: { usedAt: new Date() } }),
-    ...(alreadyVerified
-      ? []
-      : [prisma.user.update({ where: { id: record.user.id }, data: { emailVerifiedAt: new Date() } })]),
-  ]);
+  await tenantTransaction(async (tx) => {
+    await tx.emailVerificationToken.update({ where: { id: record.id }, data: { usedAt: new Date() } });
+    if (!alreadyVerified) {
+      await tx.user.update({ where: { id: record.user.id }, data: { emailVerifiedAt: new Date() } });
+    }
+  });
 
   return alreadyVerified ? "already" : "verified";
 }

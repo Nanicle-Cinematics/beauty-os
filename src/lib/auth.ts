@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
+import { setTenantContext } from "@/lib/tenant-context";
 
 export const sessionCookieName = "beauty_os_session";
 
@@ -56,6 +57,11 @@ function safeNextPath(nextPath: string | null) {
 }
 
 export async function getCurrentUser(): Promise<AppUser | null> {
+  // Auth + workspace resolution is cross-tenant by nature (session/user lookups,
+  // membership checks). Default the request to RLS-bypass; requireTenantAccess
+  // narrows it to a single business for tenant data access.
+  setTenantContext({ bypass: true });
+
   const cookieStore = await cookies();
   const token = cookieStore.get(sessionCookieName)?.value;
 
@@ -232,6 +238,19 @@ export async function requireTenantAccess(businessSlug: string) {
 
   if (!allowed) {
     redirect("/");
+  }
+
+  // Scope the rest of this request to the resolved tenant so RLS enforces it.
+  // Resolution above ran under bypass; this narrows to the one business.
+  if (isDatabaseConfigured()) {
+    const business = await prisma.business.findUnique({
+      where: { slug: businessSlug },
+      select: { id: true },
+    });
+    if (!business) {
+      redirect("/");
+    }
+    setTenantContext({ businessId: business.id });
   }
 
   return user;

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { withBypass } from "@/lib/tenant-context";
 import type { AppUser } from "@/lib/auth";
 
 export type WorkspaceSummary = {
@@ -102,9 +103,11 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
 
   let canSwitch = user.isPlatformAdmin;
   if (!canSwitch) {
-    const memberships = await prisma.staffMember.count({
-      where: { userId: user.id, status: "ACTIVE" },
-    });
+    // Counting the user's memberships spans all their businesses — a legitimate
+    // cross-tenant read inside a tenant-scoped request, so lift RLS for it.
+    const memberships = await withBypass(() =>
+      prisma.staffMember.count({ where: { userId: user.id, status: "ACTIVE" } }),
+    );
     canSwitch = memberships > 1;
   }
 

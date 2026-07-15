@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 
 export type PaymentRow = {
   id: string;
@@ -291,7 +291,7 @@ export async function recordPayment({
       )?.id ?? null
     : appointment?.customerId ?? null;
 
-  await prisma.$transaction(async (tx) => {
+  await tenantTransaction(async (tx) => {
     await tx.payment.create({
       data: {
         businessId: business.id,

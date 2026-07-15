@@ -1,6 +1,7 @@
 import "server-only";
 
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
+import { setTenantContext } from "@/lib/tenant-context";
 import { hashPassword } from "@/lib/password";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -106,6 +107,10 @@ export async function signUpBusiness({
     return { ok: false, error: "Signups are temporarily unavailable. Please try again shortly." };
   }
 
+  // Public, pre-tenant path that creates a brand-new business + owner — must run
+  // with RLS bypassed (there is no "current tenant" yet).
+  setTenantContext({ bypass: true });
+
   const bizName = businessName.trim();
   const oName = ownerName.trim();
   const oEmail = ownerEmail.trim().toLowerCase();
@@ -135,7 +140,7 @@ export async function signUpBusiness({
   const now = new Date();
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await tenantTransaction(async (tx) => {
       const business = await tx.business.create({
         data: {
           slug: uniqueSlug,

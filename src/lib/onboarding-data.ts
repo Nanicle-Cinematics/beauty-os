@@ -1,7 +1,8 @@
 import "server-only";
 
 import { createHash, randomBytes } from "crypto";
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
+import { setTenantContext } from "@/lib/tenant-context";
 import { hashPassword } from "@/lib/password";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
@@ -168,7 +169,7 @@ export async function createBusiness({
   const now = new Date();
 
   try {
-    const created = await prisma.$transaction(async (tx) => {
+    const created = await tenantTransaction(async (tx) => {
       const business = await tx.business.create({
         data: {
           slug: uniqueSlug,
@@ -249,6 +250,8 @@ export async function getInvite(token: string) {
   if (!isDatabaseConfigured() || !token) {
     return null;
   }
+  // Public path (unauthenticated) resolving an invite by token across tenants.
+  setTenantContext({ bypass: true });
   const invite = await prisma.businessInvite.findUnique({
     where: { tokenHash: hashToken(token) },
     include: { business: { select: { name: true } } },
@@ -271,6 +274,9 @@ export async function acceptInvite({
   if (!isDatabaseConfigured()) {
     return { ok: false, error: "Database is not configured." };
   }
+  // Public path (unauthenticated) — creates the owner User + links StaffMember
+  // across the tenant boundary; runs with RLS bypassed.
+  setTenantContext({ bypass: true });
   if (!password || password.length < 8) {
     return { ok: false, error: "Password must be at least 8 characters." };
   }
@@ -293,7 +299,7 @@ export async function acceptInvite({
   const now = new Date();
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await tenantTransaction(async (tx) => {
       const user = await tx.user.create({
         // Clicking the emailed invite link proves control of the address, so
         // the invited owner is verified on acceptance (no separate verify step).

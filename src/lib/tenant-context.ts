@@ -1,0 +1,32 @@
+import "server-only";
+
+import { AsyncLocalStorage } from "node:async_hooks";
+
+// Per-request tenant context that drives Row-Level Security. `businessId`
+// scopes DB access to one tenant; `bypass` lifts RLS for auth / workspace
+// resolution / platform-admin / system paths; `inTx` marks that the GUC is
+// already set on the current interactive transaction (so ops don't re-wrap).
+export type TenantContext = { businessId?: string; bypass?: boolean; inTx?: boolean };
+
+const storage = new AsyncLocalStorage<TenantContext>();
+
+export function getTenantContext(): TenantContext | undefined {
+  return storage.getStore();
+}
+
+// Set/replace the context for the remainder of the current request. Used by the
+// auth guards, which run before any tenant data access.
+export function setTenantContext(ctx: TenantContext): void {
+  storage.enterWith(ctx);
+}
+
+export function runWithTenantContext<T>(ctx: TenantContext, fn: () => T): T {
+  return storage.run(ctx, fn);
+}
+
+// Run a single operation with RLS lifted, then restore the surrounding context.
+// For legitimately cross-tenant reads inside a tenant-scoped request (e.g.
+// counting a user's memberships across all their businesses).
+export function withBypass<T>(fn: () => Promise<T>): Promise<T> {
+  return storage.run({ bypass: true }, fn);
+}

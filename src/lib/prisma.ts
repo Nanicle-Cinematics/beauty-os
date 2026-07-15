@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { getTenantContext, runWithTenantContext } from "@/lib/tenant-context";
 
 // Transient errors typical of serverless Postgres (Neon) when the compute is
 // waking from scale-to-zero or the pooler drops an idle connection.
@@ -10,10 +11,8 @@ function isTransientDbError(error: unknown) {
     return true;
   }
   const message = String((error as { message?: string })?.message ?? "");
-  // Note: deliberately does NOT match "Timed out fetching a new connection"
-  // (P2024) — retrying pool exhaustion only makes it worse. We retry genuine
-  // dropped/unreachable connections, which a Neon cold-start or idle-close
-  // produces.
+  // Deliberately does NOT match "Timed out fetching a new connection" (P2024) —
+  // retrying pool exhaustion only makes it worse.
   return (
     message.includes("Can't reach database server") ||
     message.includes("Connection reset") ||
@@ -23,37 +22,60 @@ function isTransientDbError(error: unknown) {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Row-Level Security: when enabled, every model operation runs with the tenant
+// GUCs set transaction-locally so Postgres enforces isolation. Off by default so
+// the flag can ship dormant ahead of the production cutover. See docs/RLS.md.
+const RLS_ON = process.env.DB_RLS === "on";
+const SET_GUC_SQL =
+  "SELECT set_config('app.business_id', $1, true), set_config('app.bypass_rls', $2, true)";
+
+function gucArgs() {
+  const ctx = getTenantContext();
+  return [ctx?.businessId ?? "", ctx?.bypass ? "on" : "off"] as const;
+}
+
 function createPrismaClient() {
   const base = new PrismaClient({
     log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
   });
 
-  // Retry transient connection failures transparently for every query, so a
-  // Neon cold-start (or dropped idle connection) doesn't surface as a 500.
-  return base.$extends({
+  const client = base.$extends({
     query: {
-      async $allOperations({ args, query }) {
+      async $allOperations({ model, args, query }) {
+        const exec = () => {
+          // Raw ops (no model) and interactive-tx ops (GUC already set) run
+          // as-is. Everything else is wrapped so the tenant GUC and the query
+          // share one transaction/connection — pooler-safe.
+          if (!RLS_ON || !model || getTenantContext()?.inTx) {
+            return query(args);
+          }
+          const [bid, bypass] = gucArgs();
+          return base
+            .$transaction([base.$executeRawUnsafe(SET_GUC_SQL, bid, bypass), query(args)])
+            .then((res: unknown[]) => res[1]);
+        };
+
         const maxAttempts = 4;
         for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
           try {
-            return await query(args);
+            return await exec();
           } catch (error) {
             if (attempt === maxAttempts || !isTransientDbError(error)) {
               throw error;
             }
-            // Exponential-ish backoff: 300ms, 700ms, 1.5s — enough for a
-            // Neon compute to finish waking.
             await delay(200 * 2 ** attempt - 100);
           }
         }
-        // Unreachable: the loop either returns or throws.
         throw new Error("prisma retry loop exhausted");
       },
     },
   });
+
+  return client;
 }
 
 type ExtendedPrismaClient = ReturnType<typeof createPrismaClient>;
+type TenantTx = Parameters<Parameters<ExtendedPrismaClient["$transaction"]>[0]>[0];
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: ExtendedPrismaClient;
@@ -63,6 +85,24 @@ export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
+}
+
+// Run an interactive transaction with the tenant GUC set as its first statement,
+// so RLS applies to every write inside it. Replaces raw prisma.$transaction for
+// all tenant-scoped multi-statement writes. Inherits the current request's
+// tenant context (businessId / bypass).
+export async function tenantTransaction<T>(
+  fn: (tx: TenantTx) => Promise<T>,
+  opts?: { timeout?: number; maxWait?: number },
+): Promise<T> {
+  const ctx = getTenantContext() ?? {};
+  return prisma.$transaction(async (tx) => {
+    if (RLS_ON) {
+      const [bid, bypass] = gucArgs();
+      await tx.$executeRawUnsafe(SET_GUC_SQL, bid, bypass);
+    }
+    return runWithTenantContext({ ...ctx, inTx: true }, () => fn(tx));
+  }, opts);
 }
 
 export function isDatabaseConfigured() {

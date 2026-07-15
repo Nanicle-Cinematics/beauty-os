@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 
 export type PlatformStat = { label: string; value: string; detail: string };
 
@@ -270,12 +270,12 @@ export async function setBusinessStatus({
     return;
   }
 
-  await prisma.$transaction([
-    prisma.business.update({
+  await tenantTransaction(async (tx) => {
+    await tx.business.update({
       where: { id: business.id },
       data: { status: status as "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED" },
-    }),
-    prisma.auditLog.create({
+    });
+    await tx.auditLog.create({
       data: {
         businessId: business.id,
         actorUserId,
@@ -284,8 +284,8 @@ export async function setBusinessStatus({
         entityId: business.id,
         metadata: { from: business.status, status },
       },
-    }),
-  ]);
+    });
+  });
 }
 
 export async function changeBusinessPlan({
@@ -314,13 +314,15 @@ export async function changeBusinessPlan({
     return;
   }
 
-  await prisma.$transaction([
-    business.subscription
-      ? prisma.subscription.update({ where: { id: business.subscription.id }, data: { planId: plan.id } })
-      : prisma.subscription.create({
-          data: { businessId: business.id, planId: plan.id, billingCycle: "MONTHLY", status: "TRIALING" },
-        }),
-    prisma.auditLog.create({
+  await tenantTransaction(async (tx) => {
+    if (business.subscription) {
+      await tx.subscription.update({ where: { id: business.subscription.id }, data: { planId: plan.id } });
+    } else {
+      await tx.subscription.create({
+        data: { businessId: business.id, planId: plan.id, billingCycle: "MONTHLY", status: "TRIALING" },
+      });
+    }
+    await tx.auditLog.create({
       data: {
         businessId: business.id,
         actorUserId,
@@ -329,8 +331,8 @@ export async function changeBusinessPlan({
         entityId: business.id,
         metadata: { planId: plan.id, planName: plan.name },
       },
-    }),
-  ]);
+    });
+  });
 }
 
 // Permanently delete a business and all its tenant data (every business-scoped

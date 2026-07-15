@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 
 export type ProductStatus = "OK" | "LOW" | "OUT" | "EXPIRING" | "EXPIRED";
 
@@ -268,7 +268,7 @@ export async function addProduct({
 
   // Create the product and, when it opens with stock, an audit trail entry —
   // in one transaction so the ledger can never drift from the on-hand count.
-  await prisma.$transaction(async (tx) => {
+  await tenantTransaction(async (tx) => {
     const product = await tx.product.create({
       data: {
         businessId: business.id,
@@ -329,12 +329,12 @@ export async function adjustStock({
     return;
   }
 
-  await prisma.$transaction([
-    prisma.product.update({
+  await tenantTransaction(async (tx) => {
+    await tx.product.update({
       where: { id: product.id },
       data: { quantityOnHand: next },
-    }),
-    prisma.stockMovement.create({
+    });
+    await tx.stockMovement.create({
       data: {
         businessId: product.businessId,
         productId: product.id,
@@ -342,6 +342,6 @@ export async function adjustStock({
         quantity: applied,
         note: note.trim() || (applied > 0 ? "Restock" : "Manual adjustment"),
       },
-    }),
-  ]);
+    });
+  });
 }
