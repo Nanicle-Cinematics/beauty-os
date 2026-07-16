@@ -127,7 +127,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
                 </select>
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   Commission
                   <select name="commissionType" defaultValue="NONE" className="input">

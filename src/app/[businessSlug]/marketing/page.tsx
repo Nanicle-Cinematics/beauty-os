@@ -76,7 +76,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
               <input type="hidden" name="businessSlug" value={businessSlug} />
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">New campaign</div>
               <input name="name" placeholder="Campaign name" className={inputClass} required />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <select name="channel" defaultValue="EMAIL" className={inputClass}>
                   {data.channels.map((channel) => (
                     <option key={channel.value} value={channel.value}>{channel.label}</option>
@@ -162,14 +162,14 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
             <form action={createCouponAction} className="mt-5 grid gap-3 rounded-2xl border border-line-2 bg-sunken p-4">
               <input type="hidden" name="businessSlug" value={businessSlug} />
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">New coupon</div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <input name="code" placeholder="CODE" className={`${inputClass} uppercase`} required />
                 <select name="discountType" defaultValue="PERCENT" className={inputClass}>
                   <option value="PERCENT">Percent %</option>
                   <option value="FIXED">Fixed amount</option>
                 </select>
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-3 max-[560px]:grid-cols-1">
                 <input name="value" type="number" min="0" step="0.01" placeholder="Value" className={inputClass} required />
                 <input name="maxUses" type="number" min="1" step="1" placeholder="Max uses" className={inputClass} />
                 <input name="expiresAt" type="date" className={inputClass} />
@@ -207,7 +207,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
               <input type="hidden" name="businessSlug" value={businessSlug} />
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">New tier</div>
               <input name="name" placeholder="Tier name (e.g. Gold)" className={inputClass} required />
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <input name="minSpend" type="number" min="0" step="1" placeholder="Min spend" className={inputClass} />
                 <input name="discountPercent" type="number" min="0" max="100" step="1" placeholder="Discount %" className={inputClass} />
               </div>

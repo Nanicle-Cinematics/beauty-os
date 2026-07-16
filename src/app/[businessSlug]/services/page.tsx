@@ -112,7 +112,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                 <textarea name="description" rows={2} className="input" />
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   Price
                   <input name="price" type="number" min="0" step="0.01" className="input" required />
@@ -123,7 +123,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   Duration (min)
                   <input name="durationMinutes" type="number" min="5" step="5" defaultValue={60} className="input" required />

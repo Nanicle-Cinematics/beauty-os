@@ -132,7 +132,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                 <input name="amount" type="number" min="0" step="0.01" className="input" required />
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   Method
                   <select name="method" defaultValue="CASH" className="input">

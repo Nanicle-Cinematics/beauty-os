@@ -184,6 +184,13 @@ export function AppShell({
 
   return (
     <div className="min-h-screen bg-canvas text-ink">
+      {/* Keyboard users can jump straight past the nav to the page content */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-xl focus:bg-plum focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+      >
+        Skip to content
+      </a>
       <div className="lg:grid lg:grid-cols-[264px_minmax(0,1fr)]">
         {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-screen overflow-y-auto bg-sidebar lg:block">
@@ -281,7 +288,7 @@ export function AppShell({
           </header>
 
           {/* key on the route so content gently fades up on each navigation */}
-          <main key={pathname} className="animate-fade-up px-4 py-5 sm:px-6 sm:py-6">{children}</main>
+          <main id="main-content" key={pathname} className="animate-fade-up px-4 py-5 sm:px-6 sm:py-6">{children}</main>
         </div>
       </div>
     </div>

@@ -91,7 +91,7 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
             <input type="hidden" name="businessSlug" value={businessSlug} />
 
             <div className="mt-5 grid gap-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   First name
                   <input name="firstName" className="input" required />
@@ -112,7 +112,7 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
                 <input name="email" type="email" className="input" />
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   City
                   <input name="city" className="input" />

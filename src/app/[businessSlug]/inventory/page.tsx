@@ -145,7 +145,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                 <input name="category" placeholder="e.g. Hair, Nails" className="input" />
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   Cost price
                   <input name="costPrice" type="number" min="0" step="0.01" className="input" required />
@@ -156,7 +156,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   Opening qty
                   <input name="quantityOnHand" type="number" min="0" step="1" defaultValue={0} className="input" />
@@ -172,7 +172,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                 <Combobox name="supplier" options={data.suppliers.map((supplier) => supplier.label)} placeholder="Search or type a new supplier…" />
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   Expiry
                   <input name="expiryDate" type="date" className="input" />

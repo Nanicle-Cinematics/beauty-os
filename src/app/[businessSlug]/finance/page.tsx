@@ -85,7 +85,7 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
             </datalist>
           </label>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
             <label className="field-label">
               Amount
               <input name="amount" type="number" min="0" step="0.01" placeholder="0.00" className="input" required />
