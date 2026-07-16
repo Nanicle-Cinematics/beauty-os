@@ -14,7 +14,9 @@ import {
   Brain,
   Cake,
   Coins,
+  TrendingUp,
 } from "lucide-react";
+import { TrendChart } from "@/components/trend-chart";
 import type { TenantDashboardData, DashStat } from "@/lib/dashboard-data";
 
 type TenantDashboardProps = {
@@ -219,6 +221,23 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
           <StatCard key={stat.label} stat={stat} />
         ))}
       </section>
+
+      {data.revenueTrend && data.revenueTrend.length > 0 ? (
+        <section className="card p-5">
+          <div className="mb-4 flex items-center gap-2">
+            <span className="grid size-8 place-items-center rounded-xl bg-plum-soft text-plum"><TrendingUp size={16} /></span>
+            <div>
+              <h2 className="text-[15px] font-semibold">Revenue trend</h2>
+              <p className="text-[12px] text-muted">Weekly takings over the last 6 weeks — hover for exact figures.</p>
+            </div>
+          </div>
+          <TrendChart
+            height={180}
+            ariaLabel="Weekly revenue over the last 6 weeks"
+            series={[{ name: "Revenue", color: "var(--plum)", points: data.revenueTrend }]}
+          />
+        </section>
+      ) : null}
 
       {/* Smart insights */}
       {insights.length > 0 ? (

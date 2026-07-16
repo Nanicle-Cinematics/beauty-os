@@ -50,6 +50,7 @@ export type TenantDashboardData = {
   };
   todayLabel: string;
   stats: DashStat[];
+  revenueTrend?: { label: string; value: number; display: string }[];
   pulse: PulseBar[];
   pills: string[];
   tasks: string[];
@@ -417,6 +418,25 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     value: money(Number(appointment.price), currency),
   }));
 
+  // 6-week revenue trend for the dashboard mini chart.
+  const DAY = 24 * 60 * 60 * 1000;
+  const trendBounds = Array.from({ length: 6 }, (_unused, idx) => {
+    const i = 5 - idx;
+    return { label: i === 0 ? "Now" : `${i}w`, start: new Date(now.getTime() - (i + 1) * 7 * DAY), end: new Date(now.getTime() - i * 7 * DAY) };
+  });
+  const revTrendAggs = await Promise.all(
+    trendBounds.map((b) =>
+      prisma.payment.aggregate({
+        _sum: { amount: true },
+        where: { businessId: business.id, status: "SUCCESS", type: { not: "REFUND" }, createdAt: { gte: b.start, lt: b.end } },
+      }),
+    ),
+  );
+  const revenueTrend = trendBounds.map((b, i) => {
+    const v = Number(revTrendAggs[i]._sum.amount ?? 0);
+    return { label: b.label, value: v, display: money(v, currency) };
+  });
+
   return {
     tenant: {
       id: business.id,
@@ -430,6 +450,7 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     },
     todayLabel: formatLongDateInTz(now, timeZone),
     stats,
+    revenueTrend,
     pulse,
     pills,
     tasks,

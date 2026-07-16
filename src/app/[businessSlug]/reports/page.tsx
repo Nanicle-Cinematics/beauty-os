@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { BarChart3, TrendingUp, Sparkles, Repeat } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { TrendChart } from "@/components/trend-chart";
 import { StatTile, statMetaFor, EmptyState, Avatar } from "@/components/ui";
 import { getReportsData } from "@/lib/reports-data";
 import { requireTenantAccess } from "@/lib/auth";
@@ -38,28 +39,17 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
             <p className="text-[12px] text-muted">Weekly takings over the last 6 weeks.</p>
           </div>
         </div>
-        <div className="flex items-end gap-3 sm:gap-5">
-          {data.trend.map((bar, i) => {
-            const isLast = i === data.trend.length - 1;
-            return (
-              <div key={bar.label} className="flex flex-1 flex-col items-center gap-2">
-                <div className={`text-[11px] font-semibold ${isLast ? "text-plum" : "text-ink"}`}>{bar.amount}</div>
-                {/* soft track behind each bar so short weeks stay legible */}
-                <div className="flex h-40 w-full items-end justify-center overflow-hidden rounded-xl bg-sunken/50">
-                  <div
-                    className={`w-full max-w-[52px] rounded-t-lg transition-all ${
-                      isLast
-                        ? "bg-gradient-to-t from-wine via-plum to-rose shadow-[0_-2px_12px_rgba(109,49,95,0.35)]"
-                        : "bg-gradient-to-t from-plum/80 to-mauve"
-                    }`}
-                    style={{ height: `${Math.max(bar.value, 3)}%` }}
-                  />
-                </div>
-                <div className={`text-[11px] ${isLast ? "font-semibold text-plum" : "font-medium text-muted"}`}>{bar.label}</div>
-              </div>
-            );
-          })}
-        </div>
+        <TrendChart
+          height={200}
+          ariaLabel="Weekly revenue over the last 6 weeks"
+          series={[
+            {
+              name: "Revenue",
+              color: "var(--plum)",
+              points: data.trend.map((bar) => ({ label: bar.label, value: bar.raw, display: bar.amount })),
+            },
+          ]}
+        />
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">

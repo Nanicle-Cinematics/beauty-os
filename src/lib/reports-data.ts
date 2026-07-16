@@ -4,7 +4,7 @@ import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { money, deltaLabel, pct } from "@/lib/format";
 
 export type ReportKpi = { label: string; value: string; detail: string };
-export type TrendBar = { label: string; amount: string; value: number };
+export type TrendBar = { label: string; amount: string; value: number; raw: number };
 export type TopService = { name: string; bookings: number; revenue: string; share: number };
 export type StaffRow = { name: string; colorHex: string; bookings: number; revenue: string; util: number };
 
@@ -76,7 +76,7 @@ export async function getReportsData(businessSlug: string): Promise<ReportsData 
 
   const trendTotals = trendAggs.map((a, idx) => ({ label: bucketBounds[idx].label, total: Number(a._sum.amount ?? 0) }));
   const trendMax = Math.max(1, ...trendTotals.map((t) => t.total));
-  const trend: TrendBar[] = trendTotals.map((t) => ({ label: t.label, amount: money(t.total, currency), value: pct(t.total, trendMax) }));
+  const trend: TrendBar[] = trendTotals.map((t) => ({ label: t.label, amount: money(t.total, currency), value: pct(t.total, trendMax), raw: t.total }));
 
   // Top services (30d realised revenue) — group in SQL, then name the top 6.
   const svcSorted = svcGroups

@@ -7,11 +7,13 @@ export type FinanceKpi = { label: string; value: string; detail: string };
 export type FinancePayment = { id: string; client: string; method: string; type: string; amount: string; isRefund: boolean; when: string };
 export type FinanceExpense = { id: string; category: string; description: string; amount: string; when: string };
 export type CategoryTotal = { category: string; amount: string; percent: number; share: number };
+export type FinanceTrendPoint = { label: string; revenue: number; revenueLabel: string; expenses: number; expensesLabel: string };
 
 export type FinanceData = {
   tenant: { name: string; currency: string };
   kpis: FinanceKpi[];
   flow: { revenue: number; expenses: number; net: number; revenueLabel: string; expensesLabel: string; netLabel: string; revenueShare: number; expensesShare: number };
+  trend: FinanceTrendPoint[];
   recentPayments: FinancePayment[];
   recentExpenses: FinanceExpense[];
   expensesByCategory: CategoryTotal[];
@@ -276,7 +278,17 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
     createdAt: to ? { gte: from, lt: to } : { gte: from },
   });
 
-  const [rev30Agg, revPrevAgg, exp30Agg, expPrevAgg, catGroups, recentPayments, recentExpenses, outstandingAgg] = await Promise.all([
+  // Six weekly buckets (oldest → newest) for the revenue-vs-expenses trend.
+  const bucketBounds = Array.from({ length: 6 }, (_unused, idx) => {
+    const i = 5 - idx;
+    return {
+      label: i === 0 ? "This wk" : `${i}w ago`,
+      start: new Date(now.getTime() - (i + 1) * 7 * DAY),
+      end: new Date(now.getTime() - i * 7 * DAY),
+    };
+  });
+
+  const [rev30Agg, revPrevAgg, exp30Agg, expPrevAgg, catGroups, recentPayments, recentExpenses, outstandingAgg, revTrendAggs, expTrendAggs] = await Promise.all([
     prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since30) }),
     prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since60, since30) }),
     prisma.expense.aggregate({ _sum: { amount: true }, where: { businessId: business.id, incurredAt: { gte: since30 } } }),
@@ -295,7 +307,15 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
       select: { id: true, category: true, description: true, amount: true, incurredAt: true },
     }),
     prisma.customer.aggregate({ where: { businessId: business.id }, _sum: { outstandingBalance: true } }),
+    Promise.all(bucketBounds.map((b) => prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(b.start, b.end) }))),
+    Promise.all(bucketBounds.map((b) => prisma.expense.aggregate({ _sum: { amount: true }, where: { businessId: business.id, incurredAt: { gte: b.start, lt: b.end } } }))),
   ]);
+
+  const trend: FinanceTrendPoint[] = bucketBounds.map((b, i) => {
+    const rev = Number(revTrendAggs[i]._sum.amount ?? 0);
+    const exp = Number(expTrendAggs[i]._sum.amount ?? 0);
+    return { label: b.label, revenue: rev, revenueLabel: money(rev, currency), expenses: exp, expensesLabel: money(exp, currency) };
+  });
 
   const rev30 = Number(rev30Agg._sum.amount ?? 0);
   const revPrev = Number(revPrevAgg._sum.amount ?? 0);
@@ -329,6 +349,7 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
       revenueShare: pct(rev30, flowMax),
       expensesShare: pct(exp30, flowMax),
     },
+    trend,
     recentPayments: recentPayments.map((p) => ({
       id: p.id,
       client: clientName(p.customer),

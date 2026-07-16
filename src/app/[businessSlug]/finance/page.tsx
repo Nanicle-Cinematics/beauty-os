@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
-import { Wallet, ArrowDownRight, Receipt, Plus, CheckCircle2 } from "lucide-react";
+import { Wallet, ArrowDownRight, Receipt, Plus, CheckCircle2, TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { TrendChart } from "@/components/trend-chart";
 import { StatTile, statMetaFor, EmptyState, Badge } from "@/components/ui";
 import { FinanceTabs } from "@/components/finance-tabs";
 import { getFinanceData } from "@/lib/finance-data";
@@ -45,6 +46,24 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
           const meta = statMetaFor(stat.label);
           return <StatTile key={stat.label} label={stat.label} value={stat.value} detail={stat.detail} icon={meta.icon} tone={meta.tone} />;
         })}
+      </section>
+
+      <section className="card p-5">
+        <div className="mb-4 flex items-center gap-2">
+          <span className="grid size-8 place-items-center rounded-xl bg-plum-soft text-plum"><TrendingUp size={16} /></span>
+          <div>
+            <h2 className="text-[15px] font-semibold">Revenue vs expenses</h2>
+            <p className="text-[12px] text-muted">Weekly over the last 6 weeks — hover a week for exact figures.</p>
+          </div>
+        </div>
+        <TrendChart
+          height={200}
+          ariaLabel="Weekly revenue versus expenses over the last 6 weeks"
+          series={[
+            { name: "Revenue", color: "var(--plum)", points: data.trend.map((t) => ({ label: t.label, value: t.revenue, display: t.revenueLabel })) },
+            { name: "Expenses", color: "var(--warning)", points: data.trend.map((t) => ({ label: t.label, value: t.expenses, display: t.expensesLabel })) },
+          ]}
+        />
       </section>
 
       <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
