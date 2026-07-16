@@ -3,7 +3,15 @@ import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { loginAction } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
+import { isSsoConfigured } from "@/lib/sso";
 import { PasswordInput } from "@/components/password-input";
+
+const errorMessages: Record<string, string> = {
+  invalid: "Email or password is incorrect.",
+  nosso: "No Beauty OS account matches that email. Sign up or accept an invite first.",
+  sso: "Single sign-on failed. Please try again.",
+  expired: "Your sign-in expired. Please sign in again.",
+};
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -26,6 +34,8 @@ const inputClass =
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const [{ next, error }, user] = await Promise.all([searchParams, getCurrentUser()]);
   const nextPath = safeNextPath(next);
+  const ssoEnabled = isSsoConfigured();
+  const errorMessage = error ? errorMessages[error] : null;
 
   if (user) {
     redirect(nextPath);
@@ -74,9 +84,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </p>
           </div>
 
-          {error === "invalid" ? (
+          {errorMessage ? (
             <div className="rounded-xl border border-danger/20 bg-danger-soft px-4 py-3 text-sm font-semibold text-danger">
-              Email or password is incorrect.
+              {errorMessage}
             </div>
           ) : null}
 
@@ -107,6 +117,27 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <button className="mt-2 rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
             Sign in
           </button>
+
+          {ssoEnabled ? (
+            <>
+              <div className="my-1 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-faint">
+                <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
+              </div>
+              {/* Plain anchors (no prefetch) so the OAuth redirect only fires on click. */}
+              <a
+                href={`/sso/start?provider=google&next=${encodeURIComponent(nextPath)}`}
+                className="flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-card text-sm font-semibold text-ink hover:bg-sunken"
+              >
+                Continue with Google
+              </a>
+              <a
+                href={`/sso/start?provider=microsoft&next=${encodeURIComponent(nextPath)}`}
+                className="flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-card text-sm font-semibold text-ink hover:bg-sunken"
+              >
+                Continue with Microsoft
+              </a>
+            </>
+          ) : null}
         </form>
       </section>
     </main>
