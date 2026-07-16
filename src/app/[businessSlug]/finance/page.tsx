@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Wallet, ArrowDownRight, Receipt, Plus, CheckCircle2, TrendingUp } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { TrendChart } from "@/components/trend-chart";
+import { BreakdownBar } from "@/components/breakdown-bar";
 import { StatTile, statMetaFor, EmptyState, Badge } from "@/components/ui";
 import { FinanceTabs } from "@/components/finance-tabs";
 import { getFinanceData } from "@/lib/finance-data";
@@ -152,9 +153,7 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
                     <span className="font-semibold text-ink">{c.amount}</span>
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-sunken">
-                  <div className="h-full rounded-full bg-warning" style={{ width: `${Math.max(c.share, 3)}%` }} />
-                </div>
+                <BreakdownBar share={c.share} tone="warning" detail={`${c.amount} · ${c.percent}% of expenses`} />
               </div>
             ))}
           </div>

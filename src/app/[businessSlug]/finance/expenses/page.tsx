@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Receipt, Filter, ListFilter, Pencil, CheckCircle2, PieChart, Download } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { BreakdownBar } from "@/components/breakdown-bar";
 import { EmptyState, Badge } from "@/components/ui";
 import { FinanceTabs } from "@/components/finance-tabs";
 import { DeleteExpenseButton } from "@/components/delete-expense-button";
@@ -107,9 +108,7 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
                     <span className="font-semibold text-ink">{c.amount}</span>
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-sunken">
-                  <div className="h-full rounded-full bg-warning" style={{ width: `${Math.max(c.share, 3)}%` }} />
-                </div>
+                <BreakdownBar share={c.share} tone="warning" detail={`${c.amount} · ${c.percent}% of expenses`} />
               </div>
             ))}
           </div>

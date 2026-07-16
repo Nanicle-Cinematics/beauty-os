@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { BarChart3, TrendingUp, Sparkles, Repeat } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { TrendChart } from "@/components/trend-chart";
+import { BreakdownBar } from "@/components/breakdown-bar";
 import { StatTile, statMetaFor, EmptyState, Avatar } from "@/components/ui";
 import { getReportsData } from "@/lib/reports-data";
 import { requireTenantAccess } from "@/lib/auth";
@@ -71,9 +72,7 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
                     </span>
                     <span className="font-semibold text-ink">{svc.revenue}</span>
                   </div>
-                  <div className="h-1.5 overflow-hidden rounded-full bg-sunken">
-                    <div className="h-full rounded-full bg-gradient-to-r from-plum to-mauve" style={{ width: `${Math.max(svc.share, 3)}%` }} />
-                  </div>
+                  <BreakdownBar share={svc.share} detail={`${svc.revenue} · ${svc.bookings} booking${svc.bookings === 1 ? "" : "s"}`} />
                   <div className="mt-1 text-[11.5px] text-muted">{svc.bookings} booking{svc.bookings === 1 ? "" : "s"}</div>
                 </div>
               ))}
@@ -102,8 +101,8 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
                     </div>
                     <div className="text-[13px] font-semibold text-ink">{person.revenue}</div>
                   </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sunken">
-                    <div className="h-full rounded-full bg-gradient-to-r from-plum to-mauve" style={{ width: `${Math.max(person.util, 3)}%` }} />
+                  <div className="mt-2">
+                    <BreakdownBar share={person.util} detail={`${person.revenue} · ${person.bookings} booking${person.bookings === 1 ? "" : "s"}`} />
                   </div>
                 </div>
               ))}
