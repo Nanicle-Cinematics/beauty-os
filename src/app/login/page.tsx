@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { loginAction } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
-import { isSocialLoginConfigured } from "@/lib/sso";
+import { isSocialLoginConfigured, isMicrosoftLoginEnabled } from "@/lib/sso";
 import { PasswordInput } from "@/components/password-input";
 
 const errorMessages: Record<string, string> = {
@@ -35,6 +35,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   const [{ next, error }, user] = await Promise.all([searchParams, getCurrentUser()]);
   const nextPath = safeNextPath(next);
   const socialEnabled = isSocialLoginConfigured();
+  const microsoftEnabled = isMicrosoftLoginEnabled();
   const errorMessage = error ? errorMessages[error] : null;
 
   if (user) {
@@ -131,12 +132,14 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               >
                 Continue with Google
               </a>
-              <a
-                href={`/sso/start?provider=microsoft&next=${encodeURIComponent(nextPath)}`}
-                className="flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-card text-sm font-semibold text-ink hover:bg-sunken"
-              >
-                Continue with Microsoft
-              </a>
+              {microsoftEnabled ? (
+                <a
+                  href={`/sso/start?provider=microsoft&next=${encodeURIComponent(nextPath)}`}
+                  className="flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-card text-sm font-semibold text-ink hover:bg-sunken"
+                >
+                  Continue with Microsoft
+                </a>
+              ) : null}
             </>
           ) : null}
         </form>

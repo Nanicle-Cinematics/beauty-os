@@ -15,6 +15,13 @@ export function isSocialLoginConfigured() {
   return Boolean(process.env.WORKOS_API_KEY && process.env.WORKOS_CLIENT_ID);
 }
 
+// Microsoft stays hidden until its own flag is set, so an unconfigured provider
+// can never hang/504 a customer. Flip WORKOS_MICROSOFT_ENABLED=true once Microsoft
+// is configured under this environment's WorkOS Providers.
+export function isMicrosoftLoginEnabled() {
+  return isSocialLoginConfigured() && process.env.WORKOS_MICROSOFT_ENABLED === "true";
+}
+
 function client() {
   if (!process.env.WORKOS_API_KEY) throw new Error("WORKOS_API_KEY is not set");
   return new WorkOS(process.env.WORKOS_API_KEY);

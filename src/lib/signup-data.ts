@@ -1,5 +1,6 @@
 import "server-only";
 
+import { randomBytes } from "crypto";
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { setTenantContext } from "@/lib/tenant-context";
 import { hashPassword } from "@/lib/password";
@@ -184,5 +185,79 @@ export async function signUpBusiness({
     return { ok: true, slug: result.slug, userId: result.userId, businessId: result.businessId, ownerEmail: oEmail, ownerName: oName };
   } catch {
     return { ok: false, error: "Could not create your workspace. Please try again." };
+  }
+}
+
+export type SocialJitResult = { ok: true; slug: string; userId: string } | { ok: false; error: string };
+
+// Just-in-time signup for a social (Google) login whose email has no account
+// yet. Mirrors signUpBusiness but sources identity from the OAuth provider:
+// the email is already provider-verified, there is no password (a random,
+// unknowable hash is stored so the required column is satisfied — the user
+// signs in via the provider and can set a real password later via reset), and
+// a starter workspace is created with sensible defaults the owner can rename.
+export async function jitSignUpFromSocial({ email, name }: { email: string; name?: string | null }): Promise<SocialJitResult> {
+  if (!isDatabaseConfigured()) {
+    return { ok: false, error: "unavailable" };
+  }
+
+  // Pre-tenant path (creating a brand-new business) — bypass RLS, no tenant yet.
+  setTenantContext({ bypass: true });
+
+  const oEmail = email.trim().toLowerCase();
+  if (!EMAIL_RE.test(oEmail)) {
+    return { ok: false, error: "invalid" };
+  }
+
+  // Race guard: if the account exists now, let the caller sign them in instead.
+  const existing = await prisma.user.findUnique({ where: { email: oEmail }, select: { id: true } });
+  if (existing) {
+    return { ok: false, error: "exists" };
+  }
+
+  const oName = (name ?? "").trim() || oEmail.split("@")[0];
+  const bizName = `${oName}'s Studio`;
+
+  const category = await prisma.businessCategory.findFirst({ where: { isActive: true }, orderBy: { sortOrder: "asc" }, select: { id: true } });
+  if (!category) {
+    return { ok: false, error: "no_category" };
+  }
+
+  const uniqueSlug = await ensureUniqueSlug(slugify(bizName) || "studio");
+  const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
+  const now = new Date();
+
+  try {
+    const result = await tenantTransaction(async (tx) => {
+      const business = await tx.business.create({
+        data: { slug: uniqueSlug, name: bizName, categoryId: category.id, currency: "GHS", timezone: "Africa/Accra", status: "TRIAL" },
+      });
+
+      const owner = await tx.user.create({
+        // Email is provider-verified, so mark it verified — skips the email gate.
+        data: { email: oEmail, name: oName, passwordHash, isPlatformAdmin: false, emailVerifiedAt: now },
+      });
+
+      await tx.staffMember.create({
+        data: { businessId: business.id, userId: owner.id, invitedEmail: oEmail, role: "OWNER", status: "ACTIVE", joinedAt: now },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          businessId: business.id,
+          actorUserId: owner.id,
+          action: "business.created",
+          entityType: "Business",
+          entityId: business.id,
+          metadata: { slug: uniqueSlug, ownerEmail: oEmail, source: "google_jit" },
+        },
+      });
+
+      return { slug: business.slug, userId: owner.id };
+    }, { timeout: 15000 });
+
+    return { ok: true, slug: result.slug, userId: result.userId };
+  } catch {
+    return { ok: false, error: "create_failed" };
   }
 }
