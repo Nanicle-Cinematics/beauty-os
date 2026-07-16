@@ -18,7 +18,6 @@ export type ReportsData = {
   retention: { repeatRate: number; returning: number; total: number };
 };
 
-const REALISED = new Set(["COMPLETED", "CONFIRMED"]);
 const DAY = 24 * 60 * 60 * 1000;
 
 export async function getReportsData(businessSlug: string): Promise<ReportsData | null> {
@@ -33,98 +32,92 @@ export async function getReportsData(businessSlug: string): Promise<ReportsData 
   const now = new Date();
   const since30 = new Date(now.getTime() - 30 * DAY);
   const since60 = new Date(now.getTime() - 60 * DAY);
-  const trendStart = new Date(now.getTime() - 6 * 7 * DAY);
 
-  const [payments, appointments] = await Promise.all([
-    prisma.payment.findMany({
-      where: { businessId: business.id, status: "SUCCESS", createdAt: { gte: since60 } },
-      select: { amount: true, type: true, createdAt: true },
-    }),
-    prisma.appointment.findMany({
-      where: { businessId: business.id, startAt: { gte: since60 } },
-      select: {
-        startAt: true,
-        status: true,
-        price: true,
-        customerId: true,
-        service: { select: { name: true } },
-        staffMember: { select: { id: true, colorHex: true, user: { select: { name: true } }, invitedEmail: true } },
-      },
-      take: 4000,
-    }),
-  ]);
+  // Everything below is computed by Postgres (aggregate/groupBy) so it stays
+  // correct and cheap for tenants of any size — no unbounded row scans.
+  const bid = business.id;
+  const REALISED_STATUS = ["COMPLETED", "CONFIRMED"] as const;
+  const revenueWhere = (from: Date, to?: Date) => ({
+    businessId: bid,
+    status: "SUCCESS" as const,
+    type: { not: "REFUND" as const },
+    createdAt: to ? { gte: from, lt: to } : { gte: from },
+  });
+  const realisedWhere = { businessId: bid, status: { in: [...REALISED_STATUS] }, startAt: { gte: since30 } };
 
-  const incoming = (p: { type: string; amount: unknown }) => p.type !== "REFUND";
-  const revenue30 = payments
-    .filter((p) => p.createdAt >= since30 && incoming(p))
-    .reduce((s, p) => s + Number(p.amount), 0);
-  const revenuePrev = payments
-    .filter((p) => p.createdAt < since30 && incoming(p))
-    .reduce((s, p) => s + Number(p.amount), 0);
+  // Six weekly revenue buckets (oldest → newest).
+  const bucketBounds = Array.from({ length: 6 }, (_unused, idx) => {
+    const i = 5 - idx;
+    return {
+      label: i === 0 ? "This wk" : `${i}w ago`,
+      start: new Date(now.getTime() - (i + 1) * 7 * DAY),
+      end: new Date(now.getTime() - i * 7 * DAY),
+    };
+  });
 
-  const appts30 = appointments.filter((a) => a.startAt >= since30);
-  const bookings30 = appts30.length;
-  const bookingsPrev = appointments.length - bookings30;
-  const completed30 = appts30.filter((a) => a.status === "COMPLETED").length;
-  const realised30 = appts30.filter((a) => REALISED.has(a.status));
-  const avgTicket = realised30.length
-    ? realised30.reduce((s, a) => s + Number(a.price), 0) / realised30.length
-    : 0;
+  const [rev30Agg, revPrevAgg, bookings30, bookingsPrev, completed30, avgAgg, trendAggs, svcGroups, staffGroups, retentionGroups] =
+    await Promise.all([
+      prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since30) }),
+      prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since60, since30) }),
+      prisma.appointment.count({ where: { businessId: bid, startAt: { gte: since30 } } }),
+      prisma.appointment.count({ where: { businessId: bid, startAt: { gte: since60, lt: since30 } } }),
+      prisma.appointment.count({ where: { businessId: bid, startAt: { gte: since30 }, status: "COMPLETED" } }),
+      prisma.appointment.aggregate({ _sum: { price: true }, _count: true, where: realisedWhere }),
+      Promise.all(bucketBounds.map((b) => prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(b.start, b.end) }))),
+      prisma.appointment.groupBy({ by: ["serviceId"], _sum: { price: true }, _count: true, where: realisedWhere }),
+      prisma.appointment.groupBy({ by: ["staffMemberId"], _sum: { price: true }, _count: true, where: { ...realisedWhere, staffMemberId: { not: null } } }),
+      prisma.appointment.groupBy({ by: ["customerId"], _count: true, where: { businessId: bid, startAt: { gte: since60 } } }),
+    ]);
 
-  // Weekly revenue trend (6 buckets).
-  const buckets: { label: string; total: number }[] = [];
-  for (let i = 5; i >= 0; i -= 1) {
-    const bStart = new Date(now.getTime() - (i + 1) * 7 * DAY);
-    const bEnd = new Date(now.getTime() - i * 7 * DAY);
-    const total = payments
-      .filter((p) => incoming(p) && p.createdAt >= bStart && p.createdAt < bEnd && p.createdAt >= trendStart)
-      .reduce((s, p) => s + Number(p.amount), 0);
-    buckets.push({ label: i === 0 ? "This wk" : `${i}w ago`, total });
-  }
-  const trendMax = Math.max(1, ...buckets.map((b) => b.total));
-  const trend: TrendBar[] = buckets.map((b) => ({
-    label: b.label,
-    amount: money(b.total, currency),
-    value: pct(b.total, trendMax),
+  const revenue30 = Number(rev30Agg._sum.amount ?? 0);
+  const revenuePrev = Number(revPrevAgg._sum.amount ?? 0);
+  const realisedCount = avgAgg._count;
+  const avgTicket = realisedCount ? Number(avgAgg._sum.price ?? 0) / realisedCount : 0;
+
+  const trendTotals = trendAggs.map((a, idx) => ({ label: bucketBounds[idx].label, total: Number(a._sum.amount ?? 0) }));
+  const trendMax = Math.max(1, ...trendTotals.map((t) => t.total));
+  const trend: TrendBar[] = trendTotals.map((t) => ({ label: t.label, amount: money(t.total, currency), value: pct(t.total, trendMax) }));
+
+  // Top services (30d realised revenue) — group in SQL, then name the top 6.
+  const svcSorted = svcGroups
+    .map((g) => ({ serviceId: g.serviceId, bookings: g._count, revenue: Number(g._sum.price ?? 0) }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 6);
+  const svcNames = svcSorted.length
+    ? await prisma.service.findMany({ where: { id: { in: svcSorted.map((s) => s.serviceId) } }, select: { id: true, name: true } })
+    : [];
+  const svcNameMap = new Map(svcNames.map((s) => [s.id, s.name]));
+  const svcRevMax = Math.max(1, ...svcSorted.map((s) => s.revenue));
+  const topServices: TopService[] = svcSorted.map((s) => ({
+    name: svcNameMap.get(s.serviceId) ?? "—",
+    bookings: s.bookings,
+    revenue: money(s.revenue, currency),
+    share: pct(s.revenue, svcRevMax),
   }));
 
-  // Top services by realised revenue (30d).
-  const svcMap = new Map<string, { bookings: number; revenue: number }>();
-  for (const a of realised30) {
-    const key = a.service?.name ?? "—";
-    const cur = svcMap.get(key) ?? { bookings: 0, revenue: 0 };
-    cur.bookings += 1;
-    cur.revenue += Number(a.price);
-    svcMap.set(key, cur);
-  }
-  const svcRevMax = Math.max(1, ...[...svcMap.values()].map((v) => v.revenue));
-  const topServices: TopService[] = [...svcMap.entries()]
-    .sort((a, b) => b[1].revenue - a[1].revenue)
-    .slice(0, 6)
-    .map(([name, v]) => ({ name, bookings: v.bookings, revenue: money(v.revenue, currency), share: pct(v.revenue, svcRevMax) }));
-
-  // Staff leaderboard (30d realised revenue + share of total).
-  const staffMap = new Map<string, { name: string; colorHex: string; bookings: number; revenue: number }>();
-  for (const a of realised30) {
-    if (!a.staffMember) continue;
-    const id = a.staffMember.id;
-    const name = a.staffMember.user?.name ?? a.staffMember.invitedEmail?.split("@")[0] ?? "Team member";
-    const cur = staffMap.get(id) ?? { name, colorHex: a.staffMember.colorHex ?? "#6d315f", bookings: 0, revenue: 0 };
-    cur.bookings += 1;
-    cur.revenue += Number(a.price);
-    staffMap.set(id, cur);
-  }
-  const staffRevMax = Math.max(1, ...[...staffMap.values()].map((v) => v.revenue));
-  const staff: StaffRow[] = [...staffMap.values()]
+  // Staff leaderboard — group in SQL, then resolve the top 6.
+  const staffSorted = staffGroups
+    .map((g) => ({ staffMemberId: g.staffMemberId as string | null, bookings: g._count, revenue: Number(g._sum.price ?? 0) }))
+    .filter((g): g is { staffMemberId: string; bookings: number; revenue: number } => Boolean(g.staffMemberId))
     .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 6)
-    .map((v) => ({ name: v.name, colorHex: v.colorHex, bookings: v.bookings, revenue: money(v.revenue, currency), util: pct(v.revenue, staffRevMax) }));
+    .slice(0, 6);
+  const staffRows = staffSorted.length
+    ? await prisma.staffMember.findMany({
+        where: { id: { in: staffSorted.map((s) => s.staffMemberId) } },
+        select: { id: true, colorHex: true, invitedEmail: true, user: { select: { name: true } } },
+      })
+    : [];
+  const staffMap = new Map(staffRows.map((s) => [s.id, s]));
+  const staffRevMax = Math.max(1, ...staffSorted.map((s) => s.revenue));
+  const staff: StaffRow[] = staffSorted.map((s) => {
+    const m = staffMap.get(s.staffMemberId);
+    const name = m?.user?.name ?? m?.invitedEmail?.split("@")[0] ?? "Team member";
+    return { name, colorHex: m?.colorHex ?? "#6d315f", bookings: s.bookings, revenue: money(s.revenue, currency), util: pct(s.revenue, staffRevMax) };
+  });
 
   // Retention: distinct customers with 2+ visits in the 60d window.
-  const visitCounts = new Map<string, number>();
-  for (const a of appointments) visitCounts.set(a.customerId, (visitCounts.get(a.customerId) ?? 0) + 1);
-  const total = visitCounts.size;
-  const returning = [...visitCounts.values()].filter((c) => c >= 2).length;
+  const total = retentionGroups.length;
+  const returning = retentionGroups.filter((g) => g._count >= 2).length;
 
   return {
     tenant: { name: business.name, currency },
@@ -133,7 +126,7 @@ export async function getReportsData(businessSlug: string): Promise<ReportsData 
       { label: "Revenue", value: money(revenue30, currency), detail: `${deltaLabel(revenue30, revenuePrev)} vs prior 30d` },
       { label: "Bookings", value: String(bookings30), detail: `${deltaLabel(bookings30, bookingsPrev)} vs prior 30d` },
       { label: "Completion rate", value: `${pct(completed30, bookings30)}%`, detail: `${completed30} of ${bookings30} completed` },
-      { label: "Avg. ticket", value: money(avgTicket, currency), detail: `${realised30.length} realised bookings` },
+      { label: "Avg. ticket", value: money(avgTicket, currency), detail: `${realisedCount} realised bookings` },
     ],
     trend,
     topServices,

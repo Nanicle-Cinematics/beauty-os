@@ -198,7 +198,7 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
   const now = new Date();
   const { start, end } = zonedDayRange(now, timeZone);
 
-  const [todayAppointments, activeStaff, products, customers] = await Promise.all([
+  const [todayAppointments, activeStaff, products, customers, repeatGroups, totalCustomers] = await Promise.all([
     prisma.appointment.findMany({
       where: { businessId: business.id, startAt: { gte: start, lt: end } },
       orderBy: { startAt: "asc" },
@@ -214,8 +214,9 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
       include: { user: true },
     }),
     prisma.product.findMany({ where: { businessId: business.id } }),
-    // Bounded read: a single tenant's client list. For very large tenants
-    // this should become a set of SQL aggregates rather than an in-memory scan.
+    // Bounded read: the most recent clients, used to build the "client signals"
+    // list and today's birthdays. The retention % below is computed exactly in
+    // SQL (not from this capped list).
     prisma.customer.findMany({
       where: { businessId: business.id },
       take: 500,
@@ -223,6 +224,9 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
         appointments: { select: { status: true, price: true, startAt: true }, orderBy: { startAt: "desc" } },
       },
     }),
+    // Exact retention: clients with 2+ non-cancelled visits, over the full base.
+    prisma.appointment.groupBy({ by: ["customerId"], _count: true, where: { businessId: business.id, status: { notIn: ["CANCELLED", "NO_SHOW"] } } }),
+    prisma.customer.count({ where: { businessId: business.id } }),
   ]);
 
   // --- today's schedule ---
@@ -235,11 +239,9 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
   );
   const nextUp = liveToday.find((appointment) => appointment.startAt > now);
 
-  // --- retention ---
-  const repeatClients = customers.filter(
-    (customer) => customer.appointments.filter((appointment) => !CANCELLED.has(appointment.status)).length >= 2,
-  ).length;
-  const retention = customers.length ? (repeatClients / customers.length) * 100 : 0;
+  // --- retention (exact, from SQL aggregates) ---
+  const repeatClients = repeatGroups.filter((g) => g._count >= 2).length;
+  const retention = totalCustomers ? (repeatClients / totalCustomers) * 100 : 0;
 
   // --- birthdays today (match month + day in tz) ---
   const todayKey = formatDayMonthInTz(now, timeZone);

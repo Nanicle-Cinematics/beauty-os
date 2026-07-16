@@ -267,15 +267,21 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
   const since30 = new Date(now.getTime() - 30 * DAY);
   const since60 = new Date(now.getTime() - 60 * DAY);
 
-  const [payments, expenses, recentPayments, recentExpenses, outstandingAgg] = await Promise.all([
-    prisma.payment.findMany({
-      where: { businessId: business.id, status: "SUCCESS", createdAt: { gte: since60 } },
-      select: { amount: true, type: true, createdAt: true },
-    }),
-    prisma.expense.findMany({
-      where: { businessId: business.id, incurredAt: { gte: since60 } },
-      select: { amount: true, incurredAt: true, category: true },
-    }),
+  // Revenue = SUCCESS, non-refund payments. All sums/grouping run in Postgres
+  // (no unbounded row reads, correct for tenants of any size).
+  const revenueWhere = (from: Date, to?: Date) => ({
+    businessId: business.id,
+    status: "SUCCESS" as const,
+    type: { not: "REFUND" as const },
+    createdAt: to ? { gte: from, lt: to } : { gte: from },
+  });
+
+  const [rev30Agg, revPrevAgg, exp30Agg, expPrevAgg, catGroups, recentPayments, recentExpenses, outstandingAgg] = await Promise.all([
+    prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since30) }),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since60, since30) }),
+    prisma.expense.aggregate({ _sum: { amount: true }, where: { businessId: business.id, incurredAt: { gte: since30 } } }),
+    prisma.expense.aggregate({ _sum: { amount: true }, where: { businessId: business.id, incurredAt: { gte: since60, lt: since30 } } }),
+    prisma.expense.groupBy({ by: ["category"], _sum: { amount: true }, where: { businessId: business.id, incurredAt: { gte: since30 } } }),
     prisma.payment.findMany({
       where: { businessId: business.id },
       orderBy: { createdAt: "desc" },
@@ -291,29 +297,19 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
     prisma.customer.aggregate({ where: { businessId: business.id }, _sum: { outstandingBalance: true } }),
   ]);
 
-  const incoming = (p: { type: string }) => p.type !== "REFUND";
-  const rev30 = payments.filter((p) => p.createdAt >= since30 && incoming(p)).reduce((s, p) => s + Number(p.amount), 0);
-  const revPrev = payments.filter((p) => p.createdAt < since30 && incoming(p)).reduce((s, p) => s + Number(p.amount), 0);
-  const exp30 = expenses.filter((e) => e.incurredAt >= since30).reduce((s, e) => s + Number(e.amount), 0);
-  const expPrev = expenses.filter((e) => e.incurredAt < since30).reduce((s, e) => s + Number(e.amount), 0);
+  const rev30 = Number(rev30Agg._sum.amount ?? 0);
+  const revPrev = Number(revPrevAgg._sum.amount ?? 0);
+  const exp30 = Number(exp30Agg._sum.amount ?? 0);
+  const expPrev = Number(expPrevAgg._sum.amount ?? 0);
   const net30 = rev30 - exp30;
   const outstanding = Number(outstandingAgg._sum.outstandingBalance ?? 0);
   const flowMax = Math.max(1, rev30, exp30);
 
-  // Expenses grouped by category over the last 30 days, largest first.
-  const catMap = new Map<string, number>();
-  for (const e of expenses) {
-    if (e.incurredAt >= since30) catMap.set(e.category, (catMap.get(e.category) ?? 0) + Number(e.amount));
-  }
-  const catMax = Math.max(1, ...catMap.values());
-  const expensesByCategory: CategoryTotal[] = [...catMap.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([category, total]) => ({
-      category,
-      amount: money(total, currency),
-      percent: pct(total, exp30),
-      share: pct(total, catMax),
-    }));
+  const catSums = catGroups.map((g) => ({ category: g.category, sum: Number(g._sum.amount ?? 0) }));
+  const catMax = Math.max(1, ...catSums.map((c) => c.sum));
+  const expensesByCategory: CategoryTotal[] = catSums
+    .sort((a, b) => b.sum - a.sum)
+    .map((c) => ({ category: c.category, amount: money(c.sum, currency), percent: pct(c.sum, exp30), share: pct(c.sum, catMax) }));
 
   return {
     tenant: { name: business.name, currency },

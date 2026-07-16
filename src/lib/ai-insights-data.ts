@@ -20,7 +20,6 @@ export type AiInsightsData = {
 };
 
 const DAY = 24 * 60 * 60 * 1000;
-const REALISED = new Set(["COMPLETED", "CONFIRMED"]);
 
 export async function getAiInsightsData(businessSlug: string): Promise<AiInsightsData | null> {
   if (!isDatabaseConfigured()) return null;
@@ -34,30 +33,30 @@ export async function getAiInsightsData(businessSlug: string): Promise<AiInsight
   const since60 = new Date(now.getTime() - 60 * DAY);
   const since90 = new Date(now.getTime() - 90 * DAY);
 
-  const [payments, appts, upcoming, products, customerCount] = await Promise.all([
-    prisma.payment.findMany({
-      where: { businessId: business.id, status: "SUCCESS", createdAt: { gte: since60 } },
-      select: { amount: true, type: true, createdAt: true },
-    }),
-    prisma.appointment.findMany({
-      where: { businessId: business.id, startAt: { gte: since90 } },
-      select: { startAt: true, status: true, price: true, customerId: true, service: { select: { name: true } } },
-      take: 4000,
-    }),
-    prisma.appointment.findMany({
-      where: { businessId: business.id, startAt: { gte: now }, depositPaid: false, depositAmount: { gt: 0 } },
-      select: { depositAmount: true },
-    }),
-    prisma.product.findMany({ where: { businessId: business.id }, select: { name: true, quantityOnHand: true, reorderThreshold: true } }),
-    prisma.customer.count({ where: { businessId: business.id } }),
+  const bid = business.id;
+  const revenueWhere = (from: Date, to?: Date) => ({
+    businessId: bid,
+    status: "SUCCESS" as const,
+    type: { not: "REFUND" as const },
+    createdAt: to ? { gte: from, lt: to } : { gte: from },
+  });
+
+  // All computed in Postgres — no unbounded appointment/payment scans.
+  const [rev30Agg, revPrevAgg, upcomingAgg, svcGroups, lapseGroups, products, customerCount] = await Promise.all([
+    prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since30) }),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since60, since30) }),
+    prisma.appointment.aggregate({ _sum: { depositAmount: true }, _count: true, where: { businessId: bid, startAt: { gte: now }, depositPaid: false, depositAmount: { gt: 0 } } }),
+    prisma.appointment.groupBy({ by: ["serviceId"], _sum: { price: true }, where: { businessId: bid, status: { in: ["COMPLETED", "CONFIRMED"] }, startAt: { gte: since30 } } }),
+    prisma.appointment.groupBy({ by: ["customerId"], _max: { startAt: true }, where: { businessId: bid, startAt: { gte: since90 } } }),
+    prisma.product.findMany({ where: { businessId: bid }, select: { name: true, quantityOnHand: true, reorderThreshold: true } }),
+    prisma.customer.count({ where: { businessId: bid } }),
   ]);
 
   const insights: Insight[] = [];
-  const incoming = (p: { type: string }) => p.type !== "REFUND";
-
-  // Revenue trend
-  const rev30 = payments.filter((p) => p.createdAt >= since30 && incoming(p)).reduce((s, p) => s + Number(p.amount), 0);
-  const revPrev = payments.filter((p) => p.createdAt < since30 && incoming(p)).reduce((s, p) => s + Number(p.amount), 0);
+  const rev30 = Number(rev30Agg._sum.amount ?? 0);
+  const revPrev = Number(revPrevAgg._sum.amount ?? 0);
+  const upcomingCount = upcomingAgg._count;
+  const upcomingTotal = Number(upcomingAgg._sum.depositAmount ?? 0);
   if (rev30 > 0 || revPrev > 0) {
     const up = rev30 >= revPrev;
     insights.push({
@@ -71,14 +70,13 @@ export async function getAiInsightsData(businessSlug: string): Promise<AiInsight
   }
 
   // Unpaid deposits
-  if (upcoming.length > 0) {
-    const total = upcoming.reduce((s, a) => s + Number(a.depositAmount ?? 0), 0);
+  if (upcomingCount > 0) {
     insights.push({
       id: "deposits",
       kind: "Cash at risk",
       tone: "warning",
-      title: `${upcoming.length} upcoming booking${upcoming.length === 1 ? "" : "s"} without a paid deposit`,
-      body: `${money(total, currency)} in deposits is uncollected. Securing deposits reduces no-shows and protects your day.`,
+      title: `${upcomingCount} upcoming booking${upcomingCount === 1 ? "" : "s"} without a paid deposit`,
+      body: `${money(upcomingTotal, currency)} in deposits is uncollected. Securing deposits reduces no-shows and protects your day.`,
       action: { label: "Collect deposits", path: "payments" },
     });
   }
@@ -98,29 +96,23 @@ export async function getAiInsightsData(businessSlug: string): Promise<AiInsight
   }
 
   // Top / highest-earning service (30d)
-  const svc = new Map<string, number>();
-  for (const a of appts) {
-    if (a.startAt >= since30 && REALISED.has(a.status)) svc.set(a.service?.name ?? "—", (svc.get(a.service?.name ?? "—") ?? 0) + Number(a.price));
-  }
-  const topSvc = [...svc.entries()].sort((a, b) => b[1] - a[1])[0];
-  if (topSvc) {
+  const topSvcGroup = svcGroups
+    .map((g) => ({ serviceId: g.serviceId, revenue: Number(g._sum.price ?? 0) }))
+    .sort((a, b) => b.revenue - a.revenue)[0];
+  if (topSvcGroup && topSvcGroup.revenue > 0) {
+    const svc = await prisma.service.findUnique({ where: { id: topSvcGroup.serviceId }, select: { name: true } });
     insights.push({
       id: "top-service",
       kind: "Opportunity",
       tone: "plum",
-      title: `${topSvc[0]} is your top earner right now`,
-      body: `It brought in ${money(topSvc[1], currency)} over the last 30 days. Feature it in a campaign or upsell it at checkout.`,
+      title: `${svc?.name ?? "Your top service"} is your top earner right now`,
+      body: `It brought in ${money(topSvcGroup.revenue, currency)} over the last 30 days. Feature it in a campaign or upsell it at checkout.`,
       action: { label: "Open marketing", path: "marketing" },
     });
   }
 
-  // Lapsing clients: seen 60–90d ago, not since
-  const lastVisit = new Map<string, Date>();
-  for (const a of appts) {
-    const cur = lastVisit.get(a.customerId);
-    if (!cur || a.startAt > cur) lastVisit.set(a.customerId, a.startAt);
-  }
-  const lapsing = [...lastVisit.values()].filter((d) => d < since60).length;
+  // Lapsing clients: most recent visit (within 90d) was 60–90d ago.
+  const lapsing = lapseGroups.filter((g) => g._max.startAt != null && g._max.startAt < since60).length;
   if (lapsing > 0) {
     insights.push({
       id: "lapsing",
