@@ -39,18 +39,26 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
           </div>
         </div>
         <div className="flex items-end gap-3 sm:gap-5">
-          {data.trend.map((bar) => (
-            <div key={bar.label} className="flex flex-1 flex-col items-center gap-2">
-              <div className="text-[11px] font-semibold text-ink">{bar.amount}</div>
-              <div className="flex h-40 w-full items-end justify-center">
-                <div
-                  className="w-full max-w-[52px] rounded-t-lg bg-gradient-to-t from-plum to-mauve transition-all"
-                  style={{ height: `${Math.max(bar.value, 3)}%` }}
-                />
+          {data.trend.map((bar, i) => {
+            const isLast = i === data.trend.length - 1;
+            return (
+              <div key={bar.label} className="flex flex-1 flex-col items-center gap-2">
+                <div className={`text-[11px] font-semibold ${isLast ? "text-plum" : "text-ink"}`}>{bar.amount}</div>
+                {/* soft track behind each bar so short weeks stay legible */}
+                <div className="flex h-40 w-full items-end justify-center overflow-hidden rounded-xl bg-sunken/50">
+                  <div
+                    className={`w-full max-w-[52px] rounded-t-lg transition-all ${
+                      isLast
+                        ? "bg-gradient-to-t from-wine via-plum to-rose shadow-[0_-2px_12px_rgba(109,49,95,0.35)]"
+                        : "bg-gradient-to-t from-plum/80 to-mauve"
+                    }`}
+                    style={{ height: `${Math.max(bar.value, 3)}%` }}
+                  />
+                </div>
+                <div className={`text-[11px] ${isLast ? "font-semibold text-plum" : "font-medium text-muted"}`}>{bar.label}</div>
               </div>
-              <div className="text-[11px] font-medium text-muted">{bar.label}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -119,9 +127,21 @@ export default async function ReportsPage({ params }: ReportsPageProps) {
           <Repeat size={17} className="text-plum" /> Client retention
         </h2>
         <div className="mt-4 grid grid-cols-3 gap-4 max-[560px]:grid-cols-1">
-          <div className="rounded-2xl border border-line-2 bg-plum-softer p-4">
-            <div className="text-[26px] font-semibold tracking-tight text-ink">{data.retention.repeatRate}%</div>
-            <div className="mt-1 text-[12.5px] text-muted">Repeat rate (60 days)</div>
+          <div className="flex items-center gap-4 rounded-2xl border border-line-2 bg-plum-softer p-4">
+            <div
+              className="relative grid size-[72px] shrink-0 place-items-center rounded-full"
+              style={{ background: `conic-gradient(var(--plum) ${data.retention.repeatRate * 3.6}deg, var(--sunken) 0deg)` }}
+              role="img"
+              aria-label={`Repeat rate ${data.retention.repeatRate} percent`}
+            >
+              <div className="grid size-[52px] place-items-center rounded-full bg-card text-[15px] font-semibold text-ink">
+                {data.retention.repeatRate}%
+              </div>
+            </div>
+            <div className="min-w-0">
+              <div className="text-[13px] font-semibold text-ink">Repeat rate</div>
+              <div className="text-[11.5px] text-muted">Last 60 days</div>
+            </div>
           </div>
           <div className="rounded-2xl border border-line-2 p-4">
             <div className="text-[26px] font-semibold tracking-tight text-ink">{data.retention.returning}</div>

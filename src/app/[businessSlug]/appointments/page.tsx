@@ -38,7 +38,7 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
           <div className="card p-5">
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Schedule</h2>
-              <p className="mt-1 text-sm text-[#796e77]">
+              <p className="mt-1 text-sm text-muted">
                 Tenant-scoped appointment records for this business only.
               </p>
             </div>
@@ -83,7 +83,7 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
 
           <form action={createAppointmentAction} className="card p-5">
             <h2 className="text-lg font-semibold">Create booking</h2>
-            <p className="mt-1 text-sm leading-6 text-[#796e77]">
+            <p className="mt-1 text-sm leading-6 text-muted">
               Creates a confirmed appointment scoped to {data.tenant.name}.
             </p>
 

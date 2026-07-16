@@ -50,7 +50,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
           <div className={cardClass}>
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Campaigns</h2>
-              <p className="mt-1 text-sm text-[#796e77]">Reach clients over email, SMS, and WhatsApp.</p>
+              <p className="mt-1 text-sm text-muted">Reach clients over email, SMS, and WhatsApp.</p>
             </div>
 
             {data.campaigns.length === 0 ? (
@@ -72,9 +72,9 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
               </div>
             )}
 
-            <form action={createCampaignAction} className="mt-5 grid gap-3 rounded-2xl border border-[#f0e8ed] bg-[#f7f2f5] p-4">
+            <form action={createCampaignAction} className="mt-5 grid gap-3 rounded-2xl border border-line-2 bg-sunken p-4">
               <input type="hidden" name="businessSlug" value={businessSlug} />
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">New campaign</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">New campaign</div>
               <input name="name" placeholder="Campaign name" className={inputClass} required />
               <div className="grid grid-cols-2 gap-3">
                 <select name="channel" defaultValue="EMAIL" className={inputClass}>
@@ -88,7 +88,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                   ))}
                 </select>
               </div>
-              <label className="grid gap-1 text-xs font-bold text-[#796e77]">
+              <label className="grid gap-1 text-xs font-bold text-muted">
                 Schedule (optional)
                 <input name="scheduledAt" type="datetime-local" className={inputClass} />
               </label>
@@ -99,7 +99,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
 
           <div className={cardClass}>
             <h2 className="text-lg font-semibold">Loyalty program</h2>
-            <p className="mt-1 text-sm text-[#796e77]">
+            <p className="mt-1 text-sm text-muted">
               {data.loyalty.pointsIssued.toLocaleString("en-US")} points issued · {data.loyalty.members} members
             </p>
             <div className="mt-3">
@@ -108,16 +108,16 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
 
             <form action={updateLoyaltyAction} className="mt-5 grid gap-3">
               <input type="hidden" name="businessSlug" value={businessSlug} />
-              <label className="grid gap-1 text-xs font-bold text-[#796e77]">
+              <label className="grid gap-1 text-xs font-bold text-muted">
                 Points per {data.tenant.currency === "GHS" ? "GH₵" : data.tenant.currency} spent
                 <input name="pointsPerCurrencyUnit" type="number" min="0" step="0.1" defaultValue={data.loyalty.pointsPerCurrencyUnit} className={inputClass} />
               </label>
-              <label className="grid gap-1 text-xs font-bold text-[#796e77]">
+              <label className="grid gap-1 text-xs font-bold text-muted">
                 Redemption rate (points per unit)
                 <input name="redemptionRate" type="number" min="0" step="0.1" defaultValue={data.loyalty.redemptionRate} className={inputClass} />
               </label>
               <label className="flex items-center gap-2 text-sm font-bold">
-                <input type="checkbox" name="active" defaultChecked={data.loyalty.active} className="size-4 accent-[#6d315f]" />
+                <input type="checkbox" name="active" defaultChecked={data.loyalty.active} className="size-4 accent-plum" />
                 Program active
               </label>
               <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Save program</button>
@@ -130,7 +130,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
           <div className={cardClass}>
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Discount coupons</h2>
-              <p className="mt-1 text-sm text-[#796e77]">Codes clients can redeem at checkout.</p>
+              <p className="mt-1 text-sm text-muted">Codes clients can redeem at checkout.</p>
             </div>
 
             {data.coupons.length === 0 ? (
@@ -159,9 +159,9 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
               </div>
             )}
 
-            <form action={createCouponAction} className="mt-5 grid gap-3 rounded-2xl border border-[#f0e8ed] bg-[#f7f2f5] p-4">
+            <form action={createCouponAction} className="mt-5 grid gap-3 rounded-2xl border border-line-2 bg-sunken p-4">
               <input type="hidden" name="businessSlug" value={businessSlug} />
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">New coupon</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">New coupon</div>
               <div className="grid grid-cols-2 gap-3">
                 <input name="code" placeholder="CODE" className={`${inputClass} uppercase`} required />
                 <select name="discountType" defaultValue="PERCENT" className={inputClass}>
@@ -181,7 +181,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
           <div className={cardClass}>
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Membership tiers</h2>
-              <p className="mt-1 text-sm text-[#796e77]">Reward your best clients.</p>
+              <p className="mt-1 text-sm text-muted">Reward your best clients.</p>
             </div>
 
             {data.tiers.length === 0 ? (
@@ -203,9 +203,9 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
               </div>
             )}
 
-            <form action={createTierAction} className="mt-5 grid gap-3 rounded-2xl border border-[#f0e8ed] bg-[#f7f2f5] p-4">
+            <form action={createTierAction} className="mt-5 grid gap-3 rounded-2xl border border-line-2 bg-sunken p-4">
               <input type="hidden" name="businessSlug" value={businessSlug} />
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">New tier</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">New tier</div>
               <input name="name" placeholder="Tier name (e.g. Gold)" className={inputClass} required />
               <div className="grid grid-cols-2 gap-3">
                 <input name="minSpend" type="number" min="0" step="1" placeholder="Min spend" className={inputClass} />

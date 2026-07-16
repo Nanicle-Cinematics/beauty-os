@@ -9,8 +9,8 @@ type OnboardPageProps = {
   searchParams: Promise<{ error?: string }>;
 };
 
-const inputClass = "h-12 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]";
-const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]";
+const inputClass = "h-12 rounded-2xl border border-line bg-sunken px-4 outline-none focus:border-plum";
+const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted";
 const cardClass = "grid gap-4 card p-5";
 
 export default async function OnboardPage({ searchParams }: OnboardPageProps) {
@@ -19,7 +19,7 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
   const { categories, plans, currencies, timezones } = await getOnboardingOptions();
 
   return (
-    <main className="min-h-screen bg-[#fbf7f4] px-6 py-6 text-[#231c22] max-[720px]:px-3">
+    <main className="min-h-screen bg-canvas px-6 py-6 text-ink max-[720px]:px-3">
       <div className="mx-auto grid max-w-3xl gap-5">
         <header className="card flex items-center justify-between gap-4 px-5 py-4 max-[720px]:flex-col max-[720px]:items-start">
           <div className="flex items-center gap-3.5">
@@ -45,7 +45,7 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
           <section className={cardClass}>
             <div>
               <h2 className="text-lg font-semibold">Business details</h2>
-              <p className="mt-1 text-sm text-[#796e77]">Starts on a free trial — assign a plan below if you like.</p>
+              <p className="mt-1 text-sm text-muted">Starts on a free trial — assign a plan below if you like.</p>
             </div>
 
             <label className={labelClass}>
@@ -113,7 +113,7 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
           <section className={cardClass}>
             <div>
               <h2 className="text-lg font-semibold">Owner account</h2>
-              <p className="mt-1 text-sm text-[#796e77]">
+              <p className="mt-1 text-sm text-muted">
                 We generate a secure invite link so the owner sets their own password — no temporary password to share.
               </p>
             </div>
@@ -131,7 +131,7 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
           </section>
 
           <div className="flex items-center justify-end gap-3">
-            <Link href="/platform" className="rounded-2xl border border-[#e9dee5] px-5 py-3 text-sm font-semibold">
+            <Link href="/platform" className="rounded-2xl border border-line px-5 py-3 text-sm font-semibold">
               Cancel
             </Link>
             <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-6 py-3 text-sm font-semibold text-white">Create business</button>

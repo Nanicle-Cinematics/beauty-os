@@ -51,7 +51,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                     <div key={deposit.appointmentId} className="flex items-center justify-between gap-3 rounded-xl border border-warning/20 bg-card px-4 py-3 text-sm">
                       <div className="min-w-0">
                         <div className="truncate font-semibold">{deposit.client}</div>
-                        <div className="truncate text-xs font-semibold text-[#796e77]">{deposit.service} · {deposit.when}</div>
+                        <div className="truncate text-xs font-semibold text-muted">{deposit.service} · {deposit.when}</div>
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-semibold">{deposit.amount}</span>
@@ -76,21 +76,21 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
             <div className="card p-5">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold">Payment history</h2>
-                <p className="mt-1 text-sm text-[#796e77]">Every payment recorded for this business.</p>
+                <p className="mt-1 text-sm text-muted">Every payment recorded for this business.</p>
               </div>
 
               {data.payments.length === 0 ? (
                 <EmptyState icon={Coins} title="No payments yet" body="Record your first payment from the panel on the right." />
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
-                  <div className="grid grid-cols-[1.3fr_1fr_120px_110px_90px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[940px]:hidden">
+                <div className="overflow-hidden rounded-2xl border border-line">
+                  <div className="grid grid-cols-[1.3fr_1fr_120px_110px_90px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[940px]:hidden">
                     <span>Client</span><span>Method</span><span>Type</span><span>Amount</span><span>Status</span>
                   </div>
                   {data.payments.map((payment) => (
-                    <div key={payment.id} className="grid grid-cols-[1.3fr_1fr_120px_110px_90px] items-center gap-3 border-t border-[#f0e8ed] px-4 py-4 text-sm max-[940px]:grid-cols-1">
+                    <div key={payment.id} className="grid grid-cols-[1.3fr_1fr_120px_110px_90px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[940px]:grid-cols-1">
                       <div className="min-w-0">
                         <div className="truncate font-semibold">{payment.client}</div>
-                        <div className="text-xs font-semibold text-[#796e77]">{payment.when}</div>
+                        <div className="text-xs font-semibold text-muted">{payment.when}</div>
                       </div>
                       <span className="font-medium text-muted">{payment.method}</span>
                       <span className="font-medium text-ink">{payment.type}</span>
@@ -105,7 +105,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
 
           <form action={recordPaymentAction} className="card p-5">
             <h2 className="text-lg font-semibold">Record payment</h2>
-            <p className="mt-1 text-sm leading-6 text-[#796e77]">
+            <p className="mt-1 text-sm leading-6 text-muted">
               Marks the payment successful and updates client balances.
             </p>
 

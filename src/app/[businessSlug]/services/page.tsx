@@ -40,7 +40,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
           <div className="card p-5">
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Service menu</h2>
-              <p className="mt-1 text-sm text-[#796e77]">
+              <p className="mt-1 text-sm text-muted">
                 Prices, deposits, duration, and the team who can deliver each service.
               </p>
             </div>
@@ -48,14 +48,14 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
             {data.services.length === 0 ? (
               <EmptyState icon={Sparkles} title="No services yet" body="Add your first service from the panel on the right." />
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
-                <div className="grid grid-cols-[1.5fr_1fr_100px_90px_120px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[940px]:hidden">
+              <div className="overflow-hidden rounded-2xl border border-line">
+                <div className="grid grid-cols-[1.5fr_1fr_100px_90px_120px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[940px]:hidden">
                   <span>Service</span><span>Team</span><span>Duration</span><span>Bookings</span><span>Price</span>
                 </div>
                 {data.services.map((service) => (
                   <div
                     key={service.id}
-                    className={`grid grid-cols-[1.5fr_1fr_100px_90px_120px] items-center gap-3 border-t border-[#f0e8ed] px-4 py-4 text-sm max-[940px]:grid-cols-1 ${
+                    className={`grid grid-cols-[1.5fr_1fr_100px_90px_120px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[940px]:grid-cols-1 ${
                       service.isActive ? "" : "opacity-60"
                     }`}
                   >
@@ -66,10 +66,10 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                           <span className="font-semibold text-ink">{service.name}</span>
                           {!service.isActive ? <Badge tone="neutral">Archived</Badge> : null}
                         </div>
-                        <div className="mt-1 text-xs font-semibold text-[#796e77]">{service.category}</div>
+                        <div className="mt-1 text-xs font-semibold text-muted">{service.category}</div>
                       </div>
                     </div>
-                    <div className="text-xs font-bold text-[#796e77]">
+                    <div className="text-xs font-bold text-muted">
                       {service.staff.length ? service.staff.join(", ") : "Unassigned"}
                     </div>
                     <div className="font-bold">{service.duration}</div>
@@ -77,7 +77,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                     <div className="flex items-center justify-between gap-2">
                       <div>
                         <div className="font-semibold">{service.price}</div>
-                        <div className="text-xs font-semibold text-[#796e77]">{service.deposit} dep.</div>
+                        <div className="text-xs font-semibold text-muted">{service.deposit} dep.</div>
                       </div>
                       <form action={toggleServiceActiveAction}>
                         <input type="hidden" name="businessSlug" value={businessSlug} />
@@ -95,7 +95,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
 
           <form action={createServiceAction} className="card p-5">
             <h2 className="text-lg font-semibold">Add service</h2>
-            <p className="mt-1 text-sm leading-6 text-[#796e77]">
+            <p className="mt-1 text-sm leading-6 text-muted">
               New services become bookable in {data.tenant.name} immediately.
             </p>
 
@@ -156,7 +156,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                     <option key={member.id} value={member.id}>{member.label}</option>
                   ))}
                 </select>
-                <span className="text-xs font-semibold text-[#796e77]">Hold ⌘/Ctrl to select multiple.</span>
+                <span className="text-xs font-semibold text-muted">Hold ⌘/Ctrl to select multiple.</span>
               </label>
 
               <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">

@@ -40,7 +40,7 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
           <div className="card p-5">
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Client directory</h2>
-              <p className="mt-1 text-sm text-[#796e77]">
+              <p className="mt-1 text-sm text-muted">
                 Every client record is scoped to this business only.
               </p>
             </div>
@@ -48,12 +48,12 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
             {data.clients.length === 0 ? (
               <EmptyState icon={Users} title="No clients yet" body="Add your first client from the panel on the right." />
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
-                <div className="grid grid-cols-[1.3fr_1.1fr_90px_100px_120px_110px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[940px]:hidden">
+              <div className="overflow-hidden rounded-2xl border border-line">
+                <div className="grid grid-cols-[1.3fr_1.1fr_90px_100px_120px_110px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[940px]:hidden">
                   <span>Client</span><span>Contact</span><span>Visits</span><span>Last visit</span><span>Lifetime</span><span>Owed</span>
                 </div>
                 {data.clients.map((client) => (
-                  <div key={client.id} className="grid grid-cols-[1.3fr_1.1fr_90px_100px_120px_110px] items-center gap-3 border-t border-[#f0e8ed] px-4 py-4 text-sm max-[940px]:grid-cols-1">
+                  <div key={client.id} className="grid grid-cols-[1.3fr_1.1fr_90px_100px_120px_110px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[940px]:grid-cols-1">
                     <div className="flex min-w-0 items-center gap-3">
                       <Avatar name={client.name} />
                       <div className="min-w-0">
@@ -71,9 +71,9 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
                     </div>
                     <span className="truncate font-medium text-muted">{client.contact}</span>
                     <span className="font-semibold">{client.visits}</span>
-                    <span className="font-bold text-[#796e77]">{client.lastVisit}</span>
+                    <span className="font-bold text-muted">{client.lastVisit}</span>
                     <span className="font-semibold">{client.lifetimeSpend}</span>
-                    <span className={`font-semibold ${client.outstandingRaw > 0 ? "text-rose-700" : "text-[#796e77]"}`}>
+                    <span className={`font-semibold ${client.outstandingRaw > 0 ? "text-rose-700" : "text-muted"}`}>
                       {client.outstanding}
                     </span>
                   </div>
@@ -84,7 +84,7 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
 
           <form action={createClientAction} className="card p-5">
             <h2 className="text-lg font-semibold">Add client</h2>
-            <p className="mt-1 text-sm leading-6 text-[#796e77]">
+            <p className="mt-1 text-sm leading-6 text-muted">
               Creates a client record scoped to {data.tenant.name}.
             </p>
 
@@ -126,7 +126,7 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
               <label className="field-label">
                 Tags
                 <input name="tags" placeholder="VIP, bridal, referral" className="input" />
-                <span className="text-xs font-semibold text-[#796e77]">Comma-separated.</span>
+                <span className="text-xs font-semibold text-muted">Comma-separated.</span>
               </label>
 
               <label className="field-label">

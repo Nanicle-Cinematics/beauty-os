@@ -50,7 +50,7 @@ export function PasswordInput({ name, placeholder, minLength, required, autoComp
         onClick={() => setShow((v) => !v)}
         aria-label={show ? "Hide password" : "Show password"}
         aria-pressed={show}
-        className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-[#796e77] transition hover:text-[#231c22]"
+        className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-muted transition hover:text-ink"
       >
         {show ? <EyeOffIcon /> : <EyeIcon />}
       </button>

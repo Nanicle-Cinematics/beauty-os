@@ -28,7 +28,7 @@ const badgeTone: Record<BadgeTone, string> = {
   success: "bg-success-soft text-success",
   warning: "bg-warning-soft text-warning",
   danger: "bg-danger-soft text-danger",
-  neutral: "bg-[#f0eaee] text-muted",
+  neutral: "bg-line-2 text-muted",
   info: "bg-[#eef1f6] text-[#4a5b7a]",
 };
 
@@ -66,7 +66,7 @@ const tileTone: Record<BadgeTone, string> = {
   success: "bg-success-soft text-success",
   warning: "bg-warning-soft text-warning",
   danger: "bg-danger-soft text-danger",
-  neutral: "bg-[#f0eaee] text-muted",
+  neutral: "bg-line-2 text-muted",
   info: "bg-[#eef1f6] text-[#4a5b7a]",
 };
 

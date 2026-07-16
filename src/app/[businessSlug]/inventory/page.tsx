@@ -51,7 +51,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
             <div className="card p-5">
               <div className="mb-4">
                 <h2 className="text-lg font-semibold">Stock on hand</h2>
-                <p className="mt-1 text-sm text-[#796e77]">
+                <p className="mt-1 text-sm text-muted">
                   Levels, value, and expiry — adjust stock inline as you use or receive product.
                 </p>
               </div>
@@ -59,23 +59,23 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
               {data.products.length === 0 ? (
                 <EmptyState icon={Package} title="No products yet" body="Add your first product from the panel on the right." />
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
-                  <div className="grid grid-cols-[1.4fr_140px_100px_110px_150px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[980px]:hidden">
+                <div className="overflow-hidden rounded-2xl border border-line">
+                  <div className="grid grid-cols-[1.4fr_140px_100px_110px_150px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[980px]:hidden">
                     <span>Product</span><span>Level</span><span>Value</span><span>Status</span><span>Adjust</span>
                   </div>
                   {data.products.map((product) => (
-                    <div key={product.id} className="grid grid-cols-[1.4fr_140px_100px_110px_150px] items-center gap-3 border-t border-[#f0e8ed] px-4 py-4 text-sm max-[980px]:grid-cols-1">
+                    <div key={product.id} className="grid grid-cols-[1.4fr_140px_100px_110px_150px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[980px]:grid-cols-1">
                       <div className="min-w-0">
                         <div className="truncate font-semibold">{product.name}</div>
-                        <div className="mt-1 truncate text-xs font-semibold text-[#796e77]">
+                        <div className="mt-1 truncate text-xs font-semibold text-muted">
                           {product.category}
                           {product.supplier !== "—" ? ` · ${product.supplier}` : ""}
                           {product.expiry !== "—" ? ` · exp ${product.expiry}` : ""}
                         </div>
                       </div>
                       <div>
-                        <div className="mb-1 text-xs font-bold text-[#796e77]">{product.stockLabel}</div>
-                        <div className="h-2 rounded-full bg-[#f0eaee]">
+                        <div className="mb-1 text-xs font-bold text-muted">{product.stockLabel}</div>
+                        <div className="h-2 rounded-full bg-line-2">
                           <div className={`h-full rounded-full ${barStyles[product.status]}`} style={{ width: `${product.level}%` }} />
                         </div>
                       </div>
@@ -92,7 +92,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                           step="1"
                           placeholder="+/-"
                           aria-label={`Adjust ${product.name} stock`}
-                          className="h-9 w-16 rounded-xl border border-[#e9dee5] bg-[#f7f2f5] px-2 text-sm outline-none focus:border-[#6d315f]"
+                          className="h-9 w-16 rounded-xl border border-line bg-sunken px-2 text-sm outline-none focus:border-plum"
                           required
                         />
                         <button className="h-9 rounded-xl bg-gradient-to-r from-plum to-wine px-3 text-xs font-semibold text-white">
@@ -108,17 +108,17 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
             <div className="card p-5">
               <h2 className="text-lg font-semibold">Recent stock movements</h2>
               {data.movements.length === 0 ? (
-                <p className="mt-3 text-sm text-[#796e77]">No stock movements recorded yet.</p>
+                <p className="mt-3 text-sm text-muted">No stock movements recorded yet.</p>
               ) : (
-                <div className="mt-4 overflow-hidden rounded-2xl border border-[#e9dee5]">
+                <div className="mt-4 overflow-hidden rounded-2xl border border-line">
                   {data.movements.map((movement) => (
-                    <div key={movement.id} className="grid grid-cols-[1.4fr_1fr_80px_90px] items-center gap-3 border-b border-[#f0e8ed] px-4 py-3 text-sm last:border-b-0">
+                    <div key={movement.id} className="grid grid-cols-[1.4fr_1fr_80px_90px] items-center gap-3 border-b border-line-2 px-4 py-3 text-sm last:border-b-0">
                       <span className="font-semibold">{movement.product}</span>
-                      <span className="font-semibold text-[#796e77]">{movement.type}</span>
-                      <span className={`font-semibold ${movement.quantity.startsWith("-") ? "text-rose-700" : "text-[#6d315f]"}`}>
+                      <span className="font-semibold text-muted">{movement.type}</span>
+                      <span className={`font-semibold ${movement.quantity.startsWith("-") ? "text-rose-700" : "text-plum"}`}>
                         {movement.quantity}
                       </span>
-                      <span className="text-right text-xs font-bold text-[#796e77]">{movement.when}</span>
+                      <span className="text-right text-xs font-bold text-muted">{movement.when}</span>
                     </div>
                   ))}
                 </div>
@@ -128,7 +128,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
 
           <form action={addProductAction} className="card p-5">
             <h2 className="text-lg font-semibold">Add product</h2>
-            <p className="mt-1 text-sm leading-6 text-[#796e77]">
+            <p className="mt-1 text-sm leading-6 text-muted">
               Opening stock is recorded as a movement in {data.tenant.name}.
             </p>
 

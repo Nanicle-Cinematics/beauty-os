@@ -14,8 +14,8 @@ type SettingsPageProps = {
   searchParams: Promise<{ updated?: string; error?: string }>;
 };
 
-const inputClass = "h-12 w-full rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-4 outline-none focus:border-[#6d315f]";
-const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]";
+const inputClass = "h-12 w-full rounded-2xl border border-line bg-sunken px-4 outline-none focus:border-plum";
+const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted";
 const cardClass = "grid gap-4 card p-5";
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
@@ -32,7 +32,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const email = account?.email ?? user.email;
 
   return (
-    <main className="min-h-screen bg-[#fbf7f4] px-6 py-6 text-[#231c22] max-[720px]:px-3">
+    <main className="min-h-screen bg-canvas px-6 py-6 text-ink max-[720px]:px-3">
       <div className="mx-auto grid max-w-2xl gap-5">
         <header className="card flex items-center justify-between gap-4 px-5 py-4">
           <div className="flex items-center gap-3.5">
@@ -49,7 +49,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         </header>
 
         {updated ? (
-          <div className="rounded-2xl border border-[#e9dee5] bg-[#f6edf2] px-4 py-3 text-sm font-bold text-[#6d315f]">
+          <div className="rounded-2xl border border-line bg-plum-soft px-4 py-3 text-sm font-bold text-plum">
             {updated === "password" ? "Password changed." : "Profile updated."}
           </div>
         ) : null}
@@ -61,10 +61,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <section className={cardClass}>
           <div>
             <h2 className="text-lg font-semibold">Profile</h2>
-            <p className="mt-1 text-sm text-[#796e77]">
-              Signed in as <span className="font-semibold text-[#231c22]">{email}</span>
+            <p className="mt-1 text-sm text-muted">
+              Signed in as <span className="font-semibold text-ink">{email}</span>
               {account?.verified ? (
-                <span className="ml-2 rounded-full bg-[#f6edf2] px-2 py-0.5 text-[11px] font-semibold text-[#6d315f]">Verified</span>
+                <span className="ml-2 rounded-full bg-plum-soft px-2 py-0.5 text-[11px] font-semibold text-plum">Verified</span>
               ) : null}
             </p>
           </div>
@@ -85,7 +85,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         <section className={cardClass}>
           <div>
             <h2 className="text-lg font-semibold">Password</h2>
-            <p className="mt-1 text-sm text-[#796e77]">Use a strong password you don&rsquo;t reuse elsewhere.</p>
+            <p className="mt-1 text-sm text-muted">Use a strong password you don&rsquo;t reuse elsewhere.</p>
           </div>
           <form action={changePasswordAction} className="grid gap-3">
             <label className={labelClass}>

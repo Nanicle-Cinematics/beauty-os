@@ -58,17 +58,17 @@ export default async function StaffPage({ params }: StaffPageProps) {
           <div className="card p-5">
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Team roster</h2>
-              <p className="mt-1 text-sm text-[#796e77]">
+              <p className="mt-1 text-sm text-muted">
                 Roles, commission, workload, and revenue for this business.
               </p>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-[#e9dee5]">
-              <div className="grid grid-cols-[1.5fr_1fr_110px_80px_120px_150px] bg-[#f5eff2] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#796e77] max-[980px]:hidden">
+            <div className="overflow-hidden rounded-2xl border border-line">
+              <div className="grid grid-cols-[1.5fr_1fr_110px_80px_120px_150px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[980px]:hidden">
                 <span>Member</span><span>Role</span><span>Commission</span><span>Books</span><span>Revenue</span><span>Status</span>
               </div>
               {data.staff.map((member) => (
-                <div key={member.id} className="grid grid-cols-[1.5fr_1fr_110px_80px_120px_150px] items-center gap-3 border-t border-[#f0e8ed] px-4 py-4 text-sm max-[980px]:grid-cols-1">
+                <div key={member.id} className="grid grid-cols-[1.5fr_1fr_110px_80px_120px_150px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[980px]:grid-cols-1">
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar name={member.name} colorHex={member.colorHex} />
                     <div className="min-w-0">
@@ -106,7 +106,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
 
           <form action={inviteStaffAction} className="card p-5">
             <h2 className="text-lg font-semibold">Invite staff</h2>
-            <p className="mt-1 text-sm leading-6 text-[#796e77]">
+            <p className="mt-1 text-sm leading-6 text-muted">
               Invites join {data.tenant.name} as pending until activated.
             </p>
 

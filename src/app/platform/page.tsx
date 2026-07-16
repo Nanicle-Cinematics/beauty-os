@@ -14,17 +14,17 @@ import { DeleteBusinessButton } from "@/components/delete-business-button";
 export const dynamic = "force-dynamic";
 
 const statusPill: Record<string, string> = {
-  ACTIVE: "bg-[#f6edf2] text-[#6d315f]",
+  ACTIVE: "bg-plum-soft text-plum",
   TRIAL: "bg-amber-50 text-amber-700",
   SUSPENDED: "bg-rose-50 text-rose-700",
-  CLOSED: "bg-[#f0eaee] text-[#796e77]",
+  CLOSED: "bg-line-2 text-muted",
 };
 
 const subPill: Record<string, string> = {
-  ACTIVE: "bg-[#f6edf2] text-[#6d315f]",
+  ACTIVE: "bg-plum-soft text-plum",
   TRIALING: "bg-amber-50 text-amber-700",
   PAST_DUE: "bg-rose-50 text-rose-700",
-  CANCELED: "bg-[#f0eaee] text-[#796e77]",
+  CANCELED: "bg-line-2 text-muted",
 };
 
 const inviteStateLabel: Record<string, string> = {
@@ -34,7 +34,7 @@ const inviteStateLabel: Record<string, string> = {
   none: "No invite",
 };
 
-const inputClass = "h-11 rounded-2xl border border-[#e9dee5] bg-[#f7f2f5] px-3 text-sm outline-none focus:border-[#6d315f]";
+const inputClass = "h-11 rounded-2xl border border-line bg-sunken px-3 text-sm outline-none focus:border-plum";
 const cardClass = "card p-5";
 
 type PlatformPageProps = {
@@ -59,7 +59,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
   const inviteUrl = invite ? buildInviteUrl(await getBaseUrl(), invite) : "";
 
   return (
-    <main className="min-h-screen bg-[#fbf7f4] px-6 py-6 text-[#231c22] max-[720px]:px-3">
+    <main className="min-h-screen bg-canvas px-6 py-6 text-ink max-[720px]:px-3">
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="card flex items-center justify-between gap-4 px-5 py-4 max-[720px]:flex-col max-[720px]:items-start">
           <div className="flex items-center gap-3.5">
@@ -83,7 +83,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
         </header>
 
         {inviteUrl ? (
-          <div className="grid gap-2 rounded-2xl border border-[#e9dee5] bg-[#f6edf2] px-4 py-3 text-sm font-bold text-[#6d315f]">
+          <div className="grid gap-2 rounded-2xl border border-line bg-plum-soft px-4 py-3 text-sm font-bold text-plum">
             <span>
               {emailed ? (
                 created ? (
@@ -100,9 +100,9 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
             <input
               readOnly
               value={inviteUrl}
-              className="w-full select-all rounded-xl border border-[#e9dee5] bg-card px-3 py-2 font-mono text-xs text-[#231c22]"
+              className="w-full select-all rounded-xl border border-line bg-card px-3 py-2 font-mono text-xs text-ink"
             />
-            <span className="text-xs font-semibold text-[#6d315f]">
+            <span className="text-xs font-semibold text-plum">
               {emailed ? "Emailed via Resend · " : ""}The link expires in 7 days.
             </span>
           </div>
@@ -129,9 +129,9 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
           {stats.map((stat) => (
             <article key={stat.label} className="card p-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[#796e77]">{stat.label}</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">{stat.label}</div>
               <div className="mt-4 text-3xl font-bold tracking-tight">{stat.value}</div>
-              <div className="mt-2 text-sm font-semibold text-[#796e77]">{stat.detail}</div>
+              <div className="mt-2 text-sm font-semibold text-muted">{stat.detail}</div>
             </article>
           ))}
         </section>
@@ -139,40 +139,40 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
         <section className={cardClass}>
           <div className="mb-4">
             <h2 className="text-lg font-semibold">Businesses</h2>
-            <p className="mt-1 text-sm text-[#796e77]">Manage every tenant — set account status and assign plans.</p>
+            <p className="mt-1 text-sm text-muted">Manage every tenant — set account status and assign plans.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4 max-[900px]:grid-cols-1">
             {businesses.map((business) => (
-              <article key={business.id} className="grid gap-4 rounded-[20px] border border-[#f0e8ed] bg-[#faf5f8] p-4">
+              <article key={business.id} className="grid gap-4 rounded-[20px] border border-line-2 bg-plum-softer p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <Link href={`/${business.slug}`} className="text-base font-semibold text-[#231c22]">
+                    <Link href={`/${business.slug}`} className="text-base font-semibold text-ink">
                       {business.name}
                     </Link>
-                    <div className="mt-0.5 text-xs font-semibold text-[#796e77]">
+                    <div className="mt-0.5 text-xs font-semibold text-muted">
                       {business.category} · {business.slug}
                     </div>
                   </div>
-                  <span className={`w-fit shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusPill[business.statusKey] ?? "bg-[#f0eaee] text-[#796e77]"}`}>
+                  <span className={`w-fit shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusPill[business.statusKey] ?? "bg-line-2 text-muted"}`}>
                     {business.status}
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold text-[#796e77]">
-                  <span><strong className="text-[#231c22]">{business.staff}</strong> staff</span>
-                  <span><strong className="text-[#231c22]">{business.customers}</strong> clients</span>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold text-muted">
+                  <span><strong className="text-ink">{business.staff}</strong> staff</span>
+                  <span><strong className="text-ink">{business.customers}</strong> clients</span>
                   <span>Since {business.created}</span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-card px-3 py-2 text-sm font-bold ring-1 ring-[#f0e8ed]">
+                <div className="flex flex-wrap items-center gap-2 rounded-2xl bg-card px-3 py-2 text-sm font-bold ring-1 ring-line-2">
                   <span>{business.planName}</span>
                   {business.subscriptionStatusKey ? (
-                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${subPill[business.subscriptionStatusKey] ?? "bg-[#f0eaee] text-[#796e77]"}`}>
+                    <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${subPill[business.subscriptionStatusKey] ?? "bg-line-2 text-muted"}`}>
                       {business.subscriptionStatus}
                     </span>
                   ) : (
-                    <span className="rounded-full bg-[#f0eaee] px-2.5 py-0.5 text-[11px] font-semibold text-[#796e77]">No subscription</span>
+                    <span className="rounded-full bg-line-2 px-2.5 py-0.5 text-[11px] font-semibold text-muted">No subscription</span>
                   )}
                 </div>
 
@@ -213,7 +213,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                         <option key={option.value} value={option.value}>{option.label}</option>
                       ))}
                     </select>
-                    <button className="rounded-2xl border border-[#e9dee5] bg-card px-4 text-sm font-semibold">Set status</button>
+                    <button className="rounded-2xl border border-line bg-card px-4 text-sm font-semibold">Set status</button>
                   </form>
                   <form action={changeBusinessPlanAction} className="flex gap-2">
                     <input type="hidden" name="businessId" value={business.id} />
@@ -227,8 +227,8 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
                   </form>
                 </div>
 
-                <div className="flex items-center justify-between gap-2 border-t border-[#f0e8ed] pt-3">
-                  <span className="text-[11px] font-bold text-[#a99fa6]">Danger zone — permanent</span>
+                <div className="flex items-center justify-between gap-2 border-t border-line-2 pt-3">
+                  <span className="text-[11px] font-bold text-faint">Danger zone — permanent</span>
                   <DeleteBusinessButton businessId={business.id} slug={business.slug} action={deleteBusinessAction} />
                 </div>
               </article>
@@ -240,19 +240,19 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
           <div className={cardClass}>
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Plans</h2>
-              <p className="mt-1 text-sm text-[#796e77]">Subscription tiers offered on the platform.</p>
+              <p className="mt-1 text-sm text-muted">Subscription tiers offered on the platform.</p>
             </div>
             <div className="grid gap-2">
               {plans.map((plan) => (
-                <div key={plan.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[#f0e8ed] px-4 py-3">
+                <div key={plan.id} className="flex items-center justify-between gap-3 rounded-2xl border border-line-2 px-4 py-3">
                   <div>
                     <div className="font-semibold">{plan.name}</div>
-                    <div className="text-xs font-bold uppercase tracking-[0.12em] text-[#796e77]">{plan.key}</div>
+                    <div className="text-xs font-bold uppercase tracking-[0.12em] text-muted">{plan.key}</div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-[#796e77]">{plan.subscribers} {plan.subscribers === 1 ? "tenant" : "tenants"}</span>
-                    <span className="font-semibold">{plan.price}<span className="text-xs font-bold text-[#796e77]">/mo</span></span>
-                    {plan.active ? null : <span className="rounded-full bg-[#f0eaee] px-2 py-0.5 text-[11px] font-semibold text-[#796e77]">Off</span>}
+                    <span className="text-xs font-bold text-muted">{plan.subscribers} {plan.subscribers === 1 ? "tenant" : "tenants"}</span>
+                    <span className="font-semibold">{plan.price}<span className="text-xs font-bold text-muted">/mo</span></span>
+                    {plan.active ? null : <span className="rounded-full bg-line-2 px-2 py-0.5 text-[11px] font-semibold text-muted">Off</span>}
                   </div>
                 </div>
               ))}
@@ -262,22 +262,22 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
           <div className={cardClass}>
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Recent activity</h2>
-              <p className="mt-1 text-sm text-[#796e77]">Platform admin actions.</p>
+              <p className="mt-1 text-sm text-muted">Platform admin actions.</p>
             </div>
             {activity.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#e9dee5] bg-[#f7f2f5] px-4 py-8 text-center text-sm font-semibold text-[#796e77]">
+              <div className="rounded-2xl border border-dashed border-line bg-sunken px-4 py-8 text-center text-sm font-semibold text-muted">
                 No admin actions yet.
               </div>
             ) : (
               <div className="grid gap-2">
                 {activity.map((entry) => (
-                  <div key={entry.id} className="rounded-2xl border border-[#f0e8ed] p-3">
+                  <div key={entry.id} className="rounded-2xl border border-line-2 p-3">
                     <div className="flex items-center justify-between gap-2">
                       <strong className="text-sm">{entry.action}</strong>
-                      <span className="text-[11px] font-bold text-[#796e77]">{entry.when}</span>
+                      <span className="text-[11px] font-bold text-muted">{entry.when}</span>
                     </div>
-                    <div className="mt-1 text-xs font-semibold text-[#796e77]">{entry.target}</div>
-                    <div className="mt-0.5 text-[11px] font-bold text-[#a99fa6]">{entry.actor}</div>
+                    <div className="mt-1 text-xs font-semibold text-muted">{entry.target}</div>
+                    <div className="mt-0.5 text-[11px] font-bold text-faint">{entry.actor}</div>
                   </div>
                 ))}
               </div>

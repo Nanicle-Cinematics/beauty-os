@@ -145,7 +145,7 @@ export default async function BusinessSettingsPage({ params, searchParams }: Pro
             <div key={h.dayOfWeek} className="grid grid-cols-[110px_auto_1fr] items-center gap-3 rounded-xl border border-line bg-sunken/50 px-3 py-2 max-[560px]:grid-cols-[90px_auto_1fr]">
               <span className="text-sm font-semibold text-ink">{WEEKDAYS[h.dayOfWeek]}</span>
               <label className="flex items-center gap-1.5 text-xs font-medium text-muted">
-                <input type="checkbox" name={`day_${h.dayOfWeek}_closed`} defaultChecked={h.isClosed} className="size-4 accent-[#6d315f]" />
+                <input type="checkbox" name={`day_${h.dayOfWeek}_closed`} defaultChecked={h.isClosed} className="size-4 accent-plum" />
                 Closed
               </label>
               <div className="flex items-center justify-end gap-2 text-sm">
