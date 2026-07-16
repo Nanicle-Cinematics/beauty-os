@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { SubmitButton } from "@/components/submit-button";
 import { requireTenantAccess } from "@/lib/auth";
 import { getBusinessSettings, WEEKDAYS } from "@/lib/business-settings-data";
 import { updateBusinessDetailsAction, updateBusinessHoursAction } from "@/lib/business-settings-actions";
@@ -128,7 +129,7 @@ export default async function BusinessSettingsPage({ params, searchParams }: Pro
           </label>
         </div>
 
-        <button className={saveBtn}>Save changes</button>
+        <SubmitButton className={saveBtn} pendingText="Saving…">Save changes</SubmitButton>
       </form>
 
       {/* Business hours */}
@@ -156,7 +157,7 @@ export default async function BusinessSettingsPage({ params, searchParams }: Pro
           ))}
         </div>
 
-        <button className={saveBtn}>Save hours</button>
+        <SubmitButton className={saveBtn} pendingText="Saving…">Save hours</SubmitButton>
       </form>
     </div>
   );

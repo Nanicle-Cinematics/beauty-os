@@ -1,6 +1,7 @@
 import { CalendarPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
+import { SubmitButton } from "@/components/submit-button";
 import { Badge, toneForStatus, EmptyState, Avatar } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { createAppointmentAction, updateAppointmentStatusAction } from "@/lib/appointment-actions";
@@ -124,9 +125,9 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
                 />
               </label>
 
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">
+              <SubmitButton className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white" pendingText="Creating…">
                 Create appointment
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>

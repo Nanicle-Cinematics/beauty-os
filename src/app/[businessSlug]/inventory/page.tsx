@@ -1,6 +1,7 @@
 import { Package } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
+import { SubmitButton } from "@/components/submit-button";
 import { StatTile, statMetaFor, EmptyState, Badge, toneForStatus } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { addProductAction, adjustStockAction } from "@/lib/inventory-actions";
@@ -182,9 +183,9 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                 </label>
               </div>
 
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">
+              <SubmitButton className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white" pendingText="Adding…">
                 Add product
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>

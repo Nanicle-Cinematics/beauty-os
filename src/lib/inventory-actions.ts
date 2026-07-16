@@ -48,7 +48,7 @@ export async function addProductAction(formData: FormData) {
   });
 
   revalidatePath(`/${businessSlug}/inventory`);
-  redirect(`/${businessSlug}/inventory`);
+  redirect(`/${businessSlug}/inventory?toast=${encodeURIComponent("Product added")}`);
 }
 
 export async function adjustStockAction(formData: FormData) {
@@ -63,5 +63,5 @@ export async function adjustStockAction(formData: FormData) {
   });
 
   revalidatePath(`/${businessSlug}/inventory`);
-  redirect(`/${businessSlug}/inventory`);
+  redirect(`/${businessSlug}/inventory?toast=${encodeURIComponent("Stock updated")}`);
 }

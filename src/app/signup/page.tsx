@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import { signUpAction } from "@/lib/signup-actions";
 import { getSignupCategories } from "@/lib/signup-data";
 import { PasswordInput } from "@/components/password-input";
+import { SubmitButton } from "@/components/submit-button";
 
 export const dynamic = "force-dynamic";
 
@@ -86,9 +87,9 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
               Password (min 8 characters)
               <PasswordInput name="ownerPassword" minLength={8} placeholder="Create a password" autoComplete="new-password" className={`${inputClass} w-full`} required />
             </label>
-            <button className="mt-2 rounded-xl bg-gradient-to-r from-plum to-wine px-6 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
+            <SubmitButton className="mt-2 rounded-xl bg-gradient-to-r from-plum to-wine px-6 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]" pendingText="Creating your workspace…">
               Start free trial
-            </button>
+            </SubmitButton>
             <p className="text-center text-xs font-medium text-faint">
               By continuing you agree to run this workspace responsibly.
             </p>

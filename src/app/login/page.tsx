@@ -5,6 +5,7 @@ import { loginAction } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { isSocialLoginConfigured, isMicrosoftLoginEnabled } from "@/lib/sso";
 import { PasswordInput } from "@/components/password-input";
+import { SubmitButton } from "@/components/submit-button";
 
 const errorMessages: Record<string, string> = {
   invalid: "Email or password is incorrect.",
@@ -44,7 +45,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <main className="grid min-h-screen place-items-center bg-canvas px-6 py-8 text-ink max-[720px]:px-3">
-      <section className="grid w-full max-w-5xl grid-cols-[minmax(0,1fr)_420px] overflow-hidden rounded-[28px] border border-line bg-card shadow-[var(--shadow-lift)] max-[900px]:grid-cols-1">
+      <section className="animate-fade-up grid w-full max-w-5xl grid-cols-[minmax(0,1fr)_420px] overflow-hidden rounded-[28px] border border-line bg-card shadow-[var(--shadow-lift)] max-[900px]:grid-cols-1">
         <div className="brand-dark relative overflow-hidden p-8 max-[720px]:p-5">
           <Link href="/" className="inline-flex items-center gap-3">
             <span className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-plum to-wine font-serif text-lg font-semibold text-white shadow-[0_6px_18px_rgba(84,33,63,0.4)]">
@@ -115,9 +116,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             />
           </label>
 
-          <button className="mt-2 rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
+          <SubmitButton className="mt-2 rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]" pendingText="Signing in…">
             Sign in
-          </button>
+          </SubmitButton>
 
           {socialEnabled ? (
             <>

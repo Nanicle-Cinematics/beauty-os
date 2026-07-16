@@ -1,6 +1,7 @@
 import { Coins } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
+import { SubmitButton } from "@/components/submit-button";
 import { StatTile, statMetaFor, EmptyState, Badge, toneForStatus } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { recordPaymentAction } from "@/lib/payment-actions";
@@ -155,9 +156,9 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                 <input name="reference" placeholder="Provider / receipt reference" className="input" />
               </label>
 
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">
+              <SubmitButton className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white" pendingText="Recording…">
                 Record payment
-              </button>
+              </SubmitButton>
             </div>
           </form>
         </section>

@@ -29,7 +29,7 @@ export async function createAppointmentAction(formData: FormData) {
   });
 
   revalidatePath(`/${businessSlug}/appointments`);
-  redirect(`/${businessSlug}/appointments`);
+  redirect(`/${businessSlug}/appointments?toast=${encodeURIComponent("Booking created")}`);
 }
 
 export async function updateAppointmentStatusAction(formData: FormData) {
@@ -43,5 +43,5 @@ export async function updateAppointmentStatusAction(formData: FormData) {
   });
 
   revalidatePath(`/${businessSlug}/appointments`);
-  redirect(`/${businessSlug}/appointments`);
+  redirect(`/${businessSlug}/appointments?toast=${encodeURIComponent("Appointment updated")}`);
 }

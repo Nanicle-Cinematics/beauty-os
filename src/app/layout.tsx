@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono, Cormorant_Garamond } from "next/font/google";
+import { Toaster } from "@/components/toast";
+import { FlashToaster } from "@/components/flash-toaster";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,7 +37,13 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${serif.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Toaster />
+        <Suspense fallback={null}>
+          <FlashToaster />
+        </Suspense>
+      </body>
     </html>
   );
 }

@@ -280,7 +280,8 @@ export function AppShell({
             </div>
           </header>
 
-          <main className="px-4 py-5 sm:px-6 sm:py-6">{children}</main>
+          {/* key on the route so content gently fades up on each navigation */}
+          <main key={pathname} className="animate-fade-up px-4 py-5 sm:px-6 sm:py-6">{children}</main>
         </div>
       </div>
     </div>

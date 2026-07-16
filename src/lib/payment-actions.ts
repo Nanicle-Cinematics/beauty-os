@@ -33,5 +33,5 @@ export async function recordPaymentAction(formData: FormData) {
   });
 
   revalidatePath(`/${businessSlug}/payments`);
-  redirect(`/${businessSlug}/payments`);
+  redirect(`/${businessSlug}/payments?toast=${encodeURIComponent("Payment recorded")}`);
 }

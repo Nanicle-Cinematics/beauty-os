@@ -1,5 +1,6 @@
 import { Sparkles, X } from "lucide-react";
 import { renameBusinessAction, dismissNameNudgeAction } from "@/lib/name-nudge-actions";
+import { SubmitButton } from "@/components/submit-button";
 
 // Shown at the top of the workspace when the business still has its signup-time
 // placeholder name (e.g. a Google JIT signup auto-named "<name>'s Studio").
@@ -32,9 +33,9 @@ export function NameNudgeBanner({ slug, currentName }: { slug: string; currentNa
             aria-label="Business name"
             className="h-10 w-44 rounded-xl border border-line bg-card px-3 text-sm text-ink outline-none focus:border-plum"
           />
-          <button className="h-10 shrink-0 rounded-xl bg-gradient-to-r from-plum to-wine px-4 text-sm font-semibold text-white">
+          <SubmitButton className="h-10 shrink-0 rounded-xl bg-gradient-to-r from-plum to-wine px-4 text-sm font-semibold text-white" pendingText="Saving…">
             Save
-          </button>
+          </SubmitButton>
         </form>
         <form action={dismissNameNudgeAction}>
           <input type="hidden" name="slug" value={slug} />
