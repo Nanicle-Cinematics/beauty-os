@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { loginAction } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
-import { isSsoConfigured } from "@/lib/sso";
+import { isSocialLoginConfigured } from "@/lib/sso";
 import { PasswordInput } from "@/components/password-input";
 
 const errorMessages: Record<string, string> = {
@@ -34,7 +34,7 @@ const inputClass =
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const [{ next, error }, user] = await Promise.all([searchParams, getCurrentUser()]);
   const nextPath = safeNextPath(next);
-  const ssoEnabled = isSsoConfigured();
+  const socialEnabled = isSocialLoginConfigured();
   const errorMessage = error ? errorMessages[error] : null;
 
   if (user) {
@@ -118,12 +118,13 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             Sign in
           </button>
 
-          {ssoEnabled ? (
+          {socialEnabled ? (
             <>
               <div className="my-1 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wide text-faint">
-                <span className="h-px flex-1 bg-line" /> or <span className="h-px flex-1 bg-line" />
+                <span className="h-px flex-1 bg-line" /> or continue with <span className="h-px flex-1 bg-line" />
               </div>
-              {/* Plain anchors (no prefetch) so the OAuth redirect only fires on click. */}
+              {/* Free AuthKit social login (Google/Microsoft OAuth) — NOT enterprise SSO.
+                  Plain anchors (no prefetch) so the OAuth redirect only fires on click. */}
               <a
                 href={`/sso/start?provider=google&next=${encodeURIComponent(nextPath)}`}
                 className="flex h-12 items-center justify-center gap-2 rounded-xl border border-line bg-card text-sm font-semibold text-ink hover:bg-sunken"

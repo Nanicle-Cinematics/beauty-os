@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
-import { isSsoConfigured, toProviderId, getAuthorizationUrl } from "@/lib/sso";
+import { isSocialLoginConfigured, toProviderId, getAuthorizationUrl } from "@/lib/sso";
 import { getBaseUrl } from "@/lib/urls";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ function safeNext(value: string | null) {
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
-  if (!isSsoConfigured()) {
+  if (!isSocialLoginConfigured()) {
     return NextResponse.redirect(new URL("/login", url.origin));
   }
 

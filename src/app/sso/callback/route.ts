@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { timingSafeEqual } from "crypto";
 import { prisma } from "@/lib/prisma";
-import { isSsoConfigured, getSsoProfile } from "@/lib/sso";
+import { isSocialLoginConfigured, getSocialProfile } from "@/lib/sso";
 import { startSession, mfaChallengeCookieName } from "@/lib/auth";
 import { signChallenge } from "@/lib/mfa";
 
@@ -23,7 +23,7 @@ function timingEqual(a: string, b: string) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isSsoConfigured()) redirect("/login");
+  if (!isSocialLoginConfigured()) redirect("/login");
 
   const url = request.nextUrl;
   const code = url.searchParams.get("code");
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
 
   let email = "";
   try {
-    const profile = await getSsoProfile(code);
+    const profile = await getSocialProfile(code);
     email = String(profile.email ?? "").trim().toLowerCase();
   } catch {
     email = "";
