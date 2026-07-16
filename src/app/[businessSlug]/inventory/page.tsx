@@ -1,5 +1,6 @@
 import { Package } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Combobox } from "@/components/combobox";
 import { StatTile, statMetaFor, EmptyState, Badge, toneForStatus } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { addProductAction, adjustStockAction } from "@/lib/inventory-actions";
@@ -166,18 +167,8 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
               </div>
 
               <label className="field-label">
-                Supplier
-                <select name="supplierId" className="input">
-                  <option value="">— None —</option>
-                  {data.suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>{supplier.label}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="field-label">
-                Or new supplier
-                <input name="newSupplierName" placeholder="e.g. Accra Beauty Supply" className="input" />
+                Supplier (optional)
+                <Combobox name="supplier" options={data.suppliers.map((supplier) => supplier.label)} placeholder="Search or type a new supplier…" />
               </label>
 
               <div className="grid grid-cols-2 gap-3">

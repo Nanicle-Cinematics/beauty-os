@@ -33,7 +33,7 @@ export async function findOrCreateCustomer(businessId: string, raw: string): Pro
 // booking needs) for the current tenant, creating a starter service with
 // sensible defaults if no case-insensitive name match exists. The owner can
 // refine its price/duration later in the Services module.
-export async function findOrCreateService(businessId: string, raw: string) {
+export async function findOrCreateService(businessId: string, raw: string, defaultPrice?: number) {
   const name = raw.trim().replace(/\s+/g, " ");
   if (!name) return null;
 
@@ -43,8 +43,25 @@ export async function findOrCreateService(businessId: string, raw: string) {
   });
   if (existing) return existing;
 
+  const price = defaultPrice != null && Number.isFinite(defaultPrice) && defaultPrice >= 0 ? defaultPrice : 0;
   return prisma.service.create({
-    data: { businessId, name, price: 0, durationMinutes: 60, isActive: true },
+    data: { businessId, name, price, durationMinutes: 60, isActive: true },
     select: { id: true, price: true, durationMinutes: true, depositAmount: true },
   });
+}
+
+// Resolve a free-typed supplier name to a supplier id for the current tenant,
+// creating it if no case-insensitive name match exists. Empty → null (no supplier).
+export async function findOrCreateSupplier(businessId: string, raw: string): Promise<string | null> {
+  const name = raw.trim().replace(/\s+/g, " ");
+  if (!name) return null;
+
+  const existing = await prisma.supplier.findFirst({
+    where: { businessId, name: { equals: name, mode: "insensitive" } },
+    select: { id: true },
+  });
+  if (existing) return existing.id;
+
+  const created = await prisma.supplier.create({ data: { businessId, name }, select: { id: true } });
+  return created.id;
 }

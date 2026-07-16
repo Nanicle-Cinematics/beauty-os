@@ -149,12 +149,14 @@ export async function createAppointment({
   service,
   staffMemberId,
   startAt,
+  price,
 }: {
   businessSlug: string;
   customer: string;
   service: string;
   staffMemberId: string;
   startAt: Date;
+  price?: number | null;
 }) {
   if (!isDatabaseConfigured()) {
     return;
@@ -175,9 +177,12 @@ export async function createAppointment({
   }
 
   // Client and service accept typed input: match an existing record by name, or
-  // create one on the fly (a new service starts at GH₵0 / 60 min to refine later).
+  // create one on the fly. An optional price overrides the booking price and, if
+  // a new service is created, seeds its price (else a new service starts at
+  // GH₵0 / 60 min to refine later; an existing service keeps its own price).
+  const override = price != null && Number.isFinite(price) && price >= 0 ? price : undefined;
   const customerId = await findOrCreateCustomer(business.id, customer);
-  const svc = await findOrCreateService(business.id, service);
+  const svc = await findOrCreateService(business.id, service, override);
   if (!customerId || !svc) {
     return;
   }
@@ -192,7 +197,7 @@ export async function createAppointment({
       endAt: addMinutes(startAt, svc.durationMinutes),
       status: "CONFIRMED",
       source: "ADMIN",
-      price: svc.price,
+      price: override != null ? override : svc.price,
       depositAmount: svc.depositAmount,
       depositPaid: Boolean(svc.depositAmount),
     },

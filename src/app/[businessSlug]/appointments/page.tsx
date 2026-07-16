@@ -100,6 +100,11 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
               </label>
 
               <label className="field-label">
+                Price (optional)
+                <input name="price" type="number" min="0" step="0.01" placeholder="Uses the service price if blank" className="input" />
+              </label>
+
+              <label className="field-label">
                 Staff
                 <select name="staffMemberId" className="input" required>
                   {data.staff.map((person) => (

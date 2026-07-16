@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
+import { findOrCreateSupplier } from "@/lib/entity-resolve";
 
 export type ProductStatus = "OK" | "LOW" | "OUT" | "EXPIRING" | "EXPIRED";
 
@@ -216,8 +217,7 @@ export async function addProduct({
   businessSlug,
   name,
   category,
-  supplierId,
-  newSupplierName,
+  supplier,
   costPrice,
   sellingPrice,
   quantityOnHand,
@@ -228,8 +228,7 @@ export async function addProduct({
   businessSlug: string;
   name: string;
   category: string;
-  supplierId: string;
-  newSupplierName: string;
+  supplier: string;
   costPrice: number;
   sellingPrice: number | null;
   quantityOnHand: number;
@@ -250,19 +249,9 @@ export async function addProduct({
     return;
   }
 
-  let resolvedSupplierId: string | null = null;
-  if (newSupplierName.trim()) {
-    const created = await prisma.supplier.create({
-      data: { businessId: business.id, name: newSupplierName.trim() },
-    });
-    resolvedSupplierId = created.id;
-  } else if (supplierId) {
-    const existing = await prisma.supplier.findFirst({
-      where: { id: supplierId, businessId: business.id },
-      select: { id: true },
-    });
-    resolvedSupplierId = existing?.id ?? null;
-  }
+  // Supplier accepts typed input: match an existing supplier by name or create
+  // one; blank means no supplier.
+  const resolvedSupplierId = await findOrCreateSupplier(business.id, supplier);
 
   const openingQty = Number.isFinite(quantityOnHand) && quantityOnHand > 0 ? quantityOnHand : 0;
 

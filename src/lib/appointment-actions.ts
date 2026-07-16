@@ -17,12 +17,15 @@ export async function createAppointmentAction(formData: FormData) {
   const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
   await requireTenantAccess(businessSlug);
 
+  const parsedPrice = Number.parseFloat(getString(formData, "price"));
+
   await createAppointment({
     businessSlug,
     customer: getString(formData, "customer"),
     service: getString(formData, "service"),
     staffMemberId: getString(formData, "staffMemberId"),
     startAt: new Date(getString(formData, "startAt")),
+    price: Number.isFinite(parsedPrice) ? parsedPrice : null,
   });
 
   revalidatePath(`/${businessSlug}/appointments`);
