@@ -51,6 +51,8 @@ function slugify(value: string) {
   return value
     .toLowerCase()
     .trim()
+    // Drop apostrophes so "Jane's Salon" → "janes-salon", not "jane-s-salon".
+    .replace(/['’]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 60);
