@@ -63,6 +63,7 @@ export type TenantChrome = {
   planName: string;
   status: string;
   isTrial: boolean;
+  namePlaceholder: boolean;
   staffSeats: number;
   branchCount: number;
   account: { email: string; canSwitch: boolean; isAdmin: boolean };
@@ -83,6 +84,7 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
       planName: current.plan,
       status: current.status,
       isTrial: current.status.toLowerCase() === "trial",
+      namePlaceholder: false,
       staffSeats: current.slug === "osu-glow-studio" ? 6 : 3,
       branchCount: 1,
       account: { email: user.email, canSwitch: user.isPlatformAdmin, isAdmin: user.isPlatformAdmin },
@@ -117,6 +119,7 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
     planName: business.subscription?.plan.name ?? "No plan",
     status: readableStatus(business.status),
     isTrial: business.status === "TRIAL",
+    namePlaceholder: business.namePlaceholder,
     staffSeats: business._count.staff,
     branchCount: 1,
     account: { email: user.email, canSwitch, isAdmin: user.isPlatformAdmin },

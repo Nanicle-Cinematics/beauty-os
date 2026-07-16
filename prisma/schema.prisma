@@ -230,6 +230,10 @@ model Business {
   taxId        String?
   socialLinks  Json?
   status       BusinessStatus   @default(TRIAL)
+  // True when the workspace name is a signup-time placeholder (e.g. a social
+  // JIT signup auto-named "<name>'s Studio"). Drives an in-app nudge to rename;
+  // cleared when the owner renames or dismisses it.
+  namePlaceholder Boolean       @default(false)
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
 

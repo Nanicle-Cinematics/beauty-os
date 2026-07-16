@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
+import { NameNudgeBanner } from "@/components/name-nudge-banner";
 import { requireTenantAccess } from "@/lib/auth";
 import { getTenantChrome } from "@/lib/tenant-data";
 
@@ -19,5 +20,10 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
     notFound();
   }
 
-  return <AppShell chrome={chrome}>{children}</AppShell>;
+  return (
+    <AppShell chrome={chrome}>
+      {chrome.namePlaceholder ? <NameNudgeBanner slug={chrome.slug} currentName={chrome.name} /> : null}
+      {children}
+    </AppShell>
+  );
 }

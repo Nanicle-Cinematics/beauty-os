@@ -230,7 +230,8 @@ export async function jitSignUpFromSocial({ email, name }: { email: string; name
   try {
     const result = await tenantTransaction(async (tx) => {
       const business = await tx.business.create({
-        data: { slug: uniqueSlug, name: bizName, categoryId: category.id, currency: "GHS", timezone: "Africa/Accra", status: "TRIAL" },
+        // namePlaceholder → the app nudges the owner to set a real business name.
+        data: { slug: uniqueSlug, name: bizName, categoryId: category.id, currency: "GHS", timezone: "Africa/Accra", status: "TRIAL", namePlaceholder: true },
       });
 
       const owner = await tx.user.create({
