@@ -1,5 +1,6 @@
 import { Coins } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Combobox } from "@/components/combobox";
 import { StatTile, statMetaFor, EmptyState, Badge, toneForStatus } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { recordPaymentAction } from "@/lib/payment-actions";
@@ -112,12 +113,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
             <div className="mt-5 grid gap-4">
               <label className="field-label">
                 Client
-                <select name="customerId" className="input">
-                  <option value="">— Walk-in —</option>
-                  {data.customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>{customer.label}</option>
-                  ))}
-                </select>
+                <Combobox name="customer" options={data.customers.map((customer) => customer.label)} placeholder="Walk-in — or search / type a client…" />
               </label>
 
               <label className="field-label">

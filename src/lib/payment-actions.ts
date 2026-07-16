@@ -24,7 +24,7 @@ export async function recordPaymentAction(formData: FormData) {
 
   await recordPayment({
     businessSlug,
-    customerId: getString(formData, "customerId"),
+    customer: getString(formData, "customer"),
     appointmentId: getString(formData, "appointmentId"),
     amount: parseMoney(getString(formData, "amount")),
     method: getString(formData, "method"),

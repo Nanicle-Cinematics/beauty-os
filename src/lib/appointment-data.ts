@@ -2,6 +2,7 @@ import "server-only";
 
 import { addMinutes, format } from "@/lib/date";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { findOrCreateCustomer, findOrCreateService } from "@/lib/entity-resolve";
 
 export type AppointmentRow = {
   id: string;
@@ -144,14 +145,14 @@ export async function getAppointmentModuleData(businessSlug: string): Promise<Ap
 
 export async function createAppointment({
   businessSlug,
-  customerId,
-  serviceId,
+  customer,
+  service,
   staffMemberId,
   startAt,
 }: {
   businessSlug: string;
-  customerId: string;
-  serviceId: string;
+  customer: string;
+  service: string;
   staffMemberId: string;
   startAt: Date;
 }) {
@@ -159,41 +160,41 @@ export async function createAppointment({
     return;
   }
 
-  const business = await prisma.business.findUnique({ where: { slug: businessSlug } });
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
 
   if (!business) {
     return;
   }
 
-  const service = await prisma.service.findFirst({
-    where: { id: serviceId, businessId: business.id, isActive: true },
-  });
-
-  const customer = await prisma.customer.findFirst({
-    where: { id: customerId, businessId: business.id },
-  });
-
   const staffMember = await prisma.staffMember.findFirst({
     where: { id: staffMemberId, businessId: business.id, status: "ACTIVE" },
+    select: { id: true },
   });
+  if (!staffMember) {
+    return;
+  }
 
-  if (!service || !customer || !staffMember) {
+  // Client and service accept typed input: match an existing record by name, or
+  // create one on the fly (a new service starts at GH₵0 / 60 min to refine later).
+  const customerId = await findOrCreateCustomer(business.id, customer);
+  const svc = await findOrCreateService(business.id, service);
+  if (!customerId || !svc) {
     return;
   }
 
   await prisma.appointment.create({
     data: {
       businessId: business.id,
-      customerId: customer.id,
-      serviceId: service.id,
+      customerId,
+      serviceId: svc.id,
       staffMemberId: staffMember.id,
       startAt,
-      endAt: addMinutes(startAt, service.durationMinutes),
+      endAt: addMinutes(startAt, svc.durationMinutes),
       status: "CONFIRMED",
       source: "ADMIN",
-      price: service.price,
-      depositAmount: service.depositAmount,
-      depositPaid: Boolean(service.depositAmount),
+      price: svc.price,
+      depositAmount: svc.depositAmount,
+      depositPaid: Boolean(svc.depositAmount),
     },
   });
 }

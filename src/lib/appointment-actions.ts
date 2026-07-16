@@ -19,8 +19,8 @@ export async function createAppointmentAction(formData: FormData) {
 
   await createAppointment({
     businessSlug,
-    customerId: getString(formData, "customerId"),
-    serviceId: getString(formData, "serviceId"),
+    customer: getString(formData, "customer"),
+    service: getString(formData, "service"),
     staffMemberId: getString(formData, "staffMemberId"),
     startAt: new Date(getString(formData, "startAt")),
   });

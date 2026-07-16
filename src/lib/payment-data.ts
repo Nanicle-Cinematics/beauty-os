@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
+import { findOrCreateCustomer } from "@/lib/entity-resolve";
 
 export type PaymentRow = {
   id: string;
@@ -241,7 +242,7 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
 
 export async function recordPayment({
   businessSlug,
-  customerId,
+  customer,
   appointmentId,
   amount,
   method,
@@ -249,7 +250,7 @@ export async function recordPayment({
   reference,
 }: {
   businessSlug: string;
-  customerId: string;
+  customer: string;
   appointmentId: string;
   amount: number;
   method: string;
@@ -282,13 +283,10 @@ export async function recordPayment({
     });
   }
 
-  const resolvedCustomerId = customerId
-    ? (
-        await prisma.customer.findFirst({
-          where: { id: customerId, businessId: business.id },
-          select: { id: true },
-        })
-      )?.id ?? null
+  // Client accepts typed input: match an existing client by name or create one;
+  // when left blank, fall back to the linked appointment's client (or walk-in).
+  const resolvedCustomerId = customer.trim()
+    ? await findOrCreateCustomer(business.id, customer)
     : appointment?.customerId ?? null;
 
   await tenantTransaction(async (tx) => {

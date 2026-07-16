@@ -1,5 +1,6 @@
 import { CalendarPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
+import { Combobox } from "@/components/combobox";
 import { Badge, toneForStatus, EmptyState, Avatar } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { createAppointmentAction, updateAppointmentStatusAction } from "@/lib/appointment-actions";
@@ -90,20 +91,12 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
             <div className="mt-5 grid gap-4">
               <label className="field-label">
                 Client
-                <select name="customerId" className="input" required>
-                  {data.customers.map((customer) => (
-                    <option key={customer.id} value={customer.id}>{customer.label}</option>
-                  ))}
-                </select>
+                <Combobox name="customer" options={data.customers.map((customer) => customer.label)} required placeholder="Search or type a new client…" />
               </label>
 
               <label className="field-label">
                 Service
-                <select name="serviceId" className="input" required>
-                  {data.services.map((service) => (
-                    <option key={service.id} value={service.id}>{service.label}</option>
-                  ))}
-                </select>
+                <Combobox name="service" options={data.services.map((service) => service.label)} required placeholder="Search or type a new service…" />
               </label>
 
               <label className="field-label">
