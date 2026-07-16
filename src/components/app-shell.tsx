@@ -23,6 +23,7 @@ import {
   ArrowUpRight,
   ChevronsUpDown,
   Settings,
+  Store,
   PanelLeft,
   Download,
   X,
@@ -57,6 +58,7 @@ const quickAdd = [
 function sectionTitle(pathname: string, slug: string): string {
   const rest = pathname.replace(`/${slug}`, "").replace(/^\//, "");
   const seg = rest.split("/")[0] ?? "";
+  if (seg === "settings") return "Business settings";
   const match = primaryNav.find((item) => item.path === seg);
   if (seg === "" || !match) return "Operations dashboard";
   return match.label;
@@ -154,8 +156,11 @@ export function AppShell({
           <div className="truncate px-2 pb-1 pt-1 text-[11px] font-semibold text-white/45" title={chrome.account.email}>
             {chrome.account.email}
           </div>
+          <Link href={`/${chrome.slug}/settings`} className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-[13px] font-medium text-white/60 hover:bg-white/[0.06] hover:text-white">
+            <Store size={15} /> Business settings
+          </Link>
           <Link href="/settings" className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-[13px] font-medium text-white/60 hover:bg-white/[0.06] hover:text-white">
-            <Settings size={15} /> Settings
+            <Settings size={15} /> Account
           </Link>
           {chrome.account.canSwitch ? (
             <Link href="/app" className="flex items-center gap-2.5 rounded-lg px-2 py-2 text-[13px] font-medium text-white/60 hover:bg-white/[0.06] hover:text-white">
