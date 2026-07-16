@@ -26,10 +26,11 @@
   --plum-softer: #faf5f8;
   --plum-line: #e9dee5; /* soft plum border */
 
-  /* Text */
+  /* Text — muted meets WCAG AA (≥4.5:1) on canvas/card/sunken; faint clears the
+     3:1 UI/placeholder threshold. */
   --ink: #231c22; /* primary text */
-  --muted: #796e77; /* secondary text */
-  --faint: #a99fa6; /* tertiary / placeholder */
+  --muted: #6b606a; /* secondary text — AA on all surfaces (~5.4–5.9:1) */
+  --faint: #8a8088; /* tertiary / placeholder (~3.4–3.8:1) */
 
   /* Lines */
   --line: #e9dee5; /* default hairline */
