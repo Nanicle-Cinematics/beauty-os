@@ -41,9 +41,15 @@ model Appointment {
 implicit: among `HOLD` rows overlapping a given time range for a given staff
 member, order by `holdPriority`. A new hold takes `max(overlapping priorities) + 1`.
 
-> `holdPriority` ships in the Phase 1 migration but is only *used* in Phase 2.
-> One nullable column now beats a second `db push` against the shared prod
-> database later.
+Note that "overlapping" is not transitive — A(10–12) overlaps B(11–13), and B
+overlaps C(12:30–14), but A and C never contend. So priority is a **local**
+ranking, best-effort by design, and only ever recomputed against the holds that
+actually overlap the one being moved. This is right for the real case (several
+clients wanting the same slot) and harmless for pathological chains.
+
+New positions use the **high-water mark** (`max + 1`), not a row count: after a
+middle hold is released without a re-rank, counting would re-issue an existing
+position and collide.
 
 ## ⚠️ The denylist hazard
 
@@ -77,11 +83,31 @@ The same class of bug bit `toneForStatus` once before — `\bout\b` matching
 ## Lifecycle
 
 ```
-  create ──> HOLD ──firm──> CONFIRMED ──> COMPLETED
+  create ──> HOLD ──confirm──> CONFIRMED ──> COMPLETED
+               │                   └─> rival holds on the slot are released
+               │                       (cancelReason: "Slot booked by another
+               │                        client") and each client is emailed
                │
                ├──release──> CANCELLED (cancelReason: "Hold released")
+               │                └─> holds behind it move up one; whoever
+               │                    reaches 1st is emailed "your date opened up"
+               │
                └──expire───> (treated as released; see below)
 ```
+
+**Only the client who reaches the front is emailed.** Being told you moved from
+4th to 3rd is noise — the front of the queue is the only position that means
+"you can actually have this date now".
+
+Emails are sent **after** the transaction commits, never inside it: an SMTP
+round-trip must not hold a database transaction open. They're best-effort — a
+client with no email on file is skipped, and `sendEmail` already swallows and
+logs transport failures. Losing a courtesy note must never fail the staff
+member's action. They're transactional, so marketing opt-ins don't gate them.
+
+Because confirming a hold silently cancels other people's holds *and* emails
+them, the toast says so explicitly ("Hold confirmed — 2 other holds released and
+notified") rather than letting it happen invisibly.
 
 **Release maps to `CANCELLED`, not a new `RELEASED` status.** Deliberate: released
 holds then flow through every existing exclusion path with zero further denylist
@@ -111,15 +137,18 @@ tomorrow") in Phase 3.
 
 ## Phasing
 
-**Phase 1 — the safe core.** Denylist audit, schema, overlap detection,
-create-as-hold, firm/release, badge + expiry display. Shippable alone: you can
-hold a date, see it, and not double-book it.
+**Phase 1 — the safe core. ✅ DONE** (`796fb3a`). Denylist audit, schema, overlap
+detection, create-as-hold, firm/release, badge + expiry display.
 
-**Phase 2 — the ladder.** `holdPriority`, auto-promote on release, notify the
-promoted client through the existing `sendEmail` / `NotificationLog` path.
+**Phase 2 — the ladder. ✅ DONE.** `holdPriority` assigned on create,
+auto-release of rivals when a hold is confirmed, auto-promote when a hold is
+released, and client emails (`hold_promoted` / `hold_released`) through the
+existing `sendEmail` / `NotificationLog` path. `sendEmail` gained a `customerId`
+so notifications finally populate `NotificationLog.customerId`, which the column
+always had and nothing wrote.
 
 **Phase 3 — expiry nudges.** An AI Insights card for holds expiring this week,
-then optionally a Vercel Cron for the outbound reminder.
+then optionally a Vercel Cron for the outbound reminder. Not started.
 
 ## Scope: this is staff-only
 

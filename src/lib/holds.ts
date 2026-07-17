@@ -38,3 +38,55 @@ export function holdExpiryLabel(expiresAt: Date | null | undefined, now = new Da
 export function isHoldExpired(expiresAt: Date | null | undefined, now = new Date()) {
   return expiresAt != null && expiresAt.getTime() <= now.getTime();
 }
+
+/* ---- the ladder ---------------------------------------------------------- */
+
+/**
+ * Where a new hold joins the queue for a contended slot: behind everyone already
+ * holding it. Priorities may be sparse or null (older rows predate the ladder),
+ * so this reads the high-water mark rather than counting rows.
+ */
+export function nextHoldPriority(existing: (number | null | undefined)[]) {
+  const highest = existing.reduce<number>((max, p) => (p != null && p > max ? p : max), 0);
+  return highest + 1;
+}
+
+export type LadderEntry = { id: string; holdPriority: number | null };
+export type Promotion = { id: string; priority: number; becomesFirst: boolean };
+
+/**
+ * When a hold leaves the ladder, everyone behind it moves up one.
+ *
+ * Only holds strictly behind `removedPriority` shift — those ahead are
+ * unaffected. `becomesFirst` marks whoever inherits the front of the queue, the
+ * only client worth emailing: they're the one who can now actually have the date.
+ */
+export function promoteLadder(holds: LadderEntry[], removedPriority: number): Promotion[] {
+  return holds
+    .filter((h) => h.holdPriority != null && h.holdPriority > removedPriority)
+    .map((h) => {
+      const priority = h.holdPriority! - 1;
+      return { id: h.id, priority, becomesFirst: priority === 1 };
+    });
+}
+
+export function ordinal(n: number) {
+  const teens = n % 100;
+  if (teens >= 11 && teens <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
+/** UI chip for a hold's place in the queue. Null when it isn't queued behind anyone. */
+export function holdQueueLabel(priority: number | null | undefined) {
+  if (priority == null || priority < 1) return null;
+  return `${ordinal(priority)} in line`;
+}

@@ -49,11 +49,19 @@ export async function firmHoldAction(formData: FormData) {
   });
 
   revalidatePath(`/${businessSlug}/appointments`);
-  redirect(
-    result.ok
-      ? `/${businessSlug}/appointments?toast=${encodeURIComponent("Hold confirmed — it's a booking now")}`
-      : `/${businessSlug}/appointments?toastError=${encodeURIComponent(result.error)}`,
-  );
+
+  if (!result.ok) {
+    redirect(`/${businessSlug}/appointments?toastError=${encodeURIComponent(result.error)}`);
+  }
+
+  // Confirming can bump rival holds and email those clients, so say so rather
+  // than letting it happen invisibly.
+  const bumped = result.releasedCount ?? 0;
+  const message = bumped
+    ? `Hold confirmed — ${bumped} other ${bumped === 1 ? "hold" : "holds"} released and notified`
+    : "Hold confirmed — it's a booking now";
+
+  redirect(`/${businessSlug}/appointments?toast=${encodeURIComponent(message)}`);
 }
 
 export async function releaseHoldAction(formData: FormData) {
@@ -66,11 +74,16 @@ export async function releaseHoldAction(formData: FormData) {
   });
 
   revalidatePath(`/${businessSlug}/appointments`);
-  redirect(
-    result.ok
-      ? `/${businessSlug}/appointments?toast=${encodeURIComponent("Hold released — the slot is free")}`
-      : `/${businessSlug}/appointments?toastError=${encodeURIComponent(result.error)}`,
-  );
+
+  if (!result.ok) {
+    redirect(`/${businessSlug}/appointments?toastError=${encodeURIComponent(result.error)}`);
+  }
+
+  const message = result.promotedName
+    ? `Hold released — ${result.promotedName} is now first in line and has been told`
+    : "Hold released — the slot is free";
+
+  redirect(`/${businessSlug}/appointments?toast=${encodeURIComponent(message)}`);
 }
 
 export async function updateAppointmentStatusAction(formData: FormData) {

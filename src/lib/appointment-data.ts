@@ -1,9 +1,17 @@
 import "server-only";
 
-import { addMinutes, format } from "@/lib/date";
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { addMinutes, format, formatLongDateInTz, formatTimeInTz } from "@/lib/date";
+import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { findOrCreateCustomer, findOrCreateService } from "@/lib/entity-resolve";
-import { defaultHoldExpiry, holdExpiryLabel, isHoldExpired } from "@/lib/holds";
+import {
+  defaultHoldExpiry,
+  holdExpiryLabel,
+  isHoldExpired,
+  holdQueueLabel,
+  nextHoldPriority,
+  promoteLadder,
+} from "@/lib/holds";
+import { sendHoldPromotedEmail, sendHoldReleasedEmail } from "@/lib/email";
 
 export type AppointmentRow = {
   id: string;
@@ -19,10 +27,20 @@ export type AppointmentRow = {
   holdExpired: boolean;
   /** e.g. "expires in 3 days" / "expired". Null unless this is a hold. */
   holdExpiryLabel: string | null;
+  /** e.g. "2nd in line" — this hold's place in the queue for a contended slot. */
+  holdQueueLabel: string | null;
 };
 
 /** Result of a hold transition, so the caller can surface a real reason. */
-export type HoldOutcome = { ok: true } | { ok: false; error: string };
+export type HoldOutcome =
+  | {
+      ok: true;
+      /** Rival holds bumped because someone else confirmed the slot. */
+      releasedCount?: number;
+      /** Client promoted to the front of the queue, if any. */
+      promotedName?: string | null;
+    }
+  | { ok: false; error: string };
 
 export type AppointmentOption = {
   id: string;
@@ -45,9 +63,9 @@ const fallbackAppointmentData: Record<string, AppointmentModuleData> = {
   "osu-glow-studio": {
     tenant: { id: "sample_osu_glow", name: "Osu Glow Studio", slug: "osu-glow-studio" },
     appointments: [
-      { id: "demo-1", time: "09:00", client: "Ama Serwaa", service: "Silk press + trim", staff: "Nadia", status: "CONFIRMED", value: "GH₵ 420", isHold: false, holdExpired: false, holdExpiryLabel: null },
-      { id: "demo-2", time: "10:30", client: "Esi Manu", service: "Soft glam", staff: "Nadia", status: "PENDING", value: "GH₵ 650", isHold: false, holdExpired: false, holdExpiryLabel: null },
-      { id: "demo-3", time: "12:00", client: "Akua Mensah", service: "Wig install", staff: "Nadia", status: "Hold", value: "GH₵ 780", isHold: true, holdExpired: false, holdExpiryLabel: "expires in 3 days" },
+      { id: "demo-1", time: "09:00", client: "Ama Serwaa", service: "Silk press + trim", staff: "Nadia", status: "CONFIRMED", value: "GH₵ 420", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
+      { id: "demo-2", time: "10:30", client: "Esi Manu", service: "Soft glam", staff: "Nadia", status: "PENDING", value: "GH₵ 650", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
+      { id: "demo-3", time: "12:00", client: "Akua Mensah", service: "Wig install", staff: "Nadia", status: "Hold", value: "GH₵ 780", isHold: true, holdExpired: false, holdExpiryLabel: "expires in 3 days", holdQueueLabel: null },
     ],
     customers: [
       { id: "demo-customer-1", label: "Ama Serwaa" },
@@ -64,8 +82,8 @@ const fallbackAppointmentData: Record<string, AppointmentModuleData> = {
   "luxe-lash-lab": {
     tenant: { id: "sample_luxe_lash", name: "Luxe Lash Lab", slug: "luxe-lash-lab" },
     appointments: [
-      { id: "demo-4", time: "09:00", client: "Yaa Boateng", service: "Classic lash set", staff: "Mina", status: "CONFIRMED", value: "GH₵ 360", isHold: false, holdExpired: false, holdExpiryLabel: null },
-      { id: "demo-5", time: "11:30", client: "Afia Owusu", service: "Brow lamination", staff: "Mina", status: "PENDING", value: "GH₵ 220", isHold: false, holdExpired: false, holdExpiryLabel: null },
+      { id: "demo-4", time: "09:00", client: "Yaa Boateng", service: "Classic lash set", staff: "Mina", status: "CONFIRMED", value: "GH₵ 360", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
+      { id: "demo-5", time: "11:30", client: "Afia Owusu", service: "Brow lamination", staff: "Mina", status: "PENDING", value: "GH₵ 220", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
     ],
     customers: [
       { id: "demo-customer-4", label: "Yaa Boateng" },
@@ -123,8 +141,54 @@ async function findOverlapping({
       endAt: { gt: startAt },
       ...(excludeId ? { id: { not: excludeId } } : {}),
     },
-    include: { customer: true, staffMember: { include: { user: true } } },
+    orderBy: { holdPriority: "asc" },
+    include: { customer: true, service: true, staffMember: { include: { user: true } } },
   });
+}
+
+type NotifiableHold = {
+  id: string;
+  startAt: Date;
+  customer: { id: string; firstName: string; lastName: string | null; email: string | null };
+  service: { name: string };
+};
+
+type EmailBusiness = { id: string; name: string; phone: string | null; timezone: string };
+
+/**
+ * Email a client about their hold. Best-effort by design: a client with no email
+ * on file is simply skipped, and a transport failure is already swallowed and
+ * logged to NotificationLog by sendEmail — losing a courtesy note must never
+ * fail the staff member's action.
+ *
+ * These are transactional, not marketing, so marketing opt-ins don't gate them.
+ */
+async function notifyHold(
+  kind: "promoted" | "released",
+  hold: NotifiableHold,
+  business: EmailBusiness,
+): Promise<string | null> {
+  const to = hold.customer.email;
+  if (!to) return null;
+
+  const clientName = [hold.customer.firstName, hold.customer.lastName].filter(Boolean).join(" ");
+  const when = `${formatLongDateInTz(hold.startAt, business.timezone)} at ${formatTimeInTz(hold.startAt, business.timezone)}`;
+  const shared = {
+    to,
+    clientName,
+    businessName: business.name,
+    serviceName: hold.service.name,
+    when,
+    businessId: business.id,
+    customerId: hold.customer.id,
+  };
+
+  if (kind === "promoted") {
+    await sendHoldPromotedEmail({ ...shared, businessPhone: business.phone });
+  } else {
+    await sendHoldReleasedEmail(shared);
+  }
+  return clientName;
 }
 
 export async function getAppointmentModuleData(businessSlug: string): Promise<AppointmentModuleData | null> {
@@ -183,6 +247,9 @@ export async function getAppointmentModuleData(businessSlug: string): Promise<Ap
         isHold,
         holdExpired: isHold && isHoldExpired(appointment.holdExpiresAt, now),
         holdExpiryLabel: isHold ? holdExpiryLabel(appointment.holdExpiresAt, now) : null,
+        // Only worth showing when someone is actually queued behind another
+        // hold; "1st in line" with nobody behind you is noise.
+        holdQueueLabel: isHold && (appointment.holdPriority ?? 0) > 1 ? holdQueueLabel(appointment.holdPriority) : null,
       };
     }),
     customers: customers.map((customer) => ({
@@ -247,6 +314,21 @@ export async function createAppointment({
     return;
   }
 
+  const endAt = addMinutes(startAt, svc.durationMinutes);
+
+  // A new hold joins the back of the queue for whatever already contends this slot.
+  let holdPriority: number | null = null;
+  if (hold) {
+    const rivals = await findOverlapping({
+      businessId: business.id,
+      staffMemberId: staffMember.id,
+      startAt,
+      endAt,
+      statuses: ["HOLD"],
+    });
+    holdPriority = nextHoldPriority(rivals.map((r) => r.holdPriority));
+  }
+
   await prisma.appointment.create({
     data: {
       businessId: business.id,
@@ -254,7 +336,7 @@ export async function createAppointment({
       serviceId: svc.id,
       staffMemberId: staffMember.id,
       startAt,
-      endAt: addMinutes(startAt, svc.durationMinutes),
+      endAt,
       status: hold ? "HOLD" : "CONFIRMED",
       source: "ADMIN",
       price: override != null ? override : svc.price,
@@ -262,6 +344,7 @@ export async function createAppointment({
       // A hold is never paid — nothing has been committed yet.
       depositPaid: hold ? false : Boolean(svc.depositAmount),
       holdExpiresAt: hold ? (holdExpiresAt ?? defaultHoldExpiry(startAt)) : null,
+      holdPriority,
     },
   });
 }
@@ -284,7 +367,15 @@ export async function firmHold({
 
   const appointment = await prisma.appointment.findFirst({
     where: { id: appointmentId, business: { slug: businessSlug } },
-    select: { id: true, businessId: true, staffMemberId: true, startAt: true, endAt: true, status: true },
+    select: {
+      id: true,
+      businessId: true,
+      staffMemberId: true,
+      startAt: true,
+      endAt: true,
+      status: true,
+      business: { select: { id: true, name: true, phone: true, timezone: true } },
+    },
   });
 
   if (!appointment) {
@@ -294,30 +385,59 @@ export async function firmHold({
     return { ok: false, error: "That booking is not a hold" };
   }
 
+  let losers: NotifiableHold[] = [];
+
   if (appointment.staffMemberId) {
-    const clashes = await findOverlapping({
+    const overlapping = await findOverlapping({
       businessId: appointment.businessId,
       staffMemberId: appointment.staffMemberId,
       startAt: appointment.startAt,
       endAt: appointment.endAt,
-      statuses: ["CONFIRMED"],
+      statuses: ["CONFIRMED", "HOLD"],
       excludeId: appointment.id,
     });
 
-    if (clashes.length > 0) {
-      const clash = clashes[0];
+    const clash = overlapping.find((a) => a.status === "CONFIRMED");
+    if (clash) {
       const who = [clash.customer.firstName, clash.customer.lastName].filter(Boolean).join(" ");
       const staffName = clash.staffMember?.user?.name ?? "That staff member";
       return { ok: false, error: `${staffName} is already booked for ${who} at that time` };
     }
+
+    // Confirming takes the slot, so every rival hold on it is now dead.
+    losers = overlapping.filter((a) => a.status === "HOLD");
   }
 
-  await prisma.appointment.update({
-    where: { id: appointment.id },
-    data: { status: "CONFIRMED", holdPriority: null, holdExpiresAt: null },
-  });
+  await tenantTransaction(
+    async (tx) => {
+      await tx.appointment.update({
+        where: { id: appointment.id },
+        data: { status: "CONFIRMED", holdPriority: null, holdExpiresAt: null },
+      });
 
-  return { ok: true };
+      if (losers.length > 0) {
+        await tx.appointment.updateMany({
+          where: { id: { in: losers.map((l) => l.id) } },
+          data: {
+            status: "CANCELLED",
+            cancelReason: "Slot booked by another client",
+            cancelledAt: new Date(),
+            holdPriority: null,
+            holdExpiresAt: null,
+          },
+        });
+      }
+    },
+    { timeout: 15000 },
+  );
+
+  // Emails go out after the transaction commits — never hold a database
+  // transaction open across an SMTP round-trip.
+  for (const loser of losers) {
+    await notifyHold("released", loser, appointment.business);
+  }
+
+  return { ok: true, releasedCount: losers.length };
 }
 
 /**
@@ -336,18 +456,68 @@ export async function releaseHold({
     return { ok: false, error: "Database not configured" };
   }
 
-  const { count } = await prisma.appointment.updateMany({
+  const appointment = await prisma.appointment.findFirst({
     where: { id: appointmentId, business: { slug: businessSlug }, status: "HOLD" },
-    data: {
-      status: "CANCELLED",
-      cancelReason: "Hold released",
-      cancelledAt: new Date(),
-      holdPriority: null,
-      holdExpiresAt: null,
+    select: {
+      id: true,
+      businessId: true,
+      staffMemberId: true,
+      startAt: true,
+      endAt: true,
+      holdPriority: true,
+      business: { select: { id: true, name: true, phone: true, timezone: true } },
     },
   });
 
-  return count > 0 ? { ok: true } : { ok: false, error: "That hold no longer exists" };
+  if (!appointment) {
+    return { ok: false, error: "That hold no longer exists" };
+  }
+
+  const behind = appointment.staffMemberId
+    ? await findOverlapping({
+        businessId: appointment.businessId,
+        staffMemberId: appointment.staffMemberId,
+        startAt: appointment.startAt,
+        endAt: appointment.endAt,
+        statuses: ["HOLD"],
+        excludeId: appointment.id,
+      })
+    : [];
+
+  // A hold with no priority predates the ladder and was never in the queue, so
+  // releasing it must not shuffle anyone.
+  const promotions = appointment.holdPriority != null ? promoteLadder(behind, appointment.holdPriority) : [];
+
+  await tenantTransaction(
+    async (tx) => {
+      await tx.appointment.update({
+        where: { id: appointment.id },
+        data: {
+          status: "CANCELLED",
+          cancelReason: "Hold released",
+          cancelledAt: new Date(),
+          holdPriority: null,
+          holdExpiresAt: null,
+        },
+      });
+
+      for (const promotion of promotions) {
+        await tx.appointment.update({
+          where: { id: promotion.id },
+          data: { holdPriority: promotion.priority },
+        });
+      }
+    },
+    { timeout: 15000 },
+  );
+
+  // Only the client who reached the front of the queue is told: they're the one
+  // who can now actually have the date.
+  const first = promotions.find((p) => p.becomesFirst);
+  const promoted = first ? behind.find((h) => h.id === first.id) : undefined;
+  const promotedName = promoted ? await notifyHold("promoted", promoted, appointment.business) : null;
+
+  return { ok: true, promotedName };
 }
 
 export async function updateAppointmentStatus({

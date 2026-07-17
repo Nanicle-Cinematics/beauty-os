@@ -38,6 +38,7 @@ type SendEmailInput = {
   text: string;
   type: string; // NotificationLog.type
   businessId?: string | null;
+  customerId?: string | null;
 };
 
 // Send a transactional email. Transport precedence: SMTP (nodemailer) → Resend
@@ -45,7 +46,7 @@ type SendEmailInput = {
 // SMTP_* vars activates SMTP; remove them and a RESEND_API_KEY takes back over
 // — no code change needed. Every attempt is recorded in NotificationLog when a
 // business is attached.
-export async function sendEmail({ to, subject, html, text, type, businessId }: SendEmailInput): Promise<SendEmailResult> {
+export async function sendEmail({ to, subject, html, text, type, businessId, customerId }: SendEmailInput): Promise<SendEmailResult> {
   const smtp = smtpConfig();
   const key = resendKey();
 
@@ -98,6 +99,7 @@ export async function sendEmail({ to, subject, html, text, type, businessId }: S
       .create({
         data: {
           businessId,
+          customerId: customerId ?? null,
           channel: "EMAIL",
           type,
           recipient: to,
@@ -164,6 +166,107 @@ export async function sendInviteEmail({
   </div>`;
 
   return sendEmail({ to, subject, html, text, type: "owner_invite", businessId });
+}
+
+// Shell shared by the client-facing hold emails. Deliberately matches the
+// invite/verification templates above rather than the app's plum tokens — every
+// email we send should look like the same sender.
+function holdEmailShell({ heading, body, businessName }: { heading: string; body: string; businessName: string }) {
+  return `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fafafa;padding:32px">
+    <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e7e7ea;border-radius:24px;padding:28px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#9d4e7a">${escapeHtml(businessName)}</div>
+      <h1 style="margin:8px 0 16px;font-size:22px;color:#18181b">${escapeHtml(heading)}</h1>
+      <p style="margin:0 0 16px;font-size:14px;color:#71717a;line-height:22px">${body}</p>
+      <p style="margin:20px 0 0;font-size:12px;color:#a1a1aa">Sent by ${escapeHtml(businessName)} via Beauty OS.</p>
+    </div>
+  </div>`;
+}
+
+/**
+ * The hold ahead of this client fell through, so the date is theirs if they want
+ * it. There is no client login, so the call to action is to phone the salon —
+ * see "this is staff-only" in docs/HOLDS.md.
+ */
+export async function sendHoldPromotedEmail({
+  to,
+  clientName,
+  businessName,
+  serviceName,
+  when,
+  businessPhone,
+  businessId,
+  customerId,
+}: {
+  to: string;
+  clientName: string;
+  businessName: string;
+  serviceName: string;
+  when: string;
+  businessPhone?: string | null;
+  businessId?: string | null;
+  customerId?: string | null;
+}): Promise<SendEmailResult> {
+  const subject = `${when} just opened up at ${businessName}`;
+  const callTo = businessPhone ? `call us on ${businessPhone}` : "reply to this email";
+
+  const text = [
+    `Hi ${clientName},`,
+    ``,
+    `Good news — ${when} has just become available for your ${serviceName}.`,
+    `You were next in line, so it's yours if you'd still like it.`,
+    ``,
+    `To confirm, ${callTo} and we'll lock it in.`,
+    ``,
+    `— ${businessName}`,
+  ].join("\n");
+
+  const html = holdEmailShell({
+    businessName,
+    heading: "Your date just opened up",
+    body: `Hi ${escapeHtml(clientName)}, good news — <strong style="color:#18181b">${escapeHtml(when)}</strong> has just become available for your ${escapeHtml(serviceName)}. You were next in line, so it's yours if you'd still like it.<br><br>To confirm, ${escapeHtml(callTo)} and we'll lock it in.`,
+  });
+
+  return sendEmail({ to, subject, html, text, type: "hold_promoted", businessId, customerId });
+}
+
+/** The slot this client was holding went to someone who confirmed first. */
+export async function sendHoldReleasedEmail({
+  to,
+  clientName,
+  businessName,
+  serviceName,
+  when,
+  businessId,
+  customerId,
+}: {
+  to: string;
+  clientName: string;
+  businessName: string;
+  serviceName: string;
+  when: string;
+  businessId?: string | null;
+  customerId?: string | null;
+}): Promise<SendEmailResult> {
+  const subject = `About your held date at ${businessName}`;
+
+  const text = [
+    `Hi ${clientName},`,
+    ``,
+    `We're sorry — ${when} has now been booked, so we've had to release the hold on your ${serviceName}.`,
+    ``,
+    `Get in touch and we'll find you another time that works.`,
+    ``,
+    `— ${businessName}`,
+  ].join("\n");
+
+  const html = holdEmailShell({
+    businessName,
+    heading: "Your held date has been booked",
+    body: `Hi ${escapeHtml(clientName)}, we're sorry — <strong style="color:#18181b">${escapeHtml(when)}</strong> has now been booked, so we've had to release the hold on your ${escapeHtml(serviceName)}.<br><br>Get in touch and we'll find you another time that works.`,
+  });
+
+  return sendEmail({ to, subject, html, text, type: "hold_released", businessId, customerId });
 }
 
 export async function sendVerificationEmail({

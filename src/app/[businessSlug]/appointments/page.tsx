@@ -67,7 +67,14 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
                     </div>
                     <span className="font-medium text-ink">{appointment.service}</span>
                     <div className="grid gap-1">
-                      <Badge tone={toneForStatus(appointment.status)}>{appointment.status}</Badge>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <Badge tone={toneForStatus(appointment.status)}>{appointment.status}</Badge>
+                        {appointment.holdQueueLabel ? (
+                          <span className="rounded-full bg-sunken px-2 py-0.5 text-[10.5px] font-semibold text-muted">
+                            {appointment.holdQueueLabel}
+                          </span>
+                        ) : null}
+                      </div>
                       {appointment.holdExpiryLabel ? (
                         <span className={`text-[11px] font-medium ${appointment.holdExpired ? "text-danger" : "text-faint"}`}>
                           {appointment.holdExpiryLabel}
