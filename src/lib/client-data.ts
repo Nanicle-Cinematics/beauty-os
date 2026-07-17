@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { bookingPaymentsWhere, refundWhere, collected, outstanding } from "@/lib/money";
 
 export type ClientRow = {
   id: string;
@@ -95,16 +96,26 @@ export async function getClientModuleData(businessSlug: string): Promise<ClientM
     return null;
   }
 
-  const customers = await prisma.customer.findMany({
-    where: { businessId: business.id },
-    orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
-    include: {
-      appointments: {
-        select: { status: true, price: true, startAt: true },
-        orderBy: { startAt: "desc" },
+  const [customers, paidGroups, refundGroups] = await Promise.all([
+    prisma.customer.findMany({
+      where: { businessId: business.id },
+      orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      include: {
+        appointments: {
+          select: { status: true, price: true, startAt: true },
+          orderBy: { startAt: "desc" },
+        },
       },
-    },
-  });
+    }),
+    // What each client has actually handed over, and taken back. Spend and
+    // balance are derived from these — never from appointment prices, and never
+    // from the retired `Customer.outstandingBalance` counter. See money.ts.
+    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, where: bookingPaymentsWhere(business.id) }),
+    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, where: refundWhere(business.id) }),
+  ]);
+
+  const paidByCustomer = new Map(paidGroups.map((g) => [g.customerId, Number(g._sum.amount ?? 0)]));
+  const refundedByCustomer = new Map(refundGroups.map((g) => [g.customerId, Number(g._sum.amount ?? 0)]));
 
   const currency = business.currency;
   const now = new Date();
@@ -114,11 +125,15 @@ export async function getClientModuleData(businessSlug: string): Promise<ClientM
     const realisedVisits = customer.appointments.filter((appointment) =>
       (REALISED_STATUSES as readonly string[]).includes(appointment.status),
     );
-    const lifetimeSpend = realisedVisits.reduce((sum, appointment) => sum + Number(appointment.price), 0);
+    // Booked is what they agreed to pay; spend is what they actually paid. These
+    // were the same number before, which meant an unpaid booking counted as
+    // lifetime spend.
+    const booked = realisedVisits.reduce((sum, appointment) => sum + Number(appointment.price), 0);
+    const lifetimeSpend = collected(paidByCustomer.get(customer.id) ?? 0, refundedByCustomer.get(customer.id) ?? 0);
     const lastVisit = customer.appointments.find((appointment) => appointment.status === "COMPLETED")?.startAt
       ?? customer.appointments[0]?.startAt
       ?? null;
-    const outstandingRaw = Number(customer.outstandingBalance);
+    const outstandingRaw = outstanding(booked, paidByCustomer.get(customer.id) ?? 0);
 
     return {
       id: customer.id,

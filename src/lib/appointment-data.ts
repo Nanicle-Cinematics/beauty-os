@@ -341,8 +341,13 @@ export async function createAppointment({
       source: "ADMIN",
       price: override != null ? override : svc.price,
       depositAmount: svc.depositAmount,
-      // A hold is never paid — nothing has been committed yet.
-      depositPaid: hold ? false : Boolean(svc.depositAmount),
+      // Never paid at creation. This previously read `Boolean(svc.depositAmount)`,
+      // which recorded "this service requires a deposit" as "the deposit was
+      // paid" — booking a service invented collected money nobody had handed
+      // over, and the unpaid-deposit chase lists could never fire. A deposit is
+      // settled in exactly one place: recordPayment, when a DEPOSIT payment is
+      // actually taken. See src/lib/money.ts.
+      depositPaid: false,
       holdExpiresAt: hold ? (holdExpiresAt ?? defaultHoldExpiry(startAt)) : null,
       holdPriority,
     },

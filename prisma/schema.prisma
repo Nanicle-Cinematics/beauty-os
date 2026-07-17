@@ -394,6 +394,12 @@ model Customer {
   marketingOptInSms      Boolean  @default(true)
   marketingOptInWhatsapp Boolean  @default(true)
   tags                  String[]
+  /// DEPRECATED — do not read or write. Nothing maintains this any more.
+  /// It was a running counter that only ever decreased (payments subtracted from
+  /// it; booking an appointment never added to it), so it sat at 0 for every
+  /// client and reported that nobody owed anything. Outstanding is now derived
+  /// wherever it's shown: booked appointments minus real payments. See
+  /// src/lib/money.ts. Kept only so the column drop is a separate migration.
   outstandingBalance    Decimal  @default(0) @db.Decimal(12, 2)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt

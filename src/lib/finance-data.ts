@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { bookedWhere, bookingPaymentsWhere, outstanding as outstandingOf } from "@/lib/money";
 import { money, titleCase, pct, deltaLabel } from "@/lib/format";
 
 export type FinanceKpi = { label: string; value: string; detail: string };
@@ -288,7 +289,7 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
     };
   });
 
-  const [rev30Agg, revPrevAgg, exp30Agg, expPrevAgg, catGroups, recentPayments, recentExpenses, outstandingAgg, revTrendAggs, expTrendAggs] = await Promise.all([
+  const [rev30Agg, revPrevAgg, exp30Agg, expPrevAgg, catGroups, recentPayments, recentExpenses, bookedAgg, bookingPaidAgg, revTrendAggs, expTrendAggs] = await Promise.all([
     prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since30) }),
     prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since60, since30) }),
     prisma.expense.aggregate({ _sum: { amount: true }, where: { businessId: business.id, incurredAt: { gte: since30 } } }),
@@ -306,7 +307,11 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
       take: 8,
       select: { id: true, category: true, description: true, amount: true, incurredAt: true },
     }),
-    prisma.customer.aggregate({ where: { businessId: business.id }, _sum: { outstandingBalance: true } }),
+    // Outstanding is derived: booked appointments minus payments actually made.
+    // This previously summed `Customer.outstandingBalance`, a counter that only
+    // ever decreased, so it reported GH₵0 owed no matter what was unpaid.
+    prisma.appointment.aggregate({ _sum: { price: true }, where: bookedWhere(business.id) }),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: bookingPaymentsWhere(business.id) }),
     Promise.all(bucketBounds.map((b) => prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(b.start, b.end) }))),
     Promise.all(bucketBounds.map((b) => prisma.expense.aggregate({ _sum: { amount: true }, where: { businessId: business.id, incurredAt: { gte: b.start, lt: b.end } } }))),
   ]);
@@ -322,7 +327,7 @@ export async function getFinanceData(businessSlug: string): Promise<FinanceData 
   const exp30 = Number(exp30Agg._sum.amount ?? 0);
   const expPrev = Number(expPrevAgg._sum.amount ?? 0);
   const net30 = rev30 - exp30;
-  const outstanding = Number(outstandingAgg._sum.outstandingBalance ?? 0);
+  const outstanding = outstandingOf(Number(bookedAgg._sum.price ?? 0), Number(bookingPaidAgg._sum.amount ?? 0));
   const flowMax = Math.max(1, rev30, exp30);
 
   const catSums = catGroups.map((g) => ({ category: g.category, sum: Number(g._sum.amount ?? 0) }));

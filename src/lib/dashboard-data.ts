@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { incomingWhere, refundWhere, bookingPaymentsWhere, collected, outstanding } from "@/lib/money";
 import {
   daysBetween,
   formatDayMonthInTz,
@@ -203,7 +204,18 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
   const now = new Date();
   const { start, end } = zonedDayRange(now, timeZone);
 
-  const [todayAppointments, activeStaff, products, customers, repeatGroups, totalCustomers] = await Promise.all([
+  const [
+    todayAppointments,
+    activeStaff,
+    products,
+    customers,
+    repeatGroups,
+    totalCustomers,
+    incomingTodayAgg,
+    refundTodayAgg,
+    paidByCustomerGroups,
+    refundByCustomerGroups,
+  ] = await Promise.all([
     prisma.appointment.findMany({
       where: { businessId: business.id, startAt: { gte: start, lt: end } },
       orderBy: { startAt: "asc" },
@@ -234,14 +246,34 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     // one-time clients look like repeats (docs/HOLDS.md).
     prisma.appointment.groupBy({ by: ["customerId"], _count: true, where: { businessId: business.id, status: { notIn: ["CANCELLED", "NO_SHOW", "HOLD"] } } }),
     prisma.customer.count({ where: { businessId: business.id } }),
+    // Cash actually taken today, ranged on paidAt — when the money moved, not
+    // when the appointment happens to sit on the calendar.
+    prisma.payment.aggregate({ _sum: { amount: true }, where: incomingWhere(business.id, { from: start, to: end }) }),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: refundWhere(business.id, { from: start, to: end }) }),
+    // Per-client settlement, for the "owes you" signal below.
+    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, where: bookingPaymentsWhere(business.id) }),
+    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, where: refundWhere(business.id) }),
   ]);
+
+  const paidByCustomer = new Map(paidByCustomerGroups.map((g) => [g.customerId, Number(g._sum.amount ?? 0)]));
+  const refundedByCustomer = new Map(refundByCustomerGroups.map((g) => [g.customerId, Number(g._sum.amount ?? 0)]));
 
   // --- today's schedule ---
   // Shown on the schedule (holds included — the slot is spoken for).
   const scheduleToday = todayAppointments.filter((appointment) => !OFF_SCHEDULE.has(appointment.status));
   // Everything that counts as business. Holds are excluded from all of it.
   const committedToday = scheduleToday.filter((appointment) => !PROVISIONAL.has(appointment.status));
-  const revenueToday = committedToday.reduce((sum, appointment) => sum + Number(appointment.price), 0);
+  // Booked is NOT revenue. This single line previously summed appointment prices
+  // and displayed the total as "Today revenue", so a full day of unpaid bookings
+  // read as a full day of takings. Booked and collected are now separate, and a
+  // status change (PENDING -> CONFIRMED -> COMPLETED) re-reads the same price
+  // rather than adding it again. See src/lib/money.ts.
+  const bookedToday = committedToday.reduce((sum, appointment) => sum + Number(appointment.price), 0);
+  const collectedToday = collected(
+    Number(incomingTodayAgg._sum.amount ?? 0),
+    Number(refundTodayAgg._sum.amount ?? 0),
+  );
+  const outstandingToday = outstanding(bookedToday, collectedToday);
   const pendingToday = committedToday.filter((appointment) => appointment.status === "PENDING");
   const completedToday = todayAppointments.filter((appointment) => appointment.status === "COMPLETED");
   const unpaidDeposits = committedToday.filter(
@@ -312,12 +344,20 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
   // --- client signals (prioritise birthday > owed > at-risk > top spender) ---
   const enrichedClients = customers.map((customer) => {
     const realisedVisits = customer.appointments.filter((appointment) => REALISED.has(appointment.status));
-    const spend = realisedVisits.reduce((sum, appointment) => sum + Number(appointment.price), 0);
+    // Spend is money handed over, not value booked. This previously summed
+    // appointment prices, so a client who booked GH₵800 and paid nothing ranked
+    // as the studio's top spender.
+    const spend = collected(paidByCustomer.get(customer.id) ?? 0, refundedByCustomer.get(customer.id) ?? 0);
     const lastVisit = realisedVisits[0]?.startAt ?? null;
     return {
       name: [customer.firstName, customer.lastName].filter(Boolean).join(" "),
       spend,
-      outstanding: Number(customer.outstandingBalance),
+      outstanding: outstanding(
+        customer.appointments
+          .filter((a) => REALISED.has(a.status))
+          .reduce((sum, a) => sum + Number(a.price), 0),
+        paidByCustomer.get(customer.id) ?? 0,
+      ),
       isBirthday: customer.birthdate ? formatDayMonthInTz(customer.birthdate, timeZone) === todayKey : false,
       lastVisitDays: lastVisit ? daysBetween(lastVisit, now) : null,
       tags: customer.tags,
@@ -352,12 +392,25 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     });
 
   // --- headline stats ---
+  // "Booked today" and "Collected today" are deliberately separate tiles. The
+  // old single "Today revenue" tile showed booked value under a cash label, so a
+  // day of unpaid bookings read as a day of takings.
   const stats: DashStat[] = [
     {
-      label: "Today revenue",
-      value: money(revenueToday, currency),
-      detail: `${committedToday.length} booked ${committedToday.length === 1 ? "service" : "services"}`,
+      label: "Booked today",
+      value: money(bookedToday, currency),
+      detail: outstandingToday > 0
+        ? `${money(outstandingToday, currency)} still to collect`
+        : `${committedToday.length} booked ${committedToday.length === 1 ? "service" : "services"}`,
       tone: "rose",
+    },
+    {
+      label: "Collected today",
+      value: money(collectedToday, currency),
+      detail: bookedToday > 0
+        ? `${clampPercent((collectedToday / bookedToday) * 100)}% of today's booked value`
+        : "Payments received today",
+      tone: "teal",
     },
     {
       label: "Bookings today",

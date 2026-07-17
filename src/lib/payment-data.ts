@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { findOrCreateCustomer } from "@/lib/entity-resolve";
+import { bookedWhere, bookingPaymentsWhere, incomingWhere, refundWhere, collected, outstanding } from "@/lib/money";
 
 export type PaymentRow = {
   id: string;
@@ -60,8 +61,6 @@ const METHOD_LABELS = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.
 const TYPE_LABELS = Object.fromEntries(PAYMENT_TYPES.map((t) => [t.value, t.label]));
 const VALID_METHODS = new Set(PAYMENT_METHODS.map((m) => m.value));
 const VALID_TYPES = new Set(PAYMENT_TYPES.map((t) => t.value));
-// Incoming money reduces what a client owes; a refund gives money back.
-const INCOMING_TYPES = new Set(["DEPOSIT", "FULL_PAYMENT", "BALANCE", "PRODUCT_SALE"]);
 
 function currencySymbol(currency: string) {
   return currency === "GHS" ? "GH₵" : currency;
@@ -155,7 +154,9 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
     return null;
   }
 
-  const [payments, appointments, customers, outstandingAgg] = await Promise.all([
+  const [payments, appointments, customers, bookedAgg, bookingPaidAgg, incomingAgg, refundAgg] = await Promise.all([
+    // History list only — the money stats below are aggregated in Postgres, not
+    // summed from this capped page.
     prisma.payment.findMany({
       where: { businessId: business.id },
       orderBy: { createdAt: "desc" },
@@ -173,20 +174,19 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
       where: { businessId: business.id },
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
     }),
-    prisma.customer.aggregate({
-      where: { businessId: business.id },
-      _sum: { outstandingBalance: true },
-    }),
+    // Outstanding is derived (booked − paid), never read from a stored counter.
+    // `Customer.outstandingBalance` only ever decreased — booking never added to
+    // it — so it sat at zero for every client and the figure was always a lie.
+    prisma.appointment.aggregate({ _sum: { price: true }, where: bookedWhere(business.id) }),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: bookingPaymentsWhere(business.id) }),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: incomingWhere(business.id) }),
+    prisma.payment.aggregate({ _sum: { amount: true }, where: refundWhere(business.id) }),
   ]);
 
   const currency = business.currency;
 
-  const collected = payments
-    .filter((p) => p.status === "SUCCESS" && p.type !== "REFUND")
-    .reduce((sum, p) => sum + Number(p.amount), 0);
-  const refunded = payments
-    .filter((p) => p.type === "REFUND" && (p.status === "SUCCESS" || p.status === "REFUNDED"))
-    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const collectedTotal = collected(Number(incomingAgg._sum.amount ?? 0), Number(refundAgg._sum.amount ?? 0));
+  const refunded = Number(refundAgg._sum.amount ?? 0);
 
   const depositsDueList: DepositDue[] = appointments
     .filter((a) => a.depositAmount && Number(a.depositAmount) > 0 && !a.depositPaid)
@@ -200,16 +200,17 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
       when: shortDate(a.startAt),
     }));
   const depositsDueTotal = depositsDueList.reduce((sum, d) => sum + d.amountRaw, 0);
-  const outstanding = Number(outstandingAgg._sum.outstandingBalance ?? 0);
+  const bookedTotal = Number(bookedAgg._sum.price ?? 0);
+  const outstandingTotal = outstanding(bookedTotal, Number(bookingPaidAgg._sum.amount ?? 0));
 
   const stats: PaymentStat[] = [
-    { label: "Collected", value: money(collected, currency), detail: "Successful payments" },
+    { label: "Collected", value: money(collectedTotal, currency), detail: "Payments in, less refunds" },
     {
       label: "Deposits due",
       value: money(depositsDueTotal, currency),
       detail: `${depositsDueList.length} ${depositsDueList.length === 1 ? "appointment" : "appointments"}`,
     },
-    { label: "Outstanding", value: money(outstanding, currency), detail: "Client balances" },
+    { label: "Outstanding", value: money(outstandingTotal, currency), detail: `Of ${money(bookedTotal, currency)} booked` },
     {
       label: "Refunded",
       value: money(refunded, currency),
@@ -314,23 +315,10 @@ export async function recordPayment({
       });
     }
 
-    // Keep the client's running balance in step: incoming money reduces it
-    // (never below zero), a refund increases it.
-    if (resolvedCustomerId) {
-      const customer = await tx.customer.findUnique({
-        where: { id: resolvedCustomerId },
-        select: { outstandingBalance: true },
-      });
-      if (customer) {
-        const current = Number(customer.outstandingBalance);
-        const next = INCOMING_TYPES.has(type)
-          ? Math.max(0, current - amount)
-          : current + amount;
-        await tx.customer.update({
-          where: { id: resolvedCustomerId },
-          data: { outstandingBalance: next },
-        });
-      }
-    }
+    // No balance counter is maintained here any more. `Customer.outstandingBalance`
+    // was a running total that only ever decreased — booking an appointment never
+    // added to it — so it sat at zero for every client and reported that nobody
+    // owed anything. Outstanding is now derived wherever it's shown, from booked
+    // appointments minus real payments. See src/lib/money.ts.
   }, { timeout: 15000 });
 }
