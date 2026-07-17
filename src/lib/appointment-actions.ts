@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createAppointment, updateAppointmentStatus } from "@/lib/appointment-data";
+import { createAppointment, updateAppointmentStatus, firmHold, releaseHold } from "@/lib/appointment-data";
 import { requireTenantAccess } from "@/lib/auth";
 
 function getString(formData: FormData, key: string) {
@@ -18,6 +18,9 @@ export async function createAppointmentAction(formData: FormData) {
   await requireTenantAccess(businessSlug);
 
   const parsedPrice = Number.parseFloat(getString(formData, "price"));
+  const hold = getString(formData, "hold") === "on";
+  const rawExpiry = getString(formData, "holdExpiresAt");
+  const parsedExpiry = rawExpiry ? new Date(rawExpiry) : null;
 
   await createAppointment({
     businessSlug,
@@ -26,10 +29,48 @@ export async function createAppointmentAction(formData: FormData) {
     staffMemberId: getString(formData, "staffMemberId"),
     startAt: new Date(getString(formData, "startAt")),
     price: Number.isFinite(parsedPrice) ? parsedPrice : null,
+    hold,
+    holdExpiresAt: parsedExpiry && !Number.isNaN(parsedExpiry.getTime()) ? parsedExpiry : null,
   });
 
   revalidatePath(`/${businessSlug}/appointments`);
-  redirect(`/${businessSlug}/appointments?toast=${encodeURIComponent("Booking created")}`);
+  redirect(
+    `/${businessSlug}/appointments?toast=${encodeURIComponent(hold ? "Date held" : "Booking created")}`,
+  );
+}
+
+export async function firmHoldAction(formData: FormData) {
+  const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
+  await requireTenantAccess(businessSlug);
+
+  const result = await firmHold({
+    businessSlug,
+    appointmentId: getString(formData, "appointmentId"),
+  });
+
+  revalidatePath(`/${businessSlug}/appointments`);
+  redirect(
+    result.ok
+      ? `/${businessSlug}/appointments?toast=${encodeURIComponent("Hold confirmed — it's a booking now")}`
+      : `/${businessSlug}/appointments?toastError=${encodeURIComponent(result.error)}`,
+  );
+}
+
+export async function releaseHoldAction(formData: FormData) {
+  const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
+  await requireTenantAccess(businessSlug);
+
+  const result = await releaseHold({
+    businessSlug,
+    appointmentId: getString(formData, "appointmentId"),
+  });
+
+  revalidatePath(`/${businessSlug}/appointments`);
+  redirect(
+    result.ok
+      ? `/${businessSlug}/appointments?toast=${encodeURIComponent("Hold released — the slot is free")}`
+      : `/${businessSlug}/appointments?toastError=${encodeURIComponent(result.error)}`,
+  );
 }
 
 export async function updateAppointmentStatusAction(formData: FormData) {

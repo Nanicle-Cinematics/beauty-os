@@ -162,8 +162,10 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
       take: 25,
       include: { customer: true },
     }),
+    // HOLD is excluded: a provisional date has no deposit to collect and must
+    // not appear in payment history or balances (docs/HOLDS.md).
     prisma.appointment.findMany({
-      where: { businessId: business.id, status: { notIn: ["CANCELLED", "NO_SHOW"] } },
+      where: { businessId: business.id, status: { notIn: ["CANCELLED", "NO_SHOW", "HOLD"] } },
       orderBy: { startAt: "desc" },
       include: { customer: true, service: true },
     }),

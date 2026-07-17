@@ -61,7 +61,11 @@ export type TenantDashboardData = {
 };
 
 const STAFF_COLORS = ["bg-emerald-500", "bg-rose-500", "bg-blue-500", "bg-amber-500", "bg-violet-500"];
-const CANCELLED = new Set(["CANCELLED", "NO_SHOW"]);
+// Never on the schedule at all.
+const OFF_SCHEDULE = new Set(["CANCELLED", "NO_SHOW"]);
+// Provisional: a hold occupies the slot on screen but is not business yet, so it
+// must never reach revenue, utilization, capacity or deposits. See docs/HOLDS.md.
+const PROVISIONAL = new Set(["HOLD"]);
 const REALISED = new Set(["COMPLETED", "CONFIRMED"]);
 
 function currencySymbol(currency: string) {
@@ -225,20 +229,25 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
         appointments: { select: { status: true, price: true, startAt: true }, orderBy: { startAt: "desc" } },
       },
     }),
-    // Exact retention: clients with 2+ non-cancelled visits, over the full base.
-    prisma.appointment.groupBy({ by: ["customerId"], _count: true, where: { businessId: business.id, status: { notIn: ["CANCELLED", "NO_SHOW"] } } }),
+    // Exact retention: clients with 2+ real visits, over the full base. HOLD is
+    // excluded — a provisional date is not a visit, and counting it would make
+    // one-time clients look like repeats (docs/HOLDS.md).
+    prisma.appointment.groupBy({ by: ["customerId"], _count: true, where: { businessId: business.id, status: { notIn: ["CANCELLED", "NO_SHOW", "HOLD"] } } }),
     prisma.customer.count({ where: { businessId: business.id } }),
   ]);
 
   // --- today's schedule ---
-  const liveToday = todayAppointments.filter((appointment) => !CANCELLED.has(appointment.status));
-  const revenueToday = liveToday.reduce((sum, appointment) => sum + Number(appointment.price), 0);
-  const pendingToday = liveToday.filter((appointment) => appointment.status === "PENDING");
+  // Shown on the schedule (holds included — the slot is spoken for).
+  const scheduleToday = todayAppointments.filter((appointment) => !OFF_SCHEDULE.has(appointment.status));
+  // Everything that counts as business. Holds are excluded from all of it.
+  const committedToday = scheduleToday.filter((appointment) => !PROVISIONAL.has(appointment.status));
+  const revenueToday = committedToday.reduce((sum, appointment) => sum + Number(appointment.price), 0);
+  const pendingToday = committedToday.filter((appointment) => appointment.status === "PENDING");
   const completedToday = todayAppointments.filter((appointment) => appointment.status === "COMPLETED");
-  const unpaidDeposits = liveToday.filter(
+  const unpaidDeposits = committedToday.filter(
     (appointment) => appointment.depositAmount && Number(appointment.depositAmount) > 0 && !appointment.depositPaid,
   );
-  const nextUp = liveToday.find((appointment) => appointment.startAt > now);
+  const nextUp = committedToday.find((appointment) => appointment.startAt > now);
 
   // --- retention (exact, from SQL aggregates) ---
   const repeatClients = repeatGroups.filter((g) => g._count >= 2).length;
@@ -284,7 +293,7 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
 
   // --- staff utilization ---
   const staff: DashStaff[] = activeStaff.map((member, index) => {
-    const mine = liveToday.filter((appointment) => appointment.staffMemberId === member.id);
+    const mine = committedToday.filter((appointment) => appointment.staffMemberId === member.id);
     const bookedMinutes = mine.reduce(
       (sum, appointment) => sum + Math.max(0, (appointment.endAt.getTime() - appointment.startAt.getTime()) / 60000),
       0,
@@ -347,12 +356,12 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     {
       label: "Today revenue",
       value: money(revenueToday, currency),
-      detail: `${liveToday.length} booked ${liveToday.length === 1 ? "service" : "services"}`,
+      detail: `${committedToday.length} booked ${committedToday.length === 1 ? "service" : "services"}`,
       tone: "rose",
     },
     {
       label: "Bookings today",
-      value: String(liveToday.length),
+      value: String(committedToday.length),
       detail: pendingToday.length ? `${pendingToday.length} pending confirmation` : "All confirmed",
       tone: "teal",
     },
@@ -371,16 +380,16 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
   ];
 
   const pulse: PulseBar[] = [
-    { label: "Bookings", value: clampPercent((liveToday.length / Math.max(1, activeStaff.length * 6)) * 100) },
+    { label: "Bookings", value: clampPercent((committedToday.length / Math.max(1, activeStaff.length * 6)) * 100) },
     {
       label: "Capacity",
       value: clampPercent(
-        (liveToday.reduce((sum, a) => sum + (a.endAt.getTime() - a.startAt.getTime()) / 60000, 0) /
+        (committedToday.reduce((sum, a) => sum + (a.endAt.getTime() - a.startAt.getTime()) / 60000, 0) /
           Math.max(1, activeStaff.length * openMinutes)) *
           100,
       ),
     },
-    { label: "Checkout", value: clampPercent(liveToday.length ? (completedToday.length / liveToday.length) * 100 : 0) },
+    { label: "Checkout", value: clampPercent(committedToday.length ? (completedToday.length / committedToday.length) * 100 : 0) },
   ];
 
   const pills = [
@@ -408,7 +417,7 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     tasks.push("All clear — no actions need a decision right now");
   }
 
-  const appointments: DashAppointment[] = liveToday.slice(0, 6).map((appointment) => ({
+  const appointments: DashAppointment[] = scheduleToday.slice(0, 6).map((appointment) => ({
     id: appointment.id,
     time: formatTimeInTz(appointment.startAt, timeZone),
     client: [appointment.customer.firstName, appointment.customer.lastName].filter(Boolean).join(" "),

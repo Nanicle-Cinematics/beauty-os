@@ -36,6 +36,10 @@ const badgeTone: Record<BadgeTone, string> = {
 // "Completed"/"Active"/"Success" always reads green, cancellations red, etc.
 export function toneForStatus(status: string): BadgeTone {
   const s = status.toLowerCase();
+  // Holds are provisional — never green (not won) and never red (not lost).
+  // Word-boundaried so "household"/"stakeholder" can't trip it, and checked
+  // first so no later regex can claim a hold via a substring.
+  if (/(\bhold|\bpencil)/.test(s)) return "info";
   if (/(complete|active|success|paid|ok|confirmed)/.test(s)) return "success";
   if (/(cancel|no.?show|fail|refund|removed|expired|\bout\b|suspend|past.?due|revoked)/.test(s)) return "danger";
   if (/(pending|trial|invited|low|expiring|await|draft)/.test(s)) return "warning";

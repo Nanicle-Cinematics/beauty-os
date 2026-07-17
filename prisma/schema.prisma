@@ -440,6 +440,9 @@ model CustomerPhoto {
 // ============================================================================
 
 enum AppointmentStatus {
+  /// Provisional: the date is reserved but nothing is committed. Holds are
+  /// excluded from every revenue/retention figure — see docs/HOLDS.md.
+  HOLD
   PENDING
   CONFIRMED
   COMPLETED
@@ -475,6 +478,12 @@ model Appointment {
   notes         String?
   cancelReason  String?
   cancelledAt   DateTime?
+  /// 1 = first in line, 2 = second… Ranks holds within a contended slot, not
+  /// globally. Null unless status = HOLD. Used from Phase 2 (docs/HOLDS.md).
+  holdPriority  Int?
+  /// Past this instant the hold is dead. Expiry is lazy — no sweep job; reads
+  /// compare against now(), and analytics exclude holds regardless.
+  holdExpiresAt DateTime?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
 
@@ -485,6 +494,8 @@ model Appointment {
   @@index([businessId, startAt])
   @@index([staffMemberId, startAt])
   @@index([customerId])
+  /// Interval-overlap lookups when holding or firming a slot.
+  @@index([businessId, staffMemberId, startAt, endAt])
 }
 
 enum WaitlistStatus {

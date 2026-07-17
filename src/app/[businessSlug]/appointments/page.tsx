@@ -1,10 +1,15 @@
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, BookmarkPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge, toneForStatus, EmptyState, Avatar } from "@/components/ui";
 import { notFound } from "next/navigation";
-import { createAppointmentAction, updateAppointmentStatusAction } from "@/lib/appointment-actions";
+import {
+  createAppointmentAction,
+  updateAppointmentStatusAction,
+  firmHoldAction,
+  releaseHoldAction,
+} from "@/lib/appointment-actions";
 import { getAppointmentModuleData } from "@/lib/appointment-data";
 import { requireTenantAccess } from "@/lib/auth";
 
@@ -61,19 +66,47 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
                       </div>
                     </div>
                     <span className="font-medium text-ink">{appointment.service}</span>
-                    <Badge tone={toneForStatus(appointment.status)}>{appointment.status}</Badge>
-                    <span className="font-semibold text-ink">{appointment.value}</span>
+                    <div className="grid gap-1">
+                      <Badge tone={toneForStatus(appointment.status)}>{appointment.status}</Badge>
+                      {appointment.holdExpiryLabel ? (
+                        <span className={`text-[11px] font-medium ${appointment.holdExpired ? "text-danger" : "text-faint"}`}>
+                          {appointment.holdExpiryLabel}
+                        </span>
+                      ) : null}
+                    </div>
+                    <span className={`font-semibold ${appointment.isHold ? "text-faint" : "text-ink"}`}>
+                      {appointment.value}
+                    </span>
                     <div className="flex flex-wrap gap-1.5">
-                      {statusOptions.map((option) => (
-                        <form key={option.value} action={updateAppointmentStatusAction}>
-                          <input type="hidden" name="businessSlug" value={businessSlug} />
-                          <input type="hidden" name="appointmentId" value={appointment.id} />
-                          <input type="hidden" name="status" value={option.value} />
-                          <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
-                            {option.label}
-                          </button>
-                        </form>
-                      ))}
+                      {appointment.isHold ? (
+                        <>
+                          <form action={firmHoldAction}>
+                            <input type="hidden" name="businessSlug" value={businessSlug} />
+                            <input type="hidden" name="appointmentId" value={appointment.id} />
+                            <button className="rounded-lg border border-plum-line bg-plum-soft px-2.5 py-1.5 text-xs font-semibold text-plum hover:bg-plum hover:text-white">
+                              Confirm hold
+                            </button>
+                          </form>
+                          <form action={releaseHoldAction}>
+                            <input type="hidden" name="businessSlug" value={businessSlug} />
+                            <input type="hidden" name="appointmentId" value={appointment.id} />
+                            <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-danger/30 hover:bg-danger-soft hover:text-danger">
+                              Release
+                            </button>
+                          </form>
+                        </>
+                      ) : (
+                        statusOptions.map((option) => (
+                          <form key={option.value} action={updateAppointmentStatusAction}>
+                            <input type="hidden" name="businessSlug" value={businessSlug} />
+                            <input type="hidden" name="appointmentId" value={appointment.id} />
+                            <input type="hidden" name="status" value={option.value} />
+                            <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
+                              {option.label}
+                            </button>
+                          </form>
+                        ))
+                      )}
                     </div>
                   </div>
                 ))}
@@ -84,7 +117,7 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
           <form action={createAppointmentAction} className="card p-5">
             <h2 className="text-lg font-semibold">Create booking</h2>
             <p className="mt-1 text-sm leading-6 text-muted">
-              Creates a confirmed appointment scoped to {data.tenant.name}.
+              Books {data.tenant.name} — or holds the date provisionally if the client hasn&apos;t committed yet.
             </p>
 
             <input type="hidden" name="businessSlug" value={businessSlug} />
@@ -125,8 +158,32 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
                 />
               </label>
 
-              <SubmitButton className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white" pendingText="Creating…">
-                Create appointment
+              {/* Checkbox first so the label and the expiry field are following
+                  siblings — that's what lets peer-checked reveal the field with
+                  no client JS, keeping this a server component. */}
+              <div className="grid gap-2">
+                <input id="hold" name="hold" type="checkbox" className="peer sr-only" />
+                <label
+                  htmlFor="hold"
+                  className="flex cursor-pointer items-center gap-2.5 rounded-2xl border border-line bg-sunken px-3.5 py-3 text-sm font-medium text-muted transition peer-checked:border-plum-line peer-checked:bg-plum-soft peer-checked:text-plum peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-plum"
+                >
+                  <BookmarkPlus size={16} />
+                  Hold this date instead
+                </label>
+
+                <div className="hidden gap-1.5 peer-checked:grid">
+                  <label className="field-label" htmlFor="holdExpiresAt">
+                    Hold expires
+                  </label>
+                  <input id="holdExpiresAt" name="holdExpiresAt" type="date" className="input" />
+                  <p className="text-xs leading-5 text-faint">
+                    Blank keeps it 7 days. A hold never outlives the appointment date, and earns nothing until confirmed.
+                  </p>
+                </div>
+              </div>
+
+              <SubmitButton className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white" pendingText="Saving…">
+                Add to calendar
               </SubmitButton>
             </div>
           </form>

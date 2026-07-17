@@ -24,6 +24,20 @@ describe("toneForStatus", () => {
     expect(toneForStatus("In service")).toBe("info");
     expect(toneForStatus("Something else")).toBe("plum");
   });
+  it("maps holds to info — provisional is neither won nor lost", () => {
+    expect(toneForStatus("Hold")).toBe("info");
+    expect(toneForStatus("On hold")).toBe("info");
+  });
+  it("keeps an expired hold reading as a hold, not a cancellation", () => {
+    // "expired" is in the danger regex, so the hold branch must be checked
+    // first or a lapsed hold turns red and reads as lost.
+    expect(toneForStatus("Expired hold")).toBe("info");
+  });
+  it("does not treat words merely containing 'hold' as holds", () => {
+    // Word-boundaried, same bug class as \bout\b vs "Outstanding".
+    expect(toneForStatus("Household")).toBe("plum");
+    expect(toneForStatus("Stakeholder")).toBe("plum");
+  });
 });
 
 describe("statMetaFor", () => {
