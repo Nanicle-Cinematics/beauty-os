@@ -1,8 +1,8 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { requireTenantAccess } from "@/lib/auth";
+import { can } from "@/lib/permissions";
 import { updateBusinessDetails, updateBusinessHours, WEEKDAYS, type DayHours } from "@/lib/business-settings-data";
 
 function getString(formData: FormData, key: string) {
@@ -11,18 +11,16 @@ function getString(formData: FormData, key: string) {
 
 // requireTenantAccess has already scoped RLS to this tenant, so the membership
 // lookup is limited to the current business.
-async function isManager(userId: string) {
-  const membership = await prisma.staffMember.findFirst({
-    where: { userId, status: "ACTIVE", role: { in: ["OWNER", "MANAGER"] } },
-    select: { id: true },
-  });
-  return Boolean(membership);
-}
+// Was: a StaffMember lookup with NO businessId filter, i.e. "is this user a
+// manager ANYWHERE". It only behaved because RLS happened to scope the query;
+// with DB_RLS off (docs/RLS.md documents that as the instant rollback) an owner
+// of one studio could edit the settings of another where they are merely staff.
+// Authorization now scopes by slug explicitly — see src/lib/permissions.ts.
 
 export async function updateBusinessDetailsAction(formData: FormData) {
   const slug = getString(formData, "slug");
   const user = await requireTenantAccess(slug);
-  if (!(await isManager(user.id))) {
+  if (!(await can(user, slug, "business:settings"))) {
     redirect(`/${slug}/settings?error=${encodeURIComponent("Only owners and managers can change business settings.")}`);
   }
 
@@ -50,7 +48,7 @@ export async function updateBusinessDetailsAction(formData: FormData) {
 export async function updateBusinessHoursAction(formData: FormData) {
   const slug = getString(formData, "slug");
   const user = await requireTenantAccess(slug);
-  if (!(await isManager(user.id))) {
+  if (!(await can(user, slug, "business:settings"))) {
     redirect(`/${slug}/settings?error=${encodeURIComponent("Only owners and managers can change business settings.")}`);
   }
 

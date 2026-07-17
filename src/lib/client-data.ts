@@ -5,6 +5,7 @@ import { bookingPaymentsWhere, refundWhere, collected, outstanding } from "@/lib
 
 export type ClientRow = {
   id: string;
+  archived: boolean;
   name: string;
   contact: string;
   tags: string[];
@@ -21,6 +22,34 @@ export type ClientStat = {
   detail: string;
 };
 
+/** Every editable field on a client, plus the history that gates deletion. */
+export type ClientDetail = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  addressLine1: string;
+  city: string;
+  birthdate: string;
+  anniversaryDate: string;
+  skinNotes: string;
+  allergies: string;
+  tags: string;
+  marketingOptInEmail: boolean;
+  marketingOptInSms: boolean;
+  marketingOptInWhatsapp: boolean;
+  archived: boolean;
+  /** Appointments + payments on file. Non-zero means archive, never delete. */
+  historyCount: number;
+  appointmentCount: number;
+  paymentCount: number;
+  lifetimeSpend: string;
+  outstanding: string;
+};
+
+export type ClientWriteResult = { ok: true } | { ok: false; error: string };
+
 export type ClientModuleData = {
   tenant: {
     id: string;
@@ -30,37 +59,6 @@ export type ClientModuleData = {
   };
   stats: ClientStat[];
   clients: ClientRow[];
-};
-
-const fallbackClientData: Record<string, ClientModuleData> = {
-  "osu-glow-studio": {
-    tenant: { id: "sample_osu_glow", name: "Osu Glow Studio", slug: "osu-glow-studio", currency: "GHS" },
-    stats: [
-      { label: "Total clients", value: "3", detail: "1 added this week" },
-      { label: "VIP clients", value: "1", detail: "Top 20% by spend" },
-      { label: "Birthdays this month", value: "0", detail: "Send a treat" },
-      { label: "Outstanding balances", value: "GH₵ 0", detail: "Across all clients" },
-    ],
-    clients: [
-      { id: "demo-customer-1", name: "Ama Serwaa", contact: "+233200000001", tags: ["VIP"], visits: 1, lastVisit: "13 Jul", lifetimeSpend: "GH₵ 420", outstanding: "GH₵ 0", outstandingRaw: 0 },
-      { id: "demo-customer-2", name: "Esi Manu", contact: "+233200000002", tags: ["repeat"], visits: 1, lastVisit: "13 Jul", lifetimeSpend: "GH₵ 650", outstanding: "GH₵ 0", outstandingRaw: 0 },
-      { id: "demo-customer-3", name: "Akua Mensah", contact: "+233200000003", tags: ["bridal"], visits: 1, lastVisit: "13 Jul", lifetimeSpend: "GH₵ 780", outstanding: "GH₵ 0", outstandingRaw: 0 },
-    ],
-  },
-  "luxe-lash-lab": {
-    tenant: { id: "sample_luxe_lash", name: "Luxe Lash Lab", slug: "luxe-lash-lab", currency: "GHS" },
-    stats: [
-      { label: "Total clients", value: "3", detail: "New studio" },
-      { label: "VIP clients", value: "1", detail: "Top 20% by spend" },
-      { label: "Birthdays this month", value: "1", detail: "Send a treat" },
-      { label: "Outstanding balances", value: "GH₵ 0", detail: "Across all clients" },
-    ],
-    clients: [
-      { id: "demo-customer-4", name: "Yaa Boateng", contact: "+233200000004", tags: ["new"], visits: 1, lastVisit: "13 Jul", lifetimeSpend: "GH₵ 360", outstanding: "GH₵ 0", outstandingRaw: 0 },
-      { id: "demo-customer-5", name: "Afia Owusu", contact: "+233200000005", tags: ["VIP"], visits: 1, lastVisit: "13 Jul", lifetimeSpend: "GH₵ 220", outstanding: "GH₵ 0", outstandingRaw: 0 },
-      { id: "demo-customer-6", name: "Serwaa King", contact: "+233200000006", tags: ["birthday"], visits: 0, lastVisit: "—", lifetimeSpend: "GH₵ 0", outstanding: "GH₵ 0", outstandingRaw: 0 },
-    ],
-  },
 };
 
 function currencySymbol(currency: string) {
@@ -83,8 +81,10 @@ function shortDate(date: Date | null) {
 const REALISED_STATUSES = ["COMPLETED", "CONFIRMED"] as const;
 
 export async function getClientModuleData(businessSlug: string): Promise<ClientModuleData | null> {
+  // No demo fallback — inventing client records when the database is
+  // unreachable would show a studio someone else's clients. Caller 404s instead.
   if (!isDatabaseConfigured()) {
-    return fallbackClientData[businessSlug] ?? null;
+    return null;
   }
 
   const business = await prisma.business.findUnique({
@@ -97,8 +97,10 @@ export async function getClientModuleData(businessSlug: string): Promise<ClientM
   }
 
   const [customers, paidGroups, refundGroups] = await Promise.all([
+    // Working list excludes archived clients; they keep their history and can be
+    // restored, but they are not part of day-to-day work.
     prisma.customer.findMany({
-      where: { businessId: business.id },
+      where: { businessId: business.id, archivedAt: null },
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
       include: {
         appointments: {
@@ -137,6 +139,7 @@ export async function getClientModuleData(businessSlug: string): Promise<ClientM
 
     return {
       id: customer.id,
+      archived: customer.archivedAt != null,
       name: [customer.firstName, customer.lastName].filter(Boolean).join(" "),
       contact: customer.phone || customer.email || "No contact on file",
       tags: customer.tags,
@@ -170,6 +173,162 @@ export async function getClientModuleData(businessSlug: string): Promise<ClientM
   ];
 
   return { tenant: business, stats, clients };
+}
+
+const dateInput = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+
+export async function getClientDetail(businessSlug: string, clientId: string): Promise<ClientDetail | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  const customer = await prisma.customer.findFirst({
+    where: { id: clientId, business: { slug: businessSlug } },
+    include: {
+      business: { select: { currency: true } },
+      appointments: { select: { status: true, price: true } },
+      _count: { select: { appointments: true, payments: true } },
+    },
+  });
+  if (!customer) return null;
+
+  const [paidAgg, refundAgg] = await Promise.all([
+    prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: { ...bookingPaymentsWhere(customer.businessId), customerId: customer.id },
+    }),
+    prisma.payment.aggregate({
+      _sum: { amount: true },
+      where: { ...refundWhere(customer.businessId), customerId: customer.id },
+    }),
+  ]);
+
+  const currency = customer.business.currency;
+  const paid = Number(paidAgg._sum.amount ?? 0);
+  const booked = customer.appointments
+    .filter((a) => (REALISED_STATUSES as readonly string[]).includes(a.status))
+    .reduce((sum, a) => sum + Number(a.price), 0);
+
+  return {
+    id: customer.id,
+    firstName: customer.firstName,
+    lastName: customer.lastName ?? "",
+    phone: customer.phone ?? "",
+    email: customer.email ?? "",
+    addressLine1: customer.addressLine1 ?? "",
+    city: customer.city ?? "",
+    birthdate: dateInput(customer.birthdate),
+    anniversaryDate: dateInput(customer.anniversaryDate),
+    skinNotes: customer.skinNotes ?? "",
+    allergies: customer.allergies ?? "",
+    tags: customer.tags.join(", "),
+    marketingOptInEmail: customer.marketingOptInEmail,
+    marketingOptInSms: customer.marketingOptInSms,
+    marketingOptInWhatsapp: customer.marketingOptInWhatsapp,
+    archived: customer.archivedAt != null,
+    historyCount: customer._count.appointments + customer._count.payments,
+    appointmentCount: customer._count.appointments,
+    paymentCount: customer._count.payments,
+    lifetimeSpend: money(collected(paid, Number(refundAgg._sum.amount ?? 0)), currency),
+    outstanding: money(outstanding(booked, paid), currency),
+  };
+}
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+export async function updateClient(input: {
+  businessSlug: string;
+  clientId: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  addressLine1: string;
+  city: string;
+  birthdate: Date | null;
+  anniversaryDate: Date | null;
+  tags: string[];
+  skinNotes: string;
+  allergies: string;
+  marketingOptInEmail: boolean;
+  marketingOptInSms: boolean;
+  marketingOptInWhatsapp: boolean;
+}): Promise<ClientWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  if (!input.firstName.trim()) return { ok: false, error: "A first name is required." };
+  if (input.email.trim() && !EMAIL_RE.test(input.email.trim())) {
+    return { ok: false, error: "That email address doesn't look right." };
+  }
+
+  const existing = await prisma.customer.findFirst({
+    where: { id: input.clientId, business: { slug: input.businessSlug } },
+    select: { id: true },
+  });
+  if (!existing) return { ok: false, error: "That client no longer exists." };
+
+  await prisma.customer.update({
+    where: { id: existing.id },
+    data: {
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim() || null,
+      phone: input.phone.trim() || null,
+      email: input.email.trim() || null,
+      addressLine1: input.addressLine1.trim() || null,
+      city: input.city.trim() || null,
+      birthdate: input.birthdate,
+      anniversaryDate: input.anniversaryDate,
+      tags: input.tags,
+      skinNotes: input.skinNotes.trim() || null,
+      allergies: input.allergies.trim() || null,
+      marketingOptInEmail: input.marketingOptInEmail,
+      marketingOptInSms: input.marketingOptInSms,
+      marketingOptInWhatsapp: input.marketingOptInWhatsapp,
+    },
+  });
+
+  return { ok: true };
+}
+
+export async function setClientArchived(
+  businessSlug: string,
+  clientId: string,
+  archived: boolean,
+): Promise<ClientWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const { count } = await prisma.customer.updateMany({
+    where: { id: clientId, business: { slug: businessSlug } },
+    data: { archivedAt: archived ? new Date() : null },
+  });
+
+  return count > 0 ? { ok: true } : { ok: false, error: "That client no longer exists." };
+}
+
+/**
+ * Hard delete, permitted only for a client with no history.
+ *
+ * A client with appointments or payments is archived instead: deleting them
+ * would orphan bookings and silently rewrite the financial record. The guard
+ * lives here rather than in the UI so it holds however the function is called.
+ */
+export async function deleteClient(businessSlug: string, clientId: string): Promise<ClientWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const customer = await prisma.customer.findFirst({
+    where: { id: clientId, business: { slug: businessSlug } },
+    select: { id: true, _count: { select: { appointments: true, payments: true } } },
+  });
+  if (!customer) return { ok: false, error: "That client no longer exists." };
+
+  const history = customer._count.appointments + customer._count.payments;
+  if (history > 0) {
+    return {
+      ok: false,
+      error: `This client has ${history} booking${history === 1 ? "" : "s"} or payment${history === 1 ? "" : "s"} on file. Archive them instead — deleting would remove that history.`,
+    };
+  }
+
+  await prisma.customer.delete({ where: { id: customer.id } });
+  return { ok: true };
 }
 
 export async function createClient({

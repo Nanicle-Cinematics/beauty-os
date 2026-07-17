@@ -394,6 +394,10 @@ model Customer {
   marketingOptInSms      Boolean  @default(true)
   marketingOptInWhatsapp Boolean  @default(true)
   tags                  String[]
+  /// Archived clients are hidden from working lists but keep their history.
+  /// A client with appointments or payments must never be hard-deleted — that
+  /// would orphan bookings and rewrite the financial record.
+  archivedAt            DateTime?
   /// DEPRECATED — do not read or write. Nothing maintains this any more.
   /// It was a running counter that only ever decreased (payments subtracted from
   /// it; booking an appointment never added to it), so it sat at 0 for every

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Users } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatTile, statMetaFor, EmptyState, Avatar } from "@/components/ui";
@@ -53,7 +54,11 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
                   <span>Client</span><span>Contact</span><span>Visits</span><span>Last visit</span><span>Lifetime</span><span>Owed</span>
                 </div>
                 {data.clients.map((client) => (
-                  <div key={client.id} className="grid grid-cols-[1.3fr_1.1fr_90px_100px_120px_110px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[940px]:grid-cols-1">
+                  <Link
+                    key={client.id}
+                    href={`/${businessSlug}/clients/${client.id}`}
+                    className="grid grid-cols-[1.3fr_1.1fr_90px_100px_120px_110px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm transition hover:bg-plum-softer max-[940px]:grid-cols-1"
+                  >
                     <div className="flex min-w-0 items-center gap-3">
                       <Avatar name={client.name} />
                       <div className="min-w-0">
@@ -76,7 +81,7 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
                     <span className={`font-semibold ${client.outstandingRaw > 0 ? "text-rose-700" : "text-muted"}`}>
                       {client.outstanding}
                     </span>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}
