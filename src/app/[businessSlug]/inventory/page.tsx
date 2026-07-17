@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Package } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
@@ -66,7 +67,9 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                   {data.products.map((product) => (
                     <div key={product.id} className="grid grid-cols-[1.4fr_140px_100px_110px_150px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[980px]:grid-cols-1">
                       <div className="min-w-0">
-                        <div className="truncate font-semibold">{product.name}</div>
+                        <Link href={`/${businessSlug}/inventory/${product.id}`} className="truncate font-semibold hover:text-plum hover:underline">
+                          {product.name}
+                        </Link>
                         <div className="mt-1 truncate text-xs font-semibold text-muted">
                           {product.category}
                           {product.supplier !== "—" ? ` · ${product.supplier}` : ""}

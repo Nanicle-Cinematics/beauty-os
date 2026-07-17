@@ -35,6 +35,12 @@ export const CAPABILITIES = {
   // Roles decide who may do everything else, so only an owner grants them.
   // A manager who could edit roles would simply make themselves an owner.
   "staff:role": ["OWNER"],
+  // Inventory is what the INVENTORY_OFFICER role exists for. Editing product
+  // details and adjusting tracked stock are their daily job; deleting a product
+  // outright removes a record others may report on, so that stays with managers.
+  "inventory:edit": ["OWNER", "MANAGER", "INVENTORY_OFFICER"],
+  "inventory:adjust": ["OWNER", "MANAGER", "INVENTORY_OFFICER"],
+  "inventory:delete": ["OWNER", "MANAGER"],
   "business:settings": ["OWNER", "MANAGER"],
 } as const satisfies Record<string, readonly BusinessRole[]>;
 

@@ -29,6 +29,29 @@ export type MovementRow = {
 export type InventoryStat = { label: string; value: string; detail: string };
 export type SupplierOption = { id: string; label: string };
 
+/**
+ * Every editable ATTRIBUTE of a product. Quantity is deliberately absent — stock
+ * only ever changes through a tracked StockMovement (adjustStock), never by
+ * editing a number, so the ledger can't drift from reality.
+ */
+export type ProductDetail = {
+  id: string;
+  name: string;
+  sku: string;
+  barcode: string;
+  category: string;
+  supplier: string;
+  costPrice: string;
+  sellingPrice: string;
+  reorderThreshold: string;
+  expiryDate: string;
+  quantityOnHand: string;
+  movementCount: number;
+  currency: string;
+};
+
+export type InventoryWriteResult = { ok: true } | { ok: false; error: string };
+
 export type InventoryModuleData = {
   tenant: { id: string; name: string; slug: string; currency: string };
   stats: InventoryStat[];
@@ -66,40 +89,6 @@ function shortDate(date: Date | null) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" }).format(date);
 }
 
-const fallbackInventoryData: Record<string, InventoryModuleData> = {
-  "osu-glow-studio": {
-    tenant: { id: "sample_osu_glow", name: "Osu Glow Studio", slug: "osu-glow-studio", currency: "GHS" },
-    stats: [
-      { label: "Products", value: "3", detail: "0 suppliers" },
-      { label: "Low stock", value: "3", detail: "Below reorder point" },
-      { label: "Expiring soon", value: "0", detail: "Next 30 days" },
-      { label: "Stock value", value: "GH₵ 260", detail: "At cost price" },
-    ],
-    products: [
-      { id: "demo-p1", name: "Lace adhesive", category: "Hair", supplier: "—", stockLabel: "2 in stock", level: 20, status: "LOW", statusLabel: "Low", value: "GH₵ 90", expiry: "—" },
-      { id: "demo-p2", name: "Developer 20 vol", category: "Color", supplier: "—", stockLabel: "4 in stock", level: 33, status: "LOW", statusLabel: "Low", value: "GH₵ 140", expiry: "—" },
-      { id: "demo-p3", name: "Nude gel polish", category: "Nails", supplier: "—", stockLabel: "1 in stock", level: 12, status: "LOW", statusLabel: "Low", value: "GH₵ 30", expiry: "—" },
-    ],
-    suppliers: [],
-    movements: [],
-  },
-  "luxe-lash-lab": {
-    tenant: { id: "sample_luxe_lash", name: "Luxe Lash Lab", slug: "luxe-lash-lab", currency: "GHS" },
-    stats: [
-      { label: "Products", value: "2", detail: "0 suppliers" },
-      { label: "Low stock", value: "1", detail: "Below reorder point" },
-      { label: "Expiring soon", value: "0", detail: "Next 30 days" },
-      { label: "Stock value", value: "GH₵ 460", detail: "At cost price" },
-    ],
-    products: [
-      { id: "demo-p4", name: "Classic lash trays", category: "Lashes", supplier: "—", stockLabel: "6 in stock", level: 60, status: "OK", statusLabel: "In stock", value: "GH₵ 330", expiry: "—" },
-      { id: "demo-p5", name: "Lash adhesive", category: "Lashes", supplier: "—", stockLabel: "2 in stock", level: 25, status: "LOW", statusLabel: "Low", value: "GH₵ 130", expiry: "—" },
-    ],
-    suppliers: [],
-    movements: [],
-  },
-};
-
 function classify(qty: number, threshold: number | null, expiry: Date | null, now: Date): { status: ProductStatus; label: string } {
   if (expiry && expiry.getTime() < now.getTime()) {
     return { status: "EXPIRED", label: "Expired" };
@@ -120,8 +109,10 @@ function classify(qty: number, threshold: number | null, expiry: Date | null, no
 }
 
 export async function getInventoryModuleData(businessSlug: string): Promise<InventoryModuleData | null> {
+  // No demo fallback — inventing stock when the database is unreachable would
+  // show a studio products it doesn't hold. Caller 404s instead.
   if (!isDatabaseConfigured()) {
-    return fallbackInventoryData[businessSlug] ?? null;
+    return null;
   }
 
   const business = await prisma.business.findUnique({
@@ -333,4 +324,121 @@ export async function adjustStock({
       },
     });
   });
+}
+
+function dateInput(d: Date | null) {
+  return d ? d.toISOString().slice(0, 10) : "";
+}
+
+export async function getProductDetail(businessSlug: string, productId: string): Promise<ProductDetail | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  const product = await prisma.product.findFirst({
+    where: { id: productId, business: { slug: businessSlug } },
+    include: {
+      business: { select: { currency: true } },
+      supplier: { select: { name: true } },
+      _count: { select: { stockMovements: true } },
+    },
+  });
+  if (!product) return null;
+
+  return {
+    id: product.id,
+    name: product.name,
+    sku: product.sku ?? "",
+    barcode: product.barcode ?? "",
+    category: product.category ?? "",
+    supplier: product.supplier?.name ?? "",
+    costPrice: String(product.costPrice),
+    sellingPrice: product.sellingPrice != null ? String(product.sellingPrice) : "",
+    reorderThreshold: product.reorderThreshold != null ? String(product.reorderThreshold) : "",
+    expiryDate: dateInput(product.expiryDate),
+    quantityOnHand: String(product.quantityOnHand),
+    movementCount: product._count.stockMovements,
+    currency: product.business.currency,
+  };
+}
+
+/**
+ * Update a product's ATTRIBUTES. Note what this does NOT touch: quantityOnHand.
+ * Stock is a ledgered quantity — it changes only through adjustStock, which
+ * writes a StockMovement, so on-hand can always be reconciled against the ledger.
+ * Letting an edit form overwrite the number would silently break that.
+ */
+export async function updateProduct(input: {
+  businessSlug: string;
+  productId: string;
+  name: string;
+  sku: string;
+  barcode: string;
+  category: string;
+  supplier: string;
+  costPrice: number;
+  sellingPrice: number | null;
+  reorderThreshold: number | null;
+  expiryDate: Date | null;
+}): Promise<InventoryWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  if (!input.name.trim()) return { ok: false, error: "A product name is required." };
+  if (!Number.isFinite(input.costPrice) || input.costPrice < 0) return { ok: false, error: "Enter a valid cost price." };
+  if (input.sellingPrice != null && input.sellingPrice < input.costPrice) {
+    // Selling below cost is a real choice sometimes, but far more often a typo;
+    // block it so a slipped decimal doesn't quietly wreck margin reporting.
+    return { ok: false, error: "Selling price is below cost. Double-check the figures." };
+  }
+
+  const product = await prisma.product.findFirst({
+    where: { id: input.productId, business: { slug: input.businessSlug } },
+    select: { id: true, businessId: true },
+  });
+  if (!product) return { ok: false, error: "That product no longer exists." };
+
+  const supplierId = await findOrCreateSupplier(product.businessId, input.supplier);
+
+  await prisma.product.update({
+    where: { id: product.id },
+    data: {
+      name: input.name.trim(),
+      sku: input.sku.trim() || null,
+      barcode: input.barcode.trim() || null,
+      category: input.category.trim() || null,
+      supplierId,
+      costPrice: input.costPrice,
+      sellingPrice: input.sellingPrice,
+      reorderThreshold: input.reorderThreshold,
+      expiryDate: input.expiryDate,
+    },
+  });
+
+  return { ok: true };
+}
+
+/**
+ * Delete a product, permitted only when it has no stock movements.
+ *
+ * A product with a ledger is part of the audit record — deleting it would erase
+ * history and could orphan service-usage links. With movements present, the
+ * honest action is to write it down to zero (a tracked EXPIRY_WRITE_OFF or
+ * ADJUSTMENT), not delete the row.
+ */
+export async function deleteProduct(businessSlug: string, productId: string): Promise<InventoryWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const product = await prisma.product.findFirst({
+    where: { id: productId, business: { slug: businessSlug } },
+    select: { id: true, _count: { select: { stockMovements: true, usedInServices: true } } },
+  });
+  if (!product) return { ok: false, error: "That product no longer exists." };
+
+  if (product._count.stockMovements > 0 || product._count.usedInServices > 0) {
+    return {
+      ok: false,
+      error: "This product has stock history or is used by a service. Write its stock down to zero instead of deleting it.",
+    };
+  }
+
+  await prisma.product.delete({ where: { id: product.id } });
+  return { ok: true };
 }

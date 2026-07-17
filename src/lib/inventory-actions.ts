@@ -2,8 +2,16 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { addProduct, adjustStock } from "@/lib/inventory-data";
-import { requireTenantAccess } from "@/lib/auth";
+import {
+  addProduct,
+  adjustStock,
+  updateProduct,
+  deleteProduct,
+  getProductDetail,
+} from "@/lib/inventory-data";
+import { requireTenantAccess, type AppUser } from "@/lib/auth";
+import { membershipIn, roleCan, type Capability } from "@/lib/permissions";
+import { prisma } from "@/lib/prisma";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -26,9 +34,46 @@ function parseDate(value: string) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+async function authorize(businessSlug: string, capability: Capability) {
+  const user = await requireTenantAccess(businessSlug);
+  const membership = await membershipIn(user, businessSlug);
+  return { user, membership, allowed: roleCan(membership?.role, capability) };
+}
+
+/** Best-effort audit: losing the trail must never lose the change. */
+async function audit(
+  businessSlug: string,
+  user: AppUser,
+  staffMemberId: string | null,
+  action: string,
+  entityId: string,
+  metadata: Record<string, unknown>,
+) {
+  try {
+    const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
+    if (!business) return;
+    await prisma.auditLog.create({
+      data: {
+        businessId: business.id,
+        actorUserId: user.id,
+        actorStaffId: staffMemberId,
+        action,
+        entityType: "product",
+        entityId,
+        metadata: metadata as never,
+      },
+    });
+  } catch {
+    /* ignore */
+  }
+}
+
 export async function addProductAction(formData: FormData) {
   const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
-  await requireTenantAccess(businessSlug);
+  const { allowed } = await authorize(businessSlug, "inventory:edit");
+  if (!allowed) {
+    redirect(`/${businessSlug}/inventory?toastError=${encodeURIComponent("You don't have permission to add products.")}`);
+  }
 
   const selling = parseNumber(getString(formData, "sellingPrice"));
   const reorder = parseNumber(getString(formData, "reorderThreshold"));
@@ -53,15 +98,105 @@ export async function addProductAction(formData: FormData) {
 
 export async function adjustStockAction(formData: FormData) {
   const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
-  await requireTenantAccess(businessSlug);
+  const productId = getString(formData, "productId");
+  const delta = parseNumber(getString(formData, "delta"));
+  const { user, membership, allowed } = await authorize(businessSlug, "inventory:adjust");
+  if (!allowed) {
+    redirect(`/${businessSlug}/inventory?toastError=${encodeURIComponent("You don't have permission to adjust stock.")}`);
+  }
 
   await adjustStock({
     businessSlug,
-    productId: getString(formData, "productId"),
-    delta: parseNumber(getString(formData, "delta")),
+    productId,
+    delta,
     note: getString(formData, "note"),
   });
 
+  // adjustStock already writes a StockMovement; the audit trail records WHO
+  // reached in, which the movement ledger alone doesn't capture.
+  if (Number.isFinite(delta) && delta !== 0) {
+    await audit(businessSlug, user, membership?.staffMemberId ?? null, "product.stock_adjusted", productId, {
+      delta,
+      note: getString(formData, "note") || undefined,
+    });
+  }
+
   revalidatePath(`/${businessSlug}/inventory`);
+  revalidatePath(`/${businessSlug}/inventory/${productId}`);
   redirect(`/${businessSlug}/inventory?toast=${encodeURIComponent("Stock updated")}`);
+}
+
+export async function updateProductAction(formData: FormData) {
+  const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
+  const productId = getString(formData, "productId");
+  const { user, membership, allowed } = await authorize(businessSlug, "inventory:edit");
+
+  const back = `/${businessSlug}/inventory/${productId}`;
+  if (!allowed) {
+    redirect(`${back}?error=${encodeURIComponent("You don't have permission to edit products.")}`);
+  }
+
+  const before = await getProductDetail(businessSlug, productId);
+  const selling = parseNumber(getString(formData, "sellingPrice"));
+  const reorder = parseNumber(getString(formData, "reorderThreshold"));
+
+  const result = await updateProduct({
+    businessSlug,
+    productId,
+    name: getString(formData, "name"),
+    sku: getString(formData, "sku"),
+    barcode: getString(formData, "barcode"),
+    category: getString(formData, "category"),
+    supplier: getString(formData, "supplier"),
+    costPrice: parseNumber(getString(formData, "costPrice")),
+    sellingPrice: Number.isFinite(selling) ? selling : null,
+    reorderThreshold: Number.isFinite(reorder) ? reorder : null,
+    expiryDate: parseDate(getString(formData, "expiryDate")),
+  });
+
+  if (!result.ok) {
+    redirect(`${back}?error=${encodeURIComponent(result.error)}`);
+  }
+
+  const after = await getProductDetail(businessSlug, productId);
+  if (before && after) {
+    const derived = ["quantityOnHand", "movementCount", "currency"];
+    const changed = (Object.keys(before) as (keyof typeof before)[]).filter(
+      (k) => !derived.includes(k) && before[k] !== after[k],
+    );
+    if (changed.length) {
+      await audit(businessSlug, user, membership?.staffMemberId ?? null, "product.updated", productId, {
+        changed,
+        ...(changed.includes("costPrice") ? { costPrice: { from: before.costPrice, to: after.costPrice } } : {}),
+      });
+    }
+  }
+
+  revalidatePath(`/${businessSlug}/inventory`);
+  revalidatePath(back);
+  redirect(`/${businessSlug}/inventory?toast=${encodeURIComponent("Product updated")}`);
+}
+
+export async function deleteProductAction(formData: FormData) {
+  const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
+  const productId = getString(formData, "productId");
+  const { user, membership, allowed } = await authorize(businessSlug, "inventory:delete");
+
+  const back = `/${businessSlug}/inventory/${productId}`;
+  if (!allowed) {
+    redirect(`${back}?error=${encodeURIComponent("Only owners and managers can delete products.")}`);
+  }
+
+  const detail = await getProductDetail(businessSlug, productId);
+  const result = await deleteProduct(businessSlug, productId);
+  if (!result.ok) {
+    redirect(`${back}?error=${encodeURIComponent(result.error)}`);
+  }
+
+  await audit(businessSlug, user, membership?.staffMemberId ?? null, "product.deleted", productId, {
+    name: detail?.name,
+  });
+
+  revalidatePath(`/${businessSlug}/inventory`);
+  redirect(`/${businessSlug}/inventory?toast=${encodeURIComponent("Product deleted")}`);
 }

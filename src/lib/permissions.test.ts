@@ -84,4 +84,19 @@ describe("roleCan", () => {
       expect(roleCan("ARTIST", capability)).toBe(false);
     }
   });
+
+  it("lets the inventory officer run stock but not delete products", () => {
+    // The role exists for exactly this: editing product details and adjusting
+    // tracked stock. Deleting a record others report on stays with managers.
+    expect(roleCan("INVENTORY_OFFICER", "inventory:edit")).toBe(true);
+    expect(roleCan("INVENTORY_OFFICER", "inventory:adjust")).toBe(true);
+    expect(roleCan("INVENTORY_OFFICER", "inventory:delete")).toBe(false);
+  });
+
+  it("does not let front desk or artists touch inventory", () => {
+    for (const capability of ["inventory:edit", "inventory:adjust", "inventory:delete"] as const) {
+      expect(roleCan("RECEPTIONIST", capability)).toBe(false);
+      expect(roleCan("ARTIST", capability)).toBe(false);
+    }
+  });
 });
