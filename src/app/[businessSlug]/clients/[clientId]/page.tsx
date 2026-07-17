@@ -4,7 +4,7 @@ import { ArrowLeft, Archive, ArchiveRestore, Trash2, ShieldAlert } from "lucide-
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui";
-import { getClientDetail } from "@/lib/client-data";
+import { getClientDetail, getClientFavoriteOptions } from "@/lib/client-data";
 import {
   updateClientAction,
   setClientArchivedAction,
@@ -25,11 +25,12 @@ export default async function ClientDetailPage({ params, searchParams }: ClientD
   const { error } = await searchParams;
   const user = await requireTenantAccess(businessSlug);
 
-  const [client, membership] = await Promise.all([
+  const [client, favorites, membership] = await Promise.all([
     getClientDetail(businessSlug, clientId),
+    getClientFavoriteOptions(businessSlug),
     membershipIn(user, businessSlug),
   ]);
-  if (!client) notFound();
+  if (!client || !favorites) notFound();
 
   const canEdit = roleCan(membership?.role, "clients:edit");
   const canArchive = roleCan(membership?.role, "clients:archive");
@@ -144,6 +145,31 @@ export default async function ClientDetailPage({ params, searchParams }: ClientD
                 Tags
                 <input name="tags" defaultValue={client.tags} className="input" placeholder="VIP, bridal, repeat" />
                 <span className="mt-1 block text-[11.5px] font-normal text-faint">Separate with commas.</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="border-t border-line-2 pt-5">
+            <h2 className="text-[15px] font-semibold">Preferences</h2>
+            <p className="mt-0.5 text-[12.5px] text-muted">Their usual — so the front desk can rebook them fast.</p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <label className="field-label">
+                Favourite service
+                <select name="favoriteServiceId" defaultValue={client.favoriteServiceId} className="input">
+                  <option value="">No preference</option>
+                  {favorites.services.map((s) => (
+                    <option key={s.id} value={s.id}>{s.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="field-label">
+                Favourite staff
+                <select name="favoriteStaffId" defaultValue={client.favoriteStaffId} className="input">
+                  <option value="">No preference</option>
+                  {favorites.staff.map((m) => (
+                    <option key={m.id} value={m.id}>{m.label}</option>
+                  ))}
+                </select>
               </label>
             </div>
           </div>

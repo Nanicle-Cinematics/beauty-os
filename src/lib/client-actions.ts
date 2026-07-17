@@ -139,6 +139,8 @@ export async function updateClientAction(formData: FormData) {
     marketingOptInEmail: getBool(formData, "marketingOptInEmail"),
     marketingOptInSms: getBool(formData, "marketingOptInSms"),
     marketingOptInWhatsapp: getBool(formData, "marketingOptInWhatsapp"),
+    favoriteServiceId: getString(formData, "favoriteServiceId"),
+    favoriteStaffId: getString(formData, "favoriteStaffId"),
   });
 
   if (!result.ok) {

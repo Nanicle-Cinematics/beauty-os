@@ -39,6 +39,8 @@ export type ClientDetail = {
   marketingOptInEmail: boolean;
   marketingOptInSms: boolean;
   marketingOptInWhatsapp: boolean;
+  favoriteServiceId: string;
+  favoriteStaffId: string;
   archived: boolean;
   /** Appointments + payments on file. Non-zero means archive, never delete. */
   historyCount: number;
@@ -223,6 +225,8 @@ export async function getClientDetail(businessSlug: string, clientId: string): P
     marketingOptInEmail: customer.marketingOptInEmail,
     marketingOptInSms: customer.marketingOptInSms,
     marketingOptInWhatsapp: customer.marketingOptInWhatsapp,
+    favoriteServiceId: customer.favoriteServiceId ?? "",
+    favoriteStaffId: customer.favoriteStaffId ?? "",
     archived: customer.archivedAt != null,
     historyCount: customer._count.appointments + customer._count.payments,
     appointmentCount: customer._count.appointments,
@@ -251,6 +255,8 @@ export async function updateClient(input: {
   marketingOptInEmail: boolean;
   marketingOptInSms: boolean;
   marketingOptInWhatsapp: boolean;
+  favoriteServiceId: string;
+  favoriteStaffId: string;
 }): Promise<ClientWriteResult> {
   if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
 
@@ -282,6 +288,8 @@ export async function updateClient(input: {
       marketingOptInEmail: input.marketingOptInEmail,
       marketingOptInSms: input.marketingOptInSms,
       marketingOptInWhatsapp: input.marketingOptInWhatsapp,
+      favoriteServiceId: input.favoriteServiceId.trim() || null,
+      favoriteStaffId: input.favoriteStaffId.trim() || null,
     },
   });
 
@@ -381,4 +389,21 @@ export async function createClient({
       allergies: allergies.trim() || null,
     },
   });
+}
+
+/** Active services and staff for the client "favorites" dropdowns. */
+export async function getClientFavoriteOptions(
+  businessSlug: string,
+): Promise<{ services: { id: string; label: string }[]; staff: { id: string; label: string }[] } | null> {
+  if (!isDatabaseConfigured()) return null;
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
+  if (!business) return null;
+  const [services, staff] = await Promise.all([
+    prisma.service.findMany({ where: { businessId: business.id, isActive: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.staffMember.findMany({ where: { businessId: business.id, status: "ACTIVE" }, orderBy: { createdAt: "asc" }, include: { user: true } }),
+  ]);
+  return {
+    services: services.map((s) => ({ id: s.id, label: s.name })),
+    staff: staff.map((m) => ({ id: m.id, label: m.user?.name ?? m.invitedEmail ?? "Staff member" })),
+  };
 }

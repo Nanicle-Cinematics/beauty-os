@@ -138,6 +138,10 @@ model StaffMember {
   colorHex       String?
   commissionType CommissionType @default(NONE)
   commissionValue Decimal?     @db.Decimal(6, 2)
+  /// DEPRECATED — do not use. Authorization is role-based via the capability
+  /// model in src/lib/permissions.ts (roleCan / CAPABILITIES). Wiring a
+  /// per-staff permissions blob here would create a second, divergent source of
+  /// truth for who-can-do-what. Left only so dropping it is its own migration.
   permissions    Json?
   joinedAt       DateTime?
   createdAt      DateTime       @default(now())
