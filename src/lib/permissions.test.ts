@@ -99,4 +99,18 @@ describe("roleCan", () => {
       expect(roleCan("ARTIST", capability)).toBe(false);
     }
   });
+
+  it("lets front desk manage the book but not delete bookings", () => {
+    // Rescheduling, reassigning and cancelling are front-desk work; deleting the
+    // record outright (only ever with no payments) stays with managers.
+    expect(roleCan("RECEPTIONIST", "appointments:edit")).toBe(true);
+    expect(roleCan("RECEPTIONIST", "appointments:delete")).toBe(false);
+    expect(roleCan("MANAGER", "appointments:delete")).toBe(true);
+    expect(roleCan("OWNER", "appointments:delete")).toBe(true);
+  });
+
+  it("does not let artists or cashiers edit bookings", () => {
+    expect(roleCan("ARTIST", "appointments:edit")).toBe(false);
+    expect(roleCan("CASHIER", "appointments:edit")).toBe(false);
+  });
 });

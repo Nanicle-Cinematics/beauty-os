@@ -1,6 +1,6 @@
 import "server-only";
 
-import { addMinutes, format, formatLongDateInTz, formatTimeInTz } from "@/lib/date";
+import { addMinutes, format, formatLongDateInTz, formatTimeInTz, toLocalInput, fromLocalInput } from "@/lib/date";
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { findOrCreateCustomer, findOrCreateService } from "@/lib/entity-resolve";
 import {
@@ -41,6 +41,30 @@ export type HoldOutcome =
       promotedName?: string | null;
     }
   | { ok: false; error: string };
+
+/**
+ * Every editable field on an appointment, plus the payment facts that gate
+ * deletion. `price` is booked value and IS editable; `collected` is derived from
+ * Payment rows and is never touched by editing the appointment (see money.ts).
+ */
+export type AppointmentDetail = {
+  id: string;
+  customerName: string;
+  serviceName: string;
+  staffMemberId: string;
+  startAtLocal: string; // "YYYY-MM-DDThh:mm" for datetime-local, in business tz
+  status: string;
+  price: string;
+  depositAmount: string;
+  notes: string;
+  isHold: boolean;
+  paymentCount: number;
+  collected: string;
+  outstanding: string;
+  currency: string;
+};
+
+export type AppointmentWriteResult = { ok: true } | { ok: false; error: string };
 
 export type AppointmentOption = {
   id: string;
@@ -548,4 +572,142 @@ export async function updateAppointmentStatus({
       cancelledAt: status === "CANCELLED" ? new Date() : null,
     },
   });
+}
+
+const moneyCode = (amount: number, currency: string) =>
+  `${currency === "GHS" ? "GH₵" : currency} ${Math.round(amount).toLocaleString("en-US")}`;
+
+export async function getAppointmentDetail(businessSlug: string, appointmentId: string): Promise<AppointmentDetail | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: appointmentId, business: { slug: businessSlug } },
+    include: {
+      business: { select: { currency: true, timezone: true } },
+      customer: true,
+      service: true,
+      payments: { select: { amount: true, type: true, status: true } },
+    },
+  });
+  if (!appointment) return null;
+
+  const currency = appointment.business.currency;
+  const tz = appointment.business.timezone || "UTC";
+
+  // Collected is derived from real payments — settlement types in, minus refunds
+  // — exactly as everywhere else. Editing the appointment never changes it.
+  const paid = appointment.payments
+    .filter((p) => p.status === "SUCCESS" && ["DEPOSIT", "FULL_PAYMENT", "BALANCE"].includes(p.type))
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const refunded = appointment.payments
+    .filter((p) => p.status === "SUCCESS" && p.type === "REFUND")
+    .reduce((sum, p) => sum + Number(p.amount), 0);
+  const collected = paid - refunded;
+  const outstanding = Math.max(0, Number(appointment.price) - paid);
+
+  return {
+    id: appointment.id,
+    customerName: [appointment.customer.firstName, appointment.customer.lastName].filter(Boolean).join(" "),
+    serviceName: appointment.service.name,
+    staffMemberId: appointment.staffMemberId ?? "",
+    startAtLocal: toLocalInput(appointment.startAt, tz),
+    status: appointment.status,
+    price: String(appointment.price),
+    depositAmount: appointment.depositAmount != null ? String(appointment.depositAmount) : "",
+    notes: appointment.notes ?? "",
+    isHold: appointment.status === "HOLD",
+    paymentCount: appointment.payments.length,
+    collected: moneyCode(collected, currency),
+    outstanding: moneyCode(outstanding, currency),
+    currency,
+  };
+}
+
+/**
+ * Edit an appointment's booked fields: client, service, staff, time, price,
+ * notes. End time recomputes from the (possibly new) service's duration.
+ *
+ * Deliberately does NOT touch: payments (collected money is independent), the
+ * hold ladder (holds are firmed/released through their own flow), or status
+ * (that's updateAppointmentStatus). Overlaps are allowed on edit — a client can
+ * process under the dryer while the next begins; only firming a hold blocks on
+ * a committed clash (docs/HOLDS.md).
+ */
+export async function updateAppointment(input: {
+  businessSlug: string;
+  appointmentId: string;
+  customer: string;
+  service: string;
+  staffMemberId: string;
+  startAtLocal: string;
+  price: number | null;
+  notes: string;
+}): Promise<AppointmentWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: input.appointmentId, business: { slug: input.businessSlug } },
+    include: { business: { select: { id: true, timezone: true } } },
+  });
+  if (!appointment) return { ok: false, error: "That appointment no longer exists." };
+
+  const tz = appointment.business.timezone || "UTC";
+  const startAt = fromLocalInput(input.startAtLocal, tz);
+  if (!startAt) return { ok: false, error: "Enter a valid date and time." };
+
+  const staff = await prisma.staffMember.findFirst({
+    where: { id: input.staffMemberId, businessId: appointment.business.id, status: "ACTIVE" },
+    select: { id: true },
+  });
+  if (!staff) return { ok: false, error: "Choose an active staff member." };
+
+  if (!input.customer.trim()) return { ok: false, error: "A client is required." };
+  if (!input.service.trim()) return { ok: false, error: "A service is required." };
+
+  const override = input.price != null && Number.isFinite(input.price) && input.price >= 0 ? input.price : undefined;
+  const customerId = await findOrCreateCustomer(appointment.business.id, input.customer);
+  const svc = await findOrCreateService(appointment.business.id, input.service, override);
+  if (!customerId || !svc) return { ok: false, error: "Couldn't resolve the client or service." };
+
+  await prisma.appointment.update({
+    where: { id: appointment.id },
+    data: {
+      customerId,
+      serviceId: svc.id,
+      staffMemberId: staff.id,
+      startAt,
+      endAt: addMinutes(startAt, svc.durationMinutes),
+      price: override != null ? override : svc.price,
+      notes: input.notes.trim() || null,
+    },
+  });
+
+  return { ok: true };
+}
+
+/**
+ * Hard delete, permitted only for an appointment with no payments.
+ *
+ * A booking with money against it is part of the financial record — deleting it
+ * would orphan the payments and rewrite history. Cancelling (a status change
+ * that keeps the row) is the honest action there. Guard lives here, not the UI.
+ */
+export async function deleteAppointment(businessSlug: string, appointmentId: string): Promise<AppointmentWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: appointmentId, business: { slug: businessSlug } },
+    select: { id: true, _count: { select: { payments: true } } },
+  });
+  if (!appointment) return { ok: false, error: "That appointment no longer exists." };
+
+  if (appointment._count.payments > 0) {
+    return {
+      ok: false,
+      error: "This appointment has payments against it. Cancel it instead — deleting would erase that financial record.",
+    };
+  }
+
+  await prisma.appointment.delete({ where: { id: appointment.id } });
+  return { ok: true };
 }

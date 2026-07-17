@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CalendarPlus, BookmarkPlus } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
@@ -61,7 +62,9 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
                     <div className="flex min-w-0 items-center gap-2.5">
                       <Avatar name={appointment.client} size={30} />
                       <div className="min-w-0">
-                        <div className="truncate font-semibold text-ink">{appointment.client}</div>
+                        <Link href={`/${businessSlug}/appointments/${appointment.id}`} className="truncate font-semibold text-ink hover:text-plum hover:underline">
+                          {appointment.client}
+                        </Link>
                         <div className="mt-0.5 truncate text-xs text-muted">{appointment.staff}</div>
                       </div>
                     </div>

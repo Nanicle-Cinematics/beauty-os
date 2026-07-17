@@ -41,6 +41,11 @@ export const CAPABILITIES = {
   "inventory:edit": ["OWNER", "MANAGER", "INVENTORY_OFFICER"],
   "inventory:adjust": ["OWNER", "MANAGER", "INVENTORY_OFFICER"],
   "inventory:delete": ["OWNER", "MANAGER"],
+  // Managing the book — rescheduling, reassigning, confirming, cancelling — is
+  // exactly front-desk work, so receptionists are included. Deleting the record
+  // outright (only ever allowed with no payments) stays with managers.
+  "appointments:edit": ["OWNER", "MANAGER", "RECEPTIONIST"],
+  "appointments:delete": ["OWNER", "MANAGER"],
   "business:settings": ["OWNER", "MANAGER"],
 } as const satisfies Record<string, readonly BusinessRole[]>;
 

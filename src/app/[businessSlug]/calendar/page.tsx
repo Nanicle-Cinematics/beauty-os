@@ -47,7 +47,11 @@ export default async function CalendarPage({ params }: CalendarPageProps) {
             ) : (
               <div className="mt-2.5 grid gap-2">
                 {day.appts.map((appt) => (
-                  <div key={appt.id} className="rounded-xl border border-line-2 bg-plum-softer p-2.5">
+                  <Link
+                    key={appt.id}
+                    href={`/${businessSlug}/appointments/${appt.id}`}
+                    className="block rounded-xl border border-line-2 bg-plum-softer p-2.5 transition hover:border-plum-line hover:shadow-[var(--shadow-soft)]"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-[12px] font-bold text-plum">{appt.time}</span>
                       <Badge tone={toneForStatus(appt.status)}>{appt.status}</Badge>
@@ -58,7 +62,7 @@ export default async function CalendarPage({ params }: CalendarPageProps) {
                       <span className="truncate">{appt.staff}</span>
                       <span className="font-semibold text-ink">{appt.value}</span>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

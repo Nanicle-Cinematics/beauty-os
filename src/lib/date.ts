@@ -90,3 +90,47 @@ export function zonedDayRange(now: Date, timeZone: string) {
 export function daysBetween(from: Date, to: Date) {
   return Math.floor((to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000));
 }
+
+/** Timezone offset (minutes east of UTC) for a given instant. */
+export function zoneOffsetMinutes(date: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  const hour = get("hour") === 24 ? 0 : get("hour");
+  const asUTC = Date.UTC(get("year"), get("month") - 1, get("day"), hour, get("minute"), get("second"));
+  return Math.round((asUTC - date.getTime()) / 60_000);
+}
+
+/** A Date rendered as "YYYY-MM-DDThh:mm" in the given timezone, for datetime-local inputs. */
+export function toLocalInput(date: Date, timeZone: string): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  return `${get("year")}-${get("month")}-${get("day")}T${hour}:${get("minute")}`;
+}
+
+/** Interpret a "YYYY-MM-DDThh:mm" wall-clock string as an instant in a timezone. */
+export function fromLocalInput(value: string, timeZone: string): Date | null {
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m.map(Number);
+  const utcGuess = Date.UTC(y, mo - 1, d, h, mi);
+  const offsetMinutes = zoneOffsetMinutes(new Date(utcGuess), timeZone);
+  return new Date(utcGuess - offsetMinutes * 60_000);
+}
