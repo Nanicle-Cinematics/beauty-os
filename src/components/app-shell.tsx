@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   CalendarClock,
+  Hourglass,
   CalendarDays,
   Users,
   Sparkles,
@@ -37,6 +38,7 @@ const primaryNav: NavItem[] = [
   { label: "Dashboard", path: "", icon: LayoutDashboard },
   { label: "Calendar", path: "calendar", icon: CalendarDays },
   { label: "Appointments", path: "appointments", icon: CalendarClock },
+  { label: "Waitlist", path: "waitlist", icon: Hourglass },
   { label: "Clients", path: "clients", icon: Users },
   { label: "Services", path: "services", icon: Sparkles },
   { label: "Staff", path: "staff", icon: UserCog },

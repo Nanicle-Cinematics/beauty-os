@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Trash2, ShieldAlert, Wallet } from "lucide-react";
+import { ArrowLeft, Trash2, ShieldAlert, Wallet, Clock } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { Combobox } from "@/components/combobox";
@@ -9,6 +9,9 @@ import { getAppointmentDetail, getAppointmentModuleData } from "@/lib/appointmen
 import {
   updateAppointmentAction,
   updateAppointmentStatusAction,
+  updateHoldSettingsAction,
+  firmHoldAction,
+  releaseHoldAction,
   deleteAppointmentAction,
 } from "@/lib/appointment-actions";
 import { requireTenantAccess } from "@/lib/auth";
@@ -61,12 +64,52 @@ export default async function AppointmentDetailPage({ params, searchParams }: Ap
         </div>
       ) : null}
 
-      {appointment.isHold ? (
+      {appointment.isHold && canEdit ? (
+        <section className="card border-[#c9d4e6] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Clock size={16} className="text-[#4a5b7a]" />
+              <h2 className="text-[15px] font-semibold">Hold</h2>
+              <Badge tone="info">Provisional</Badge>
+            </div>
+            {/* Firm/release inline — no need to bounce back to the list. */}
+            <div className="flex flex-wrap gap-2">
+              <form action={firmHoldAction}>
+                <input type="hidden" name="businessSlug" value={businessSlug} />
+                <input type="hidden" name="appointmentId" value={appointment.id} />
+                <SubmitButton className="rounded-lg border border-plum-line bg-plum-soft px-3 py-1.5 text-[12.5px] font-semibold text-plum hover:bg-plum hover:text-white" pendingText="…">
+                  Confirm hold
+                </SubmitButton>
+              </form>
+              <form action={releaseHoldAction}>
+                <input type="hidden" name="businessSlug" value={businessSlug} />
+                <input type="hidden" name="appointmentId" value={appointment.id} />
+                <SubmitButton className="rounded-lg border border-line px-3 py-1.5 text-[12.5px] font-medium text-muted hover:border-danger/30 hover:bg-danger-soft hover:text-danger" pendingText="…">
+                  Release
+                </SubmitButton>
+              </form>
+            </div>
+          </div>
+          <form action={updateHoldSettingsAction} className="mt-3 flex flex-wrap items-end gap-3 border-t border-line-2 pt-3">
+            <input type="hidden" name="businessSlug" value={businessSlug} />
+            <input type="hidden" name="appointmentId" value={appointment.id} />
+            <label className="field-label">
+              Expires
+              <input name="holdExpiresAt" type="date" defaultValue={appointment.holdExpiresAtLocal} className="input" />
+            </label>
+            <label className="field-label">
+              Queue position
+              <input name="holdPriority" type="number" min="1" step="1" defaultValue={appointment.holdPriority} className="input w-[130px]" placeholder="1" />
+            </label>
+            <SubmitButton className="rounded-xl border border-line px-4 py-2.5 text-[13px] font-semibold text-ink hover:bg-sunken" pendingText="Saving…">
+              Update hold
+            </SubmitButton>
+          </form>
+        </section>
+      ) : appointment.isHold ? (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-[#eef1f6] px-4 py-3">
           <Badge tone="info">Hold</Badge>
-          <span className="text-[13px] font-medium text-[#4a5b7a]">
-            This is a provisional hold. Confirm or release it from the appointments list.
-          </span>
+          <span className="text-[13px] font-medium text-[#4a5b7a]">This is a provisional hold.</span>
         </div>
       ) : null}
 

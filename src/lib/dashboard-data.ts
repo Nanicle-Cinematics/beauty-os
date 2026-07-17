@@ -556,7 +556,7 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
       priority: "watch",
       title: `${waitlist.length} ${plural(waitlist.length, "client")} waiting for a slot`,
       body: `${who} is first in line for ${first.service?.name ?? "a service"}, and you still have ${hoursLabel(capacityMinutes - bookedMinutesToday)} free today.`,
-      action: { label: "Open calendar", path: "calendar" },
+      action: { label: "Open waitlist", path: "waitlist" },
     });
   }
 

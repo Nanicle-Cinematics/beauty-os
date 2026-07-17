@@ -58,6 +58,9 @@ export type AppointmentDetail = {
   depositAmount: string;
   notes: string;
   isHold: boolean;
+  /** Hold-only: expiry as a date input value, and queue position. */
+  holdExpiresAtLocal: string;
+  holdPriority: string;
   paymentCount: number;
   collected: string;
   outstanding: string;
@@ -616,6 +619,8 @@ export async function getAppointmentDetail(businessSlug: string, appointmentId: 
     depositAmount: appointment.depositAmount != null ? String(appointment.depositAmount) : "",
     notes: appointment.notes ?? "",
     isHold: appointment.status === "HOLD",
+    holdExpiresAtLocal: appointment.holdExpiresAt ? appointment.holdExpiresAt.toISOString().slice(0, 10) : "",
+    holdPriority: appointment.holdPriority != null ? String(appointment.holdPriority) : "",
     paymentCount: appointment.payments.length,
     collected: moneyCode(collected, currency),
     outstanding: moneyCode(outstanding, currency),
@@ -709,5 +714,39 @@ export async function deleteAppointment(businessSlug: string, appointmentId: str
   }
 
   await prisma.appointment.delete({ where: { id: appointment.id } });
+  return { ok: true };
+}
+
+/**
+ * Adjust a hold's expiry and queue position. Only meaningful for a HOLD; refuses
+ * on a committed booking. Priority is a manual reorder within the contended slot
+ * — see docs/HOLDS.md. Firming/releasing stay separate actions.
+ */
+export async function updateHoldSettings(input: {
+  businessSlug: string;
+  appointmentId: string;
+  holdExpiresAt: Date | null;
+  holdPriority: number | null;
+}): Promise<AppointmentWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const hold = await prisma.appointment.findFirst({
+    where: { id: input.appointmentId, business: { slug: input.businessSlug } },
+    select: { id: true, status: true },
+  });
+  if (!hold) return { ok: false, error: "That hold no longer exists." };
+  if (hold.status !== "HOLD") return { ok: false, error: "This booking isn't a hold." };
+
+  if (input.holdPriority != null && input.holdPriority < 1) {
+    return { ok: false, error: "Queue position must be 1 or higher." };
+  }
+
+  await prisma.appointment.update({
+    where: { id: hold.id },
+    data: {
+      holdExpiresAt: input.holdExpiresAt,
+      holdPriority: input.holdPriority,
+    },
+  });
   return { ok: true };
 }

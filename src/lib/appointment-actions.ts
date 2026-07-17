@@ -8,6 +8,7 @@ import {
   updateAppointment,
   deleteAppointment,
   getAppointmentDetail,
+  updateHoldSettings,
   firmHold,
   releaseHold,
 } from "@/lib/appointment-data";
@@ -205,6 +206,38 @@ export async function updateAppointmentAction(formData: FormData) {
   revalidatePath(`/${businessSlug}/calendar`);
   revalidatePath(back);
   redirect(`/${businessSlug}/appointments?toast=${encodeURIComponent("Booking updated")}`);
+}
+
+export async function updateHoldSettingsAction(formData: FormData) {
+  const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
+  const appointmentId = getString(formData, "appointmentId");
+  const { user, membership, allowed } = await authorize(businessSlug, "appointments:edit");
+
+  const back = `/${businessSlug}/appointments/${appointmentId}`;
+  if (!allowed) {
+    redirect(`${back}?error=${encodeURIComponent("You don't have permission to change bookings.")}`);
+  }
+
+  const rawExpiry = getString(formData, "holdExpiresAt");
+  const parsedExpiry = rawExpiry ? new Date(rawExpiry) : null;
+  const parsedPriority = Number.parseInt(getString(formData, "holdPriority"), 10);
+
+  const result = await updateHoldSettings({
+    businessSlug,
+    appointmentId,
+    holdExpiresAt: parsedExpiry && !Number.isNaN(parsedExpiry.getTime()) ? parsedExpiry : null,
+    holdPriority: Number.isFinite(parsedPriority) ? parsedPriority : null,
+  });
+
+  if (!result.ok) {
+    redirect(`${back}?error=${encodeURIComponent(result.error)}`);
+  }
+
+  await audit(businessSlug, user, membership?.staffMemberId ?? null, "hold.settings_updated", appointmentId, {});
+
+  revalidatePath(`/${businessSlug}/appointments`);
+  revalidatePath(back);
+  redirect(`/${businessSlug}/appointments?toast=${encodeURIComponent("Hold updated")}`);
 }
 
 export async function deleteAppointmentAction(formData: FormData) {
