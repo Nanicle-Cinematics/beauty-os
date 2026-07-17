@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Megaphone, Ticket, Crown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatTile, statMetaFor, EmptyState, Badge, toneForStatus } from "@/components/ui";
@@ -62,7 +63,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 </div>
                 {data.campaigns.map((campaign) => (
                   <div key={campaign.id} className="grid grid-cols-[1.6fr_1fr_1fr_100px_90px] items-center gap-3 border-t border-line-2 px-4 py-3.5 text-sm max-[940px]:grid-cols-1">
-                    <span className="font-semibold text-ink">{campaign.name}</span>
+                    <Link href={`/${businessSlug}/marketing/campaigns/${campaign.id}`} className="font-semibold text-ink hover:text-plum hover:underline">{campaign.name}</Link>
                     <span className="font-medium text-muted">{campaign.channel}</span>
                     <span className="font-medium text-ink">{campaign.type}</span>
                     <span className="font-medium text-muted">{campaign.when}</span>
@@ -142,7 +143,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 </div>
                 {data.coupons.map((coupon) => (
                   <div key={coupon.id} className={`grid grid-cols-[1.3fr_100px_90px_100px_110px] items-center gap-3 border-t border-line-2 px-4 py-3.5 text-sm max-[940px]:grid-cols-1 ${coupon.active ? "" : "opacity-60"}`}>
-                    <span className="font-mono text-[13px] font-semibold uppercase tracking-wide text-plum">{coupon.code}</span>
+                    <Link href={`/${businessSlug}/marketing/coupons/${coupon.id}`} className="font-mono text-[13px] font-semibold uppercase tracking-wide text-plum hover:underline">{coupon.code}</Link>
                     <span className="font-semibold text-ink">{coupon.discount}</span>
                     <span className="font-medium text-muted">{coupon.uses}</span>
                     <span className="font-medium text-muted">{coupon.expiry}</span>
@@ -192,7 +193,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                   <div key={tier.id} className="rounded-2xl border border-line-2 p-3.5 hover:border-plum-line">
                     <div className="flex items-center justify-between gap-2">
                       <strong className="flex items-center gap-2 text-ink">
-                        <Crown size={14} className="text-gold" /> {tier.name}
+                        <Crown size={14} className="text-gold" /> <Link href={`/${businessSlug}/marketing/tiers/${tier.id}`} className="hover:text-plum hover:underline">{tier.name}</Link>
                       </strong>
                       <Badge>{tier.discount}</Badge>
                     </div>

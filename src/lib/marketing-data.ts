@@ -376,3 +376,264 @@ export async function createTier({
     },
   });
 }
+
+// ── Editing (item 14) ───────────────────────────────────────────────────────
+
+export type MarketingWriteResult = { ok: true } | { ok: false; error: string };
+
+export type CampaignDetail = {
+  id: string;
+  name: string;
+  channel: string;
+  type: string;
+  status: string;
+  scheduledAtLocal: string;
+  content: string;
+  /** SENT campaigns are history — the edit form is read-only for them. */
+  editable: boolean;
+};
+
+export type CouponDetail = {
+  id: string;
+  code: string;
+  discountType: string;
+  value: string;
+  maxUses: string;
+  usedCount: number;
+  expiresAtLocal: string;
+  active: boolean;
+  currency: string;
+};
+
+export type TierDetail = {
+  id: string;
+  name: string;
+  minPoints: string;
+  minSpend: string;
+  discountPercent: string;
+  perks: string;
+  currency: string;
+};
+
+const CAMPAIGN_STATUSES = ["DRAFT", "SCHEDULED", "SENT", "CANCELLED"];
+
+function toDateInput(d: Date | null) {
+  return d ? d.toISOString().slice(0, 10) : "";
+}
+
+/* ---- Campaign ---- */
+
+export async function getCampaignDetail(businessSlug: string, campaignId: string): Promise<CampaignDetail | null> {
+  if (!isDatabaseConfigured()) return null;
+  const c = await prisma.campaign.findFirst({ where: { id: campaignId, business: { slug: businessSlug } } });
+  if (!c) return null;
+  return {
+    id: c.id,
+    name: c.name,
+    channel: c.channel,
+    type: c.type,
+    status: c.status,
+    scheduledAtLocal: toDateInput(c.scheduledAt),
+    content: c.content ?? "",
+    editable: c.status !== "SENT",
+  };
+}
+
+export async function updateCampaign(input: {
+  businessSlug: string;
+  campaignId: string;
+  name: string;
+  channel: string;
+  type: string;
+  status: string;
+  scheduledAt: Date | null;
+  content: string;
+}): Promise<MarketingWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+  if (!input.name.trim()) return { ok: false, error: "A campaign name is required." };
+  if (!VALID_CHANNELS.has(input.channel)) return { ok: false, error: "Invalid channel." };
+  if (!VALID_TYPES.has(input.type)) return { ok: false, error: "Invalid campaign type." };
+  if (!CAMPAIGN_STATUSES.includes(input.status)) return { ok: false, error: "Invalid status." };
+
+  const existing = await prisma.campaign.findFirst({
+    where: { id: input.campaignId, business: { slug: input.businessSlug } },
+    select: { id: true, status: true },
+  });
+  if (!existing) return { ok: false, error: "That campaign no longer exists." };
+  // A sent campaign is a record of what actually went out — it must not be
+  // rewritten after the fact.
+  if (existing.status === "SENT") return { ok: false, error: "A sent campaign can't be edited — it's a record of what went out." };
+
+  await prisma.campaign.update({
+    where: { id: existing.id },
+    data: {
+      name: input.name.trim(),
+      channel: input.channel as "EMAIL" | "SMS" | "WHATSAPP",
+      type: input.type as "BIRTHDAY" | "HOLIDAY" | "PROMO" | "WINBACK" | "REFERRAL",
+      status: input.status as "DRAFT" | "SCHEDULED" | "SENT" | "CANCELLED",
+      scheduledAt: input.scheduledAt,
+      content: input.content.trim() || null,
+    },
+  });
+  return { ok: true };
+}
+
+export async function deleteCampaign(businessSlug: string, campaignId: string): Promise<MarketingWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+  const c = await prisma.campaign.findFirst({
+    where: { id: campaignId, business: { slug: businessSlug } },
+    select: { id: true, status: true },
+  });
+  if (!c) return { ok: false, error: "That campaign no longer exists." };
+  if (c.status === "SENT") return { ok: false, error: "A sent campaign is part of your marketing history and can't be deleted." };
+  await prisma.campaign.delete({ where: { id: c.id } });
+  return { ok: true };
+}
+
+/* ---- Coupon ---- */
+
+export async function getCouponDetail(businessSlug: string, couponId: string): Promise<CouponDetail | null> {
+  if (!isDatabaseConfigured()) return null;
+  const c = await prisma.coupon.findFirst({
+    where: { id: couponId, business: { slug: businessSlug } },
+    include: { business: { select: { currency: true } } },
+  });
+  if (!c) return null;
+  return {
+    id: c.id,
+    code: c.code,
+    discountType: c.discountType,
+    value: String(c.value),
+    maxUses: c.maxUses != null ? String(c.maxUses) : "",
+    usedCount: c.usedCount,
+    expiresAtLocal: toDateInput(c.expiresAt),
+    active: c.active,
+    currency: c.business.currency,
+  };
+}
+
+export async function updateCoupon(input: {
+  businessSlug: string;
+  couponId: string;
+  code: string;
+  discountType: string;
+  value: number;
+  maxUses: number | null;
+  expiresAt: Date | null;
+  active: boolean;
+}): Promise<MarketingWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+  const code = input.code.trim().toUpperCase();
+  if (!code) return { ok: false, error: "A coupon code is required." };
+  if (!["PERCENT", "FIXED"].includes(input.discountType)) return { ok: false, error: "Invalid discount type." };
+  if (!Number.isFinite(input.value) || input.value <= 0) return { ok: false, error: "Enter a discount value." };
+  if (input.discountType === "PERCENT" && input.value > 100) return { ok: false, error: "A percentage discount can't exceed 100." };
+
+  const coupon = await prisma.coupon.findFirst({
+    where: { id: input.couponId, business: { slug: input.businessSlug } },
+    select: { id: true, businessId: true, usedCount: true },
+  });
+  if (!coupon) return { ok: false, error: "That coupon no longer exists." };
+
+  // Codes are unique per business — a redeeming client types the code, so two
+  // coupons sharing one would be ambiguous.
+  const clash = await prisma.coupon.findFirst({
+    where: { businessId: coupon.businessId, code, id: { not: coupon.id } },
+    select: { id: true },
+  });
+  if (clash) return { ok: false, error: `Another coupon already uses the code ${code}.` };
+
+  // maxUses can't drop below what's already been redeemed — that would make the
+  // coupon retroactively over-used.
+  if (input.maxUses != null && input.maxUses < coupon.usedCount) {
+    return { ok: false, error: `This coupon has already been used ${coupon.usedCount} times; the limit can't be lower.` };
+  }
+
+  await prisma.coupon.update({
+    where: { id: coupon.id },
+    data: {
+      code,
+      discountType: input.discountType as "PERCENT" | "FIXED",
+      value: input.value,
+      maxUses: input.maxUses != null && input.maxUses > 0 ? input.maxUses : null,
+      expiresAt: input.expiresAt,
+      active: input.active,
+    },
+  });
+  return { ok: true };
+}
+
+export async function deleteCoupon(businessSlug: string, couponId: string): Promise<MarketingWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+  const c = await prisma.coupon.findFirst({
+    where: { id: couponId, business: { slug: businessSlug } },
+    select: { id: true, usedCount: true },
+  });
+  if (!c) return { ok: false, error: "That coupon no longer exists." };
+  // A redeemed coupon is part of the discount record — deactivate, don't delete.
+  if (c.usedCount > 0) {
+    return { ok: false, error: `This coupon has been redeemed ${c.usedCount} times. Deactivate it instead of deleting.` };
+  }
+  await prisma.coupon.delete({ where: { id: c.id } });
+  return { ok: true };
+}
+
+/* ---- Tier ---- */
+
+export async function getTierDetail(businessSlug: string, tierId: string): Promise<TierDetail | null> {
+  if (!isDatabaseConfigured()) return null;
+  const t = await prisma.clientTier.findFirst({
+    where: { id: tierId, business: { slug: businessSlug } },
+    include: { business: { select: { currency: true } } },
+  });
+  if (!t) return null;
+  return {
+    id: t.id,
+    name: t.name,
+    minPoints: t.minPoints != null ? String(t.minPoints) : "",
+    minSpend: t.minSpend != null ? String(t.minSpend) : "",
+    discountPercent: t.discountPercent != null ? String(t.discountPercent) : "",
+    perks: t.perks ?? "",
+    currency: t.business.currency,
+  };
+}
+
+export async function updateTier(input: {
+  businessSlug: string;
+  tierId: string;
+  name: string;
+  minPoints: number | null;
+  minSpend: number | null;
+  discountPercent: number | null;
+  perks: string;
+}): Promise<MarketingWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+  if (!input.name.trim()) return { ok: false, error: "A tier name is required." };
+  if (input.discountPercent != null && (input.discountPercent < 0 || input.discountPercent > 100)) {
+    return { ok: false, error: "A tier discount must be between 0 and 100." };
+  }
+
+  const tier = await prisma.clientTier.findFirst({
+    where: { id: input.tierId, business: { slug: input.businessSlug } },
+    select: { id: true },
+  });
+  if (!tier) return { ok: false, error: "That tier no longer exists." };
+
+  await prisma.clientTier.update({
+    where: { id: tier.id },
+    data: {
+      name: input.name.trim(),
+      minPoints: input.minPoints != null && input.minPoints >= 0 ? input.minPoints : null,
+      minSpend: input.minSpend != null && input.minSpend >= 0 ? input.minSpend : null,
+      discountPercent: input.discountPercent,
+      perks: input.perks.trim() || null,
+    },
+  });
+  return { ok: true };
+}
+
+export async function deleteTier(businessSlug: string, tierId: string): Promise<MarketingWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+  const { count } = await prisma.clientTier.deleteMany({ where: { id: tierId, business: { slug: businessSlug } } });
+  return count > 0 ? { ok: true } : { ok: false, error: "That tier no longer exists." };
+}

@@ -113,4 +113,14 @@ describe("roleCan", () => {
     expect(roleCan("ARTIST", "appointments:edit")).toBe(false);
     expect(roleCan("CASHIER", "appointments:edit")).toBe(false);
   });
+
+  it("keeps marketing to owners and managers", () => {
+    // Campaigns cost money to send and coupons affect margin — not front-desk.
+    for (const capability of ["marketing:edit", "marketing:delete"] as const) {
+      expect(roleCan("OWNER", capability)).toBe(true);
+      expect(roleCan("MANAGER", capability)).toBe(true);
+      expect(roleCan("RECEPTIONIST", capability)).toBe(false);
+      expect(roleCan("ARTIST", capability)).toBe(false);
+    }
+  });
 });

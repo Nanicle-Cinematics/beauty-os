@@ -46,6 +46,10 @@ export const CAPABILITIES = {
   // outright (only ever allowed with no payments) stays with managers.
   "appointments:edit": ["OWNER", "MANAGER", "RECEPTIONIST"],
   "appointments:delete": ["OWNER", "MANAGER"],
+  // Campaigns cost money to send and coupons affect margin — a commercial
+  // decision, so marketing is owner/manager, not front desk.
+  "marketing:edit": ["OWNER", "MANAGER"],
+  "marketing:delete": ["OWNER", "MANAGER"],
   "business:settings": ["OWNER", "MANAGER"],
 } as const satisfies Record<string, readonly BusinessRole[]>;
 
