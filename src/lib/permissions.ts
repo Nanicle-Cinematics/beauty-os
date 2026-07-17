@@ -50,6 +50,14 @@ export const CAPABILITIES = {
   // decision, so marketing is owner/manager, not front desk.
   "marketing:edit": ["OWNER", "MANAGER"],
   "marketing:delete": ["OWNER", "MANAGER"],
+  // Taking a payment and tidying its reference/link is front-desk and cashier
+  // work. Reversing money — refund or void — moves real funds and is a
+  // manager/owner decision. There is deliberately no "edit the amount": a
+  // completed transaction is never rewritten, only offset (refund) or voided.
+  "payments:record": ["OWNER", "MANAGER", "RECEPTIONIST", "CASHIER"],
+  "payments:edit": ["OWNER", "MANAGER", "CASHIER"],
+  "payments:refund": ["OWNER", "MANAGER"],
+  "payments:void": ["OWNER", "MANAGER"],
   "business:settings": ["OWNER", "MANAGER"],
 } as const satisfies Record<string, readonly BusinessRole[]>;
 

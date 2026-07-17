@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Coins } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
@@ -87,7 +88,11 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                     <span>Client</span><span>Method</span><span>Type</span><span>Amount</span><span>Status</span>
                   </div>
                   {data.payments.map((payment) => (
-                    <div key={payment.id} className="grid grid-cols-[1.3fr_1fr_120px_110px_90px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[940px]:grid-cols-1">
+                    <Link
+                      key={payment.id}
+                      href={`/${businessSlug}/payments/${payment.id}`}
+                      className="grid grid-cols-[1.3fr_1fr_120px_110px_90px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm transition hover:bg-plum-softer max-[940px]:grid-cols-1"
+                    >
                       <div className="min-w-0">
                         <div className="truncate font-semibold">{payment.client}</div>
                         <div className="text-xs font-semibold text-muted">{payment.when}</div>
@@ -96,7 +101,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
                       <span className="font-medium text-ink">{payment.type}</span>
                       <span className={`font-semibold ${payment.isRefund ? "text-danger" : "text-ink"}`}>{payment.amount}</span>
                       <Badge tone={toneForStatus(payment.status)}>{payment.status}</Badge>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               )}

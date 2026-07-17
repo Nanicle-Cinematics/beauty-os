@@ -123,4 +123,24 @@ describe("roleCan", () => {
       expect(roleCan("ARTIST", capability)).toBe(false);
     }
   });
+
+  it("lets front desk and cashiers take payments but not reverse them", () => {
+    // Recording a payment is counter work; moving money back out (refund/void)
+    // is a manager decision.
+    expect(roleCan("RECEPTIONIST", "payments:record")).toBe(true);
+    expect(roleCan("CASHIER", "payments:record")).toBe(true);
+    expect(roleCan("CASHIER", "payments:edit")).toBe(true);
+    for (const capability of ["payments:refund", "payments:void"] as const) {
+      expect(roleCan("RECEPTIONIST", capability)).toBe(false);
+      expect(roleCan("CASHIER", capability)).toBe(false);
+      expect(roleCan("MANAGER", capability)).toBe(true);
+      expect(roleCan("OWNER", capability)).toBe(true);
+    }
+  });
+
+  it("never grants an edit-the-amount capability — there is none", () => {
+    // A completed transaction is offset or voided, never rewritten. This test
+    // documents the deliberate absence.
+    expect(Object.keys(CAPABILITIES)).not.toContain("payments:amount");
+  });
 });

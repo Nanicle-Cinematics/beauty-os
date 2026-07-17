@@ -562,6 +562,11 @@ enum PaymentStatus {
   SUCCESS
   FAILED
   REFUNDED
+  /// Recorded in error and reversed. The row is kept (financial history is never
+  /// deleted); VOIDED is excluded from every money total because those filter on
+  /// status = SUCCESS. See src/lib/money.ts and docs — corrections never rewrite
+  /// a completed transaction, they offset or void it.
+  VOIDED
 }
 
 model Payment {
@@ -579,6 +584,9 @@ model Payment {
   type              PaymentType
   status            PaymentStatus @default(PENDING)
   providerReference String?
+  /// Free-text annotation for corrections ("cash, no reference", void reason,
+  /// which original a refund offsets). Never affects money totals.
+  note              String?
   paidAt            DateTime?
   createdAt         DateTime      @default(now())
 

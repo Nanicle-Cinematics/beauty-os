@@ -322,3 +322,213 @@ export async function recordPayment({
     // appointments minus real payments. See src/lib/money.ts.
   }, { timeout: 15000 });
 }
+
+// ── Corrections (item 14) ────────────────────────────────────────────────────
+//
+// A completed payment is never rewritten. Amount, method and type are the
+// transaction and are immutable once recorded. Corrections are: metadata edits
+// (reference/note/appointment link — no money moves), VOID (recorded in error →
+// status VOIDED, row kept, excluded from totals), and REFUND (a new offsetting
+// REFUND payment linked to the original). Every one is audited by the action.
+
+export type PaymentDetail = {
+  id: string;
+  clientName: string;
+  amount: string;
+  amountRaw: number;
+  method: string;
+  type: string;
+  status: string;
+  statusKey: string;
+  reference: string;
+  note: string;
+  appointmentId: string;
+  when: string;
+  isRefund: boolean;
+  /** SUCCESS incoming payments can be voided or refunded. */
+  canVoid: boolean;
+  canRefund: boolean;
+  /** Amount still refundable = this payment minus refunds already offsetting it. */
+  refundableRaw: number;
+  refundable: string;
+  currency: string;
+  appointments: PaymentOption[];
+};
+
+export type PaymentWriteResult = { ok: true } | { ok: false; error: string };
+
+const money2 = (amount: number, currency: string) =>
+  `${currency === "GHS" ? "GH₵" : currency} ${Math.round(amount).toLocaleString("en-US")}`;
+
+export async function getPaymentDetail(businessSlug: string, paymentId: string): Promise<PaymentDetail | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  const payment = await prisma.payment.findFirst({
+    where: { id: paymentId, business: { slug: businessSlug } },
+    include: { business: { select: { currency: true } }, customer: true, appointment: { include: { service: true } } },
+  });
+  if (!payment) return null;
+
+  const currency = payment.business.currency;
+  const isRefund = payment.type === "REFUND";
+  const amount = Number(payment.amount);
+
+  // How much of this incoming payment has already been refunded against it.
+  const refundedAgg = isRefund
+    ? { _sum: { amount: null } }
+    : await prisma.payment.aggregate({
+        _sum: { amount: true },
+        where: { businessId: payment.businessId, type: "REFUND", status: "SUCCESS", note: { contains: payment.id } },
+      });
+  const alreadyRefunded = Number(refundedAgg._sum.amount ?? 0);
+  const refundableRaw = Math.max(0, amount - alreadyRefunded);
+
+  const appointments = await prisma.appointment.findMany({
+    where: { businessId: payment.businessId, status: { notIn: ["CANCELLED", "NO_SHOW", "HOLD"] } },
+    orderBy: { startAt: "desc" },
+    take: 100,
+    include: { customer: true, service: true },
+  });
+
+  const activeIncoming = payment.status === "SUCCESS" && !isRefund;
+
+  return {
+    id: payment.id,
+    clientName: clientName(payment.customer),
+    amount: money2(amount, currency),
+    amountRaw: amount,
+    method: METHOD_LABELS[payment.method] ?? payment.method,
+    type: TYPE_LABELS[payment.type] ?? payment.type,
+    status: titleCase(payment.status),
+    statusKey: payment.status,
+    reference: payment.providerReference ?? "",
+    note: payment.note ?? "",
+    appointmentId: payment.appointmentId ?? "",
+    when: shortDate(payment.paidAt ?? payment.createdAt),
+    isRefund,
+    canVoid: activeIncoming || payment.status === "PENDING",
+    canRefund: activeIncoming && refundableRaw > 0,
+    refundableRaw,
+    refundable: money2(refundableRaw, currency),
+    currency,
+    appointments: appointments.map((a) => ({
+      id: a.id,
+      label: `${clientName(a.customer)} — ${a.service.name} (${shortDate(a.startAt)})`,
+    })),
+  };
+}
+
+/**
+ * Metadata only: reference, note, and which appointment the payment settles.
+ * Never touches amount, method, type or status — those are the transaction.
+ */
+export async function updatePaymentMeta(input: {
+  businessSlug: string;
+  paymentId: string;
+  reference: string;
+  note: string;
+  appointmentId: string;
+}): Promise<PaymentWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const payment = await prisma.payment.findFirst({
+    where: { id: input.paymentId, business: { slug: input.businessSlug } },
+    select: { id: true, businessId: true, customerId: true },
+  });
+  if (!payment) return { ok: false, error: "That payment no longer exists." };
+
+  // If linking to an appointment, it must belong to this business.
+  let appointmentId: string | null = null;
+  if (input.appointmentId) {
+    const appt = await prisma.appointment.findFirst({
+      where: { id: input.appointmentId, businessId: payment.businessId },
+      select: { id: true, customerId: true },
+    });
+    if (!appt) return { ok: false, error: "That appointment isn't in this workspace." };
+    appointmentId = appt.id;
+  }
+
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data: {
+      providerReference: input.reference.trim() || null,
+      note: input.note.trim() || null,
+      appointmentId,
+    },
+  });
+  return { ok: true };
+}
+
+/**
+ * Void a payment recorded in error: status → VOIDED, row kept. Only a SUCCESS
+ * incoming payment or a PENDING one can be voided; a refund or an already-voided
+ * row can't. The reason is stored on the row and by the action's audit entry.
+ */
+export async function voidPayment(businessSlug: string, paymentId: string, reason: string): Promise<PaymentWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const payment = await prisma.payment.findFirst({
+    where: { id: paymentId, business: { slug: businessSlug } },
+    select: { id: true, status: true, type: true, note: true },
+  });
+  if (!payment) return { ok: false, error: "That payment no longer exists." };
+  if (payment.type === "REFUND") return { ok: false, error: "A refund can't be voided. Record a new payment if needed." };
+  if (payment.status !== "SUCCESS" && payment.status !== "PENDING") {
+    return { ok: false, error: `A ${payment.status.toLowerCase()} payment can't be voided.` };
+  }
+
+  const stamp = `Voided${reason.trim() ? `: ${reason.trim()}` : ""}`;
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data: { status: "VOIDED", note: payment.note ? `${payment.note} — ${stamp}` : stamp },
+  });
+  return { ok: true };
+}
+
+/**
+ * Refund by creating a new offsetting REFUND payment linked (via note) to the
+ * original. Never mutates the original — the two rows together tell the true
+ * story. Refund amount is capped at what remains refundable on that payment.
+ */
+export async function refundPayment(
+  businessSlug: string,
+  paymentId: string,
+  amount: number,
+  reason: string,
+): Promise<PaymentWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+  if (!Number.isFinite(amount) || amount <= 0) return { ok: false, error: "Enter a refund amount." };
+
+  const original = await prisma.payment.findFirst({
+    where: { id: paymentId, business: { slug: businessSlug } },
+    select: { id: true, businessId: true, customerId: true, appointmentId: true, amount: true, method: true, type: true, status: true },
+  });
+  if (!original) return { ok: false, error: "That payment no longer exists." };
+  if (original.type === "REFUND") return { ok: false, error: "You can't refund a refund." };
+  if (original.status !== "SUCCESS") return { ok: false, error: "Only a successful payment can be refunded." };
+
+  const alreadyAgg = await prisma.payment.aggregate({
+    _sum: { amount: true },
+    where: { businessId: original.businessId, type: "REFUND", status: "SUCCESS", note: { contains: original.id } },
+  });
+  const refundable = Number(original.amount) - Number(alreadyAgg._sum.amount ?? 0);
+  if (amount > refundable + 1e-9) {
+    const left = Math.max(0, refundable).toLocaleString("en-US");
+    return { ok: false, error: `Only ${left} is still refundable on this payment.` };
+  }
+
+  await prisma.payment.create({
+    data: {
+      businessId: original.businessId,
+      customerId: original.customerId,
+      appointmentId: original.appointmentId,
+      amount,
+      method: original.method,
+      type: "REFUND",
+      status: "SUCCESS",
+      note: `Refund of payment ${original.id}${reason.trim() ? ` — ${reason.trim()}` : ""}`,
+      paidAt: new Date(),
+    },
+  });
+  return { ok: true };
+}
