@@ -23,6 +23,12 @@ export const CAPABILITIES = {
   "clients:edit": ["OWNER", "MANAGER", "RECEPTIONIST"],
   "clients:archive": ["OWNER", "MANAGER"],
   "clients:delete": ["OWNER", "MANAGER"],
+  // Services are the menu and the price list — a commercial decision, not front
+  // desk work. A receptionist may correct a client's phone number but must not
+  // reprice a service.
+  "services:edit": ["OWNER", "MANAGER"],
+  "services:retire": ["OWNER", "MANAGER"],
+  "services:delete": ["OWNER", "MANAGER"],
   "business:settings": ["OWNER", "MANAGER"],
 } as const satisfies Record<string, readonly BusinessRole[]>;
 

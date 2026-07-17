@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Sparkles } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatTile, statMetaFor, EmptyState, Badge } from "@/components/ui";
@@ -63,8 +64,15 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                       <span className="mt-1 size-3 shrink-0 rounded-full" style={{ backgroundColor: service.colorHex }} />
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-ink">{service.name}</span>
-                          {!service.isActive ? <Badge tone="neutral">Archived</Badge> : null}
+                          {/* The name is the link, not the row — the row holds a
+                              form, and a form inside an anchor is invalid. */}
+                          <Link
+                            href={`/${businessSlug}/services/${service.id}`}
+                            className="font-semibold text-ink hover:text-plum hover:underline"
+                          >
+                            {service.name}
+                          </Link>
+                          {!service.isActive ? <Badge tone="neutral">Retired</Badge> : null}
                         </div>
                         <div className="mt-1 text-xs font-semibold text-muted">{service.category}</div>
                       </div>
@@ -83,7 +91,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                         <input type="hidden" name="businessSlug" value={businessSlug} />
                         <input type="hidden" name="serviceId" value={service.id} />
                         <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
-                          {service.isActive ? "Archive" : "Restore"}
+                          {service.isActive ? "Retire" : "Restore"}
                         </button>
                       </form>
                     </div>

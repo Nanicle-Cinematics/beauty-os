@@ -51,4 +51,21 @@ describe("roleCan", () => {
     expect(roleCan("MANAGER", "business:settings")).toBe(true);
     expect(roleCan("RECEPTIONIST", "business:settings")).toBe(false);
   });
+
+  it("does not let front desk reprice the menu", () => {
+    // The deliberate split from clients: a receptionist fixes a client's phone
+    // number, but pricing is a commercial decision.
+    expect(roleCan("RECEPTIONIST", "clients:edit")).toBe(true);
+    expect(roleCan("RECEPTIONIST", "services:edit")).toBe(false);
+    expect(roleCan("RECEPTIONIST", "services:retire")).toBe(false);
+    expect(roleCan("RECEPTIONIST", "services:delete")).toBe(false);
+  });
+
+  it("lets owners and managers run the service menu", () => {
+    for (const capability of ["services:edit", "services:retire", "services:delete"] as const) {
+      expect(roleCan("OWNER", capability)).toBe(true);
+      expect(roleCan("MANAGER", capability)).toBe(true);
+      expect(roleCan("ARTIST", capability)).toBe(false);
+    }
+  });
 });

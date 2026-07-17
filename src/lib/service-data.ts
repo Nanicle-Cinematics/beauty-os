@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 
 export type ServiceRow = {
   id: string;
@@ -18,46 +18,33 @@ export type ServiceRow = {
 export type ServiceStat = { label: string; value: string; detail: string };
 export type ServiceOption = { id: string; label: string };
 
+/** Every editable field on a service, plus the history that gates deletion. */
+export type ServiceDetail = {
+  id: string;
+  name: string;
+  description: string;
+  price: string;
+  depositAmount: string;
+  durationMinutes: number;
+  colorHex: string;
+  categoryId: string;
+  prepInstructions: string;
+  cancellationPolicy: string;
+  isActive: boolean;
+  staffIds: string[];
+  /** Bookings referencing this service. Non-zero means retire, never delete. */
+  bookingCount: number;
+  currency: string;
+};
+
+export type ServiceWriteResult = { ok: true } | { ok: false; error: string };
+
 export type ServiceModuleData = {
   tenant: { id: string; name: string; slug: string; currency: string };
   stats: ServiceStat[];
   services: ServiceRow[];
   categories: ServiceOption[];
   staff: ServiceOption[];
-};
-
-const fallbackServiceData: Record<string, ServiceModuleData> = {
-  "osu-glow-studio": {
-    tenant: { id: "sample_osu_glow", name: "Osu Glow Studio", slug: "osu-glow-studio", currency: "GHS" },
-    stats: [
-      { label: "Active services", value: "3", detail: "1 category" },
-      { label: "Categories", value: "1", detail: "Signature services" },
-      { label: "Average price", value: "GH₵ 617", detail: "Across active services" },
-      { label: "Average duration", value: "1h 40m", detail: "Per service" },
-    ],
-    services: [
-      { id: "demo-service-1", name: "Silk press + trim", category: "Signature services", price: "GH₵ 420", deposit: "GH₵ 100", duration: "1h 30m", staff: ["Nadia Mensah"], bookings: 1, colorHex: "#10b981", isActive: true },
-      { id: "demo-service-2", name: "Soft glam", category: "Signature services", price: "GH₵ 650", deposit: "GH₵ 150", duration: "1h 30m", staff: ["Nadia Mensah"], bookings: 1, colorHex: "#f43f5e", isActive: true },
-      { id: "demo-service-3", name: "Wig install", category: "Signature services", price: "GH₵ 780", deposit: "GH₵ 200", duration: "2h", staff: ["Nadia Mensah"], bookings: 1, colorHex: "#2563eb", isActive: true },
-    ],
-    categories: [{ id: "demo-cat-1", label: "Signature services" }],
-    staff: [{ id: "demo-staff-1", label: "Nadia Mensah" }],
-  },
-  "luxe-lash-lab": {
-    tenant: { id: "sample_luxe_lash", name: "Luxe Lash Lab", slug: "luxe-lash-lab", currency: "GHS" },
-    stats: [
-      { label: "Active services", value: "2", detail: "1 category" },
-      { label: "Categories", value: "1", detail: "Signature services" },
-      { label: "Average price", value: "GH₵ 290", detail: "Across active services" },
-      { label: "Average duration", value: "1h 30m", detail: "Per service" },
-    ],
-    services: [
-      { id: "demo-service-4", name: "Classic lash set", category: "Signature services", price: "GH₵ 360", deposit: "GH₵ 80", duration: "2h", staff: ["Mina Owusu"], bookings: 1, colorHex: "#f43f5e", isActive: true },
-      { id: "demo-service-5", name: "Brow lamination", category: "Signature services", price: "GH₵ 220", deposit: "GH₵ 50", duration: "1h", staff: ["Mina Owusu"], bookings: 1, colorHex: "#f59e0b", isActive: true },
-    ],
-    categories: [{ id: "demo-cat-2", label: "Signature services" }],
-    staff: [{ id: "demo-staff-2", label: "Mina Owusu" }],
-  },
 };
 
 function currencySymbol(currency: string) {
@@ -84,8 +71,10 @@ export function formatDuration(minutes: number) {
 }
 
 export async function getServiceModuleData(businessSlug: string): Promise<ServiceModuleData | null> {
+  // No demo fallback — inventing a price list when the database is unreachable
+  // would show a studio services it does not offer. Caller 404s instead.
   if (!isDatabaseConfigured()) {
-    return fallbackServiceData[businessSlug] ?? null;
+    return null;
   }
 
   const business = await prisma.business.findUnique({
@@ -268,4 +257,190 @@ export async function toggleServiceActive({
     where: { id: service.id },
     data: { isActive: !service.isActive },
   });
+}
+
+export async function getServiceDetail(businessSlug: string, serviceId: string): Promise<ServiceDetail | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  const service = await prisma.service.findFirst({
+    where: { id: serviceId, business: { slug: businessSlug } },
+    include: {
+      business: { select: { currency: true } },
+      assignedStaff: { select: { staffMemberId: true } },
+      _count: { select: { appointments: true } },
+    },
+  });
+  if (!service) return null;
+
+  return {
+    id: service.id,
+    name: service.name,
+    description: service.description ?? "",
+    price: String(service.price),
+    depositAmount: service.depositAmount != null ? String(service.depositAmount) : "",
+    durationMinutes: service.durationMinutes,
+    colorHex: service.colorHex ?? "#6d315f",
+    categoryId: service.categoryId ?? "",
+    prepInstructions: service.prepInstructions ?? "",
+    cancellationPolicy: service.cancellationPolicy ?? "",
+    isActive: service.isActive,
+    staffIds: service.assignedStaff.map((s) => s.staffMemberId),
+    bookingCount: service._count.appointments,
+    currency: service.business.currency,
+  };
+}
+
+/** Just the dropdown contents for the edit form — no need to scan every service. */
+export async function getServiceFormOptions(
+  businessSlug: string,
+): Promise<{ categories: ServiceOption[]; staff: ServiceOption[] } | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
+  if (!business) return null;
+
+  const [categories, staff] = await Promise.all([
+    prisma.serviceCategory.findMany({ where: { businessId: business.id }, orderBy: { sortOrder: "asc" } }),
+    prisma.staffMember.findMany({
+      where: { businessId: business.id, status: "ACTIVE" },
+      orderBy: { createdAt: "asc" },
+      include: { user: true },
+    }),
+  ]);
+
+  return {
+    categories: categories.map((c) => ({ id: c.id, label: c.name })),
+    staff: staff.map((m) => ({ id: m.id, label: m.user?.name ?? m.invitedEmail ?? "Staff member" })),
+  };
+}
+
+export async function updateService(input: {
+  businessSlug: string;
+  serviceId: string;
+  name: string;
+  description: string;
+  price: number;
+  depositAmount: number | null;
+  durationMinutes: number;
+  colorHex: string;
+  categoryId: string;
+  newCategoryName: string;
+  prepInstructions: string;
+  cancellationPolicy: string;
+  staffIds: string[];
+}): Promise<ServiceWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  if (!input.name.trim()) return { ok: false, error: "A service name is required." };
+  if (!Number.isFinite(input.price) || input.price < 0) return { ok: false, error: "Enter a valid price." };
+  if (!Number.isFinite(input.durationMinutes) || input.durationMinutes <= 0) {
+    return { ok: false, error: "Duration must be at least 1 minute." };
+  }
+  if (input.depositAmount != null && input.depositAmount > input.price) {
+    // A deposit larger than the price would leave the client permanently in
+    // credit and make outstanding balances nonsense.
+    return { ok: false, error: "The deposit can't be more than the price." };
+  }
+
+  const service = await prisma.service.findFirst({
+    where: { id: input.serviceId, business: { slug: input.businessSlug } },
+    select: { id: true, businessId: true },
+  });
+  if (!service) return { ok: false, error: "That service no longer exists." };
+
+  // A typed-in category is created on the fly, matching the booking form's
+  // find-or-create behaviour rather than trapping people in a fixed list.
+  let categoryId: string | null = input.categoryId || null;
+  if (input.newCategoryName.trim()) {
+    const existing = await prisma.serviceCategory.findFirst({
+      where: { businessId: service.businessId, name: { equals: input.newCategoryName.trim(), mode: "insensitive" } },
+      select: { id: true },
+    });
+    categoryId =
+      existing?.id ??
+      (await prisma.serviceCategory.create({
+        data: { businessId: service.businessId, name: input.newCategoryName.trim() },
+        select: { id: true },
+      })).id;
+  }
+
+  // Only staff of THIS business may be assigned — never trust posted ids.
+  const validStaff = await prisma.staffMember.findMany({
+    where: { businessId: service.businessId, id: { in: input.staffIds } },
+    select: { id: true },
+  });
+
+  await tenantTransaction(
+    async (tx) => {
+      await tx.service.update({
+        where: { id: service.id },
+        data: {
+          name: input.name.trim(),
+          description: input.description.trim() || null,
+          price: input.price,
+          depositAmount: input.depositAmount,
+          durationMinutes: input.durationMinutes,
+          colorHex: input.colorHex.trim() || null,
+          categoryId,
+          prepInstructions: input.prepInstructions.trim() || null,
+          cancellationPolicy: input.cancellationPolicy.trim() || null,
+        },
+      });
+      // Replace the assignment set wholesale — simpler and race-free versus
+      // diffing, and the table is a pure join.
+      await tx.serviceStaff.deleteMany({ where: { serviceId: service.id } });
+      if (validStaff.length) {
+        await tx.serviceStaff.createMany({
+          data: validStaff.map((s) => ({ serviceId: service.id, staffMemberId: s.id })),
+          skipDuplicates: true,
+        });
+      }
+    },
+    { timeout: 15000 },
+  );
+
+  return { ok: true };
+}
+
+export async function setServiceActive(
+  businessSlug: string,
+  serviceId: string,
+  isActive: boolean,
+): Promise<ServiceWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const { count } = await prisma.service.updateMany({
+    where: { id: serviceId, business: { slug: businessSlug } },
+    data: { isActive },
+  });
+
+  return count > 0 ? { ok: true } : { ok: false, error: "That service no longer exists." };
+}
+
+/**
+ * Hard delete, permitted only for a service nothing has ever booked.
+ *
+ * Appointment.serviceId is required, so deleting a booked service would either
+ * fail at the database or, worse, take its bookings with it. Retiring
+ * (isActive = false) hides it from new bookings while the history survives.
+ */
+export async function deleteService(businessSlug: string, serviceId: string): Promise<ServiceWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const service = await prisma.service.findFirst({
+    where: { id: serviceId, business: { slug: businessSlug } },
+    select: { id: true, _count: { select: { appointments: true } } },
+  });
+  if (!service) return { ok: false, error: "That service no longer exists." };
+
+  const bookings = service._count.appointments;
+  if (bookings > 0) {
+    return {
+      ok: false,
+      error: `${bookings} booking${bookings === 1 ? " uses" : "s use"} this service. Retire it instead — deleting would break that history.`,
+    };
+  }
+
+  await prisma.service.delete({ where: { id: service.id } });
+  return { ok: true };
 }
