@@ -1,6 +1,7 @@
 import "server-only";
 
-import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
+import type { BusinessRole } from "@prisma/client";
 
 export type StaffRow = {
   id: string;
@@ -19,6 +20,31 @@ export type StaffRow = {
 
 export type StaffStat = { label: string; value: string; detail: string };
 export type RoleOption = { value: string; label: string };
+
+export type StaffDayHours = { dayOfWeek: number; startTime: string; endTime: string; isOff: boolean };
+
+/** Every editable field on a staff member, plus what gates role/status changes. */
+export type StaffDetail = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: "INVITED" | "ACTIVE" | "SUSPENDED" | "REMOVED";
+  bio: string;
+  colorHex: string;
+  commissionType: string;
+  commissionValue: string;
+  serviceIds: string[];
+  hours: StaffDayHours[];
+  /** True when this is the only active OWNER — their role and status are locked. */
+  isSoleOwner: boolean;
+  /** True when this member is the signed-in user — self role changes are refused. */
+  isSelf: boolean;
+  bookings: number;
+  linkedToUser: boolean;
+};
+
+export type StaffWriteResult = { ok: true } | { ok: false; error: string };
 
 export type StaffModuleData = {
   tenant: { id: string; name: string; slug: string; currency: string };
@@ -77,38 +103,11 @@ function commissionLabel(type: string, value: number | null, currency: string) {
   return "—";
 }
 
-const fallbackStaffData: Record<string, StaffModuleData> = {
-  "osu-glow-studio": {
-    tenant: { id: "sample_osu_glow", name: "Osu Glow Studio", slug: "osu-glow-studio", currency: "GHS" },
-    stats: [
-      { label: "Active staff", value: "1", detail: "1 role" },
-      { label: "Pending invites", value: "0", detail: "None outstanding" },
-      { label: "Services covered", value: "3", detail: "By active staff" },
-      { label: "Revenue generated", value: "GH₵ 1,850", detail: "Realised bookings" },
-    ],
-    staff: [
-      { id: "demo-staff-1", name: "Nadia Mensah", email: "owner@osuglow.example", role: "Owner", status: "Active", statusKey: "ACTIVE", commission: "—", services: 3, bookings: 3, revenue: "GH₵ 1,850", colorHex: "#10b981", isSoleOwner: true },
-    ],
-    roles: BUSINESS_ROLES,
-  },
-  "luxe-lash-lab": {
-    tenant: { id: "sample_luxe_lash", name: "Luxe Lash Lab", slug: "luxe-lash-lab", currency: "GHS" },
-    stats: [
-      { label: "Active staff", value: "1", detail: "1 role" },
-      { label: "Pending invites", value: "0", detail: "None outstanding" },
-      { label: "Services covered", value: "2", detail: "By active staff" },
-      { label: "Revenue generated", value: "GH₵ 580", detail: "Realised bookings" },
-    ],
-    staff: [
-      { id: "demo-staff-2", name: "Mina Owusu", email: "owner@luxelash.example", role: "Owner", status: "Active", statusKey: "ACTIVE", commission: "—", services: 2, bookings: 2, revenue: "GH₵ 580", colorHex: "#f43f5e", isSoleOwner: true },
-    ],
-    roles: BUSINESS_ROLES,
-  },
-};
-
 export async function getStaffModuleData(businessSlug: string): Promise<StaffModuleData | null> {
+  // No demo fallback — inventing a team when the database is unreachable would
+  // show a studio staff it doesn't employ. Caller 404s instead.
   if (!isDatabaseConfigured()) {
-    return fallbackStaffData[businessSlug] ?? null;
+    return null;
   }
 
   const business = await prisma.business.findUnique({
@@ -279,6 +278,198 @@ export async function inviteStaff({
       bio: bio.trim() || null,
     },
   });
+}
+
+const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+
+/** Active services this business offers, for the staff assignment checklist. */
+export async function getServiceOptionsForStaff(businessSlug: string): Promise<RoleOption[]> {
+  if (!isDatabaseConfigured()) return [];
+  const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
+  if (!business) return [];
+  const services = await prisma.service.findMany({
+    where: { businessId: business.id, isActive: true },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  return services.map((s) => ({ value: s.id, label: s.name }));
+}
+
+export async function getStaffDetail(
+  businessSlug: string,
+  staffId: string,
+  currentUserId: string,
+): Promise<StaffDetail | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  const member = await prisma.staffMember.findFirst({
+    where: { id: staffId, business: { slug: businessSlug } },
+    include: {
+      user: true,
+      workingHours: true,
+      assignedServices: { select: { serviceId: true } },
+      _count: { select: { appointments: true } },
+    },
+  });
+  if (!member) return null;
+
+  const soleOwnerCheck =
+    member.role === "OWNER" && member.status === "ACTIVE"
+      ? await prisma.staffMember.count({
+          where: { business: { slug: businessSlug }, role: "OWNER", status: "ACTIVE", id: { not: member.id } },
+        })
+      : 1; // not an active owner → the "sole owner" question doesn't apply
+
+  const byDay = new Map(member.workingHours.map((h) => [h.dayOfWeek, h]));
+  const hours: StaffDayHours[] = WEEKDAYS.map((d) => {
+    const h = byDay.get(d);
+    return {
+      dayOfWeek: d,
+      startTime: h?.startTime ?? "09:00",
+      endTime: h?.endTime ?? "17:00",
+      isOff: h?.isOff ?? true,
+    };
+  });
+
+  return {
+    id: member.id,
+    name: member.user?.name ?? member.invitedEmail?.split("@")[0] ?? "Staff member",
+    email: member.user?.email ?? member.invitedEmail ?? "",
+    role: member.role,
+    status: member.status,
+    bio: member.bio ?? "",
+    colorHex: member.colorHex ?? "#6d315f",
+    commissionType: member.commissionType,
+    commissionValue: member.commissionValue != null ? String(member.commissionValue) : "",
+    serviceIds: member.assignedServices.map((s) => s.serviceId),
+    hours,
+    isSoleOwner: member.role === "OWNER" && member.status === "ACTIVE" && soleOwnerCheck === 0,
+    isSelf: member.userId != null && member.userId === currentUserId,
+    bookings: member._count.appointments,
+    linkedToUser: member.userId != null,
+  };
+}
+
+export async function updateStaffProfile(input: {
+  businessSlug: string;
+  staffId: string;
+  bio: string;
+  colorHex: string;
+  commissionType: string;
+  commissionValue: number | null;
+  serviceIds: string[];
+  hours: StaffDayHours[];
+}): Promise<StaffWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const validTypes = ["NONE", "PERCENTAGE", "FIXED"];
+  if (!validTypes.includes(input.commissionType)) return { ok: false, error: "Invalid commission type." };
+  if (input.commissionType === "PERCENTAGE" && input.commissionValue != null && (input.commissionValue < 0 || input.commissionValue > 100)) {
+    return { ok: false, error: "A percentage commission must be between 0 and 100." };
+  }
+  if (input.commissionType !== "NONE" && (input.commissionValue == null || input.commissionValue < 0)) {
+    return { ok: false, error: "Enter a commission value." };
+  }
+
+  const member = await prisma.staffMember.findFirst({
+    where: { id: input.staffId, business: { slug: input.businessSlug } },
+    select: { id: true, businessId: true },
+  });
+  if (!member) return { ok: false, error: "That staff member no longer exists." };
+
+  // Only this business's services may be assigned — never trust posted ids.
+  const validServices = await prisma.service.findMany({
+    where: { businessId: member.businessId, id: { in: input.serviceIds } },
+    select: { id: true },
+  });
+
+  await tenantTransaction(
+    async (tx) => {
+      await tx.staffMember.update({
+        where: { id: member.id },
+        data: {
+          bio: input.bio.trim() || null,
+          colorHex: input.colorHex.trim() || null,
+          commissionType: input.commissionType as "NONE" | "PERCENTAGE" | "FIXED",
+          commissionValue: input.commissionType === "NONE" ? null : input.commissionValue,
+        },
+      });
+
+      await tx.serviceStaff.deleteMany({ where: { staffMemberId: member.id } });
+      if (validServices.length) {
+        await tx.serviceStaff.createMany({
+          data: validServices.map((s) => ({ staffMemberId: member.id, serviceId: s.id })),
+          skipDuplicates: true,
+        });
+      }
+
+      // Working hours upserted per weekday — the table is unique on (staff, day).
+      for (const h of input.hours) {
+        await tx.workingHours.upsert({
+          where: { staffMemberId_dayOfWeek: { staffMemberId: member.id, dayOfWeek: h.dayOfWeek } },
+          create: {
+            staffMemberId: member.id,
+            dayOfWeek: h.dayOfWeek,
+            isOff: h.isOff,
+            startTime: h.isOff ? null : h.startTime,
+            endTime: h.isOff ? null : h.endTime,
+          },
+          update: {
+            isOff: h.isOff,
+            startTime: h.isOff ? null : h.startTime,
+            endTime: h.isOff ? null : h.endTime,
+          },
+        });
+      }
+    },
+    { timeout: 15000 },
+  );
+
+  return { ok: true };
+}
+
+/**
+ * Change a staff member's role. The most dangerous write in the app — a role is
+ * permission to act. Three guards, all server-side:
+ *  - you cannot change your own role (no self-promotion, no self-demotion lockout);
+ *  - you cannot demote the last active owner (the workspace must keep an owner);
+ *  - the target role must be a real BusinessRole.
+ */
+export async function setStaffRole(input: {
+  businessSlug: string;
+  staffId: string;
+  role: string;
+  actingUserId: string;
+}): Promise<StaffWriteResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  if (!BUSINESS_ROLES.some((r) => r.value === input.role)) return { ok: false, error: "Unknown role." };
+
+  const member = await prisma.staffMember.findFirst({
+    where: { id: input.staffId, business: { slug: input.businessSlug } },
+    select: { id: true, role: true, status: true, userId: true },
+  });
+  if (!member) return { ok: false, error: "That staff member no longer exists." };
+
+  if (member.userId && member.userId === input.actingUserId) {
+    return { ok: false, error: "You can't change your own role. Ask another owner." };
+  }
+
+  // Demoting the last active owner would strand the workspace with no one who
+  // can manage it.
+  if (member.role === "OWNER" && input.role !== "OWNER") {
+    const otherOwners = await prisma.staffMember.count({
+      where: { business: { slug: input.businessSlug }, role: "OWNER", status: "ACTIVE", id: { not: member.id } },
+    });
+    if (otherOwners === 0) {
+      return { ok: false, error: "This is the workspace's only owner. Make someone else an owner first." };
+    }
+  }
+
+  if (member.role === input.role) return { ok: true };
+
+  await prisma.staffMember.update({ where: { id: member.id }, data: { role: input.role as BusinessRole } });
+  return { ok: true };
 }
 
 export async function setStaffStatus({

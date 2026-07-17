@@ -29,6 +29,12 @@ export const CAPABILITIES = {
   "services:edit": ["OWNER", "MANAGER"],
   "services:retire": ["OWNER", "MANAGER"],
   "services:delete": ["OWNER", "MANAGER"],
+  // Staff profile, commission and hours: a manager runs the rota.
+  "staff:edit": ["OWNER", "MANAGER"],
+  "staff:status": ["OWNER", "MANAGER"],
+  // Roles decide who may do everything else, so only an owner grants them.
+  // A manager who could edit roles would simply make themselves an owner.
+  "staff:role": ["OWNER"],
   "business:settings": ["OWNER", "MANAGER"],
 } as const satisfies Record<string, readonly BusinessRole[]>;
 

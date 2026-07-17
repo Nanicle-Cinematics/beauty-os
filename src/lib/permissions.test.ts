@@ -68,4 +68,20 @@ describe("roleCan", () => {
       expect(roleCan("ARTIST", capability)).toBe(false);
     }
   });
+
+  it("lets a manager run the rota but not grant roles", () => {
+    // A manager who could edit roles would simply make themselves an owner —
+    // so role granting is owner-only, unlike the rest of staff management.
+    expect(roleCan("MANAGER", "staff:edit")).toBe(true);
+    expect(roleCan("MANAGER", "staff:status")).toBe(true);
+    expect(roleCan("MANAGER", "staff:role")).toBe(false);
+    expect(roleCan("OWNER", "staff:role")).toBe(true);
+  });
+
+  it("keeps all staff management away from non-managers", () => {
+    for (const capability of ["staff:edit", "staff:status", "staff:role"] as const) {
+      expect(roleCan("RECEPTIONIST", capability)).toBe(false);
+      expect(roleCan("ARTIST", capability)).toBe(false);
+    }
+  });
 });

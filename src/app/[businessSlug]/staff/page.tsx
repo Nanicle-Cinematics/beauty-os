@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
 import { StatTile, statMetaFor, Badge, toneForStatus, Avatar } from "@/components/ui";
 import { notFound } from "next/navigation";
@@ -72,7 +73,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
                   <div className="flex min-w-0 items-center gap-3">
                     <Avatar name={member.name} colorHex={member.colorHex} />
                     <div className="min-w-0">
-                      <div className="truncate font-semibold text-ink">{member.name}</div>
+                      <Link href={`/${businessSlug}/staff/${member.id}`} className="truncate font-semibold text-ink hover:text-plum hover:underline">{member.name}</Link>
                       <div className="truncate text-xs text-muted">{member.email}</div>
                     </div>
                   </div>
