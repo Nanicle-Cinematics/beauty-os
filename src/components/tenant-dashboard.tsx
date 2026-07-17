@@ -11,13 +11,13 @@ import {
   Sparkles,
   ListChecks,
   Package,
-  Brain,
   Cake,
   Coins,
   TrendingUp,
 } from "lucide-react";
 import { TrendChart } from "@/components/trend-chart";
-import type { TenantDashboardData, DashStat } from "@/lib/dashboard-data";
+import { Badge } from "@/components/ui";
+import type { TenantDashboardData, DashStat, QueuePriority } from "@/lib/dashboard-data";
 
 type TenantDashboardProps = {
   data: TenantDashboardData;
@@ -47,61 +47,15 @@ function statusTone(status: string): string {
   return "bg-plum-soft text-plum";
 }
 
-type Insight = { icon: typeof Brain; kind: string; title: string; body: string; href?: string; cta?: string };
-
-// Contextual intelligence derived entirely from the real data props — no fabricated numbers.
-function buildInsights(data: TenantDashboardData, slug: string): Insight[] {
-  const insights: Insight[] = [];
-  const capacity = data.pulse.find((p) => p.label.toLowerCase().includes("capacity"));
-  const atRisk = data.inventory.filter((i) => i.level < 35);
-
-  if (atRisk.length > 0) {
-    const names = atRisk.slice(0, 2).map((i) => i.item).join(" and ");
-    insights.push({
-      icon: Package,
-      kind: "Inventory risk",
-      title: `${names} running low`,
-      body: `${atRisk.length} product${atRisk.length > 1 ? "s are" : " is"} below its reorder point and may affect upcoming appointments.`,
-      href: `/${slug}/inventory`,
-      cta: "View inventory",
-    });
-  }
-  if (capacity) {
-    insights.push({
-      icon: capacity.value >= 75 ? TriangleAlert : Sparkles,
-      kind: "Capacity",
-      title:
-        capacity.value >= 75
-          ? `You're at ${capacity.value}% capacity today`
-          : `${capacity.value}% of today's capacity is booked`,
-      body:
-        capacity.value >= 75
-          ? "The book is filling fast — protect buffer time for walk-ins and checkout."
-          : "Room to fill more chairs — a same-day promo could lift today's revenue.",
-      href: `/${slug}/appointments`,
-      cta: "Open schedule",
-    });
-  }
-  if (data.clientSignals.length > 0) {
-    insights.push({
-      icon: Users,
-      kind: "Retention",
-      title: `${data.clientSignals.length} client${data.clientSignals.length > 1 ? "s" : ""} need attention`,
-      body: "Clients flagged for follow-up, unpaid balances, or lapsed visits — a nudge keeps them coming back.",
-      href: `/${slug}/clients`,
-      cta: "View clients",
-    });
-  }
-  if (insights.length < 3 && data.tasks.length > 0) {
-    insights.push({
-      icon: ListChecks,
-      kind: "Front desk",
-      title: `${data.tasks.length} task${data.tasks.length > 1 ? "s" : ""} need a decision`,
-      body: "Confirmations, deposits, and reorders are waiting in your front-desk queue.",
-    });
-  }
-  return insights.slice(0, 3);
-}
+/**
+ * Queue priority styling. Urgent reads as money leaving the building, watch as a
+ * note to self — the difference has to be legible at a glance from behind a desk.
+ */
+const queueTone: Record<QueuePriority, { chip: string; rail: string; label: string }> = {
+  urgent: { chip: "bg-danger-soft text-danger", rail: "bg-danger", label: "Urgent" },
+  soon: { chip: "bg-warning-soft text-warning", rail: "bg-warning", label: "Soon" },
+  watch: { chip: "bg-plum-soft text-plum", rail: "bg-mauve", label: "Watch" },
+};
 
 function StatCard({ stat }: { stat: DashStat }) {
   const Icon = statIcon[stat.tone] ?? Coins;
@@ -120,9 +74,19 @@ function StatCard({ stat }: { stat: DashStat }) {
 }
 
 export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
-  const { tenant, stats, pulse, pills, tasks, appointments, clientSignals, staff, inventory } = data;
-  const ownerName = tenant.name;
-  const insights = buildInsights(data, businessSlug);
+  const { hero, secondary, stats, pulse, pills, queue, timeline, clientSignals, staff, inventory } = data;
+  const urgentCount = queue.filter((item) => item.priority === "urgent").length;
+
+  // When there's nothing to chase, say what IS true rather than showing a void.
+  const calmSummary = (() => {
+    const bits: string[] = [];
+    if (secondary.returningToday > 0) {
+      bits.push(`${secondary.returningToday} returning ${secondary.returningToday === 1 ? "client" : "clients"} today`);
+    }
+    if (secondary.busiest) bits.push(`busiest ${secondary.busiest}`);
+    bits.push(`${secondary.freeCapacity} still open`);
+    return `${secondary.bookedValue} booked · ${bits.join(" · ")}.`;
+  })();
 
   const pillIcon = (pill: string) => {
     const p = pill.toLowerCase();
@@ -144,11 +108,9 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
                   <Sparkles size={12} /> {data.todayLabel}
                 </div>
                 <h2 className="font-serif text-[30px] font-semibold leading-[1.1] tracking-tight md:text-[34px]">
-                  Keep the studio full, calm, and profitable.
+                  {hero.headline}
                 </h2>
-                <p className="mt-3 max-w-md text-[13.5px] leading-6 text-white/65">
-                  Your bookings, client care, stock risk, and daily money — one command view for {ownerName}.
-                </p>
+                <p className="mt-3 max-w-md text-[13.5px] leading-6 text-white/65">{hero.sub}</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {pills.map((pill) => {
@@ -173,6 +135,8 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
                     <div className="h-1.5 overflow-hidden rounded-full bg-white/12">
                       <div className="h-full rounded-full bg-gradient-to-r from-rose to-mauve" style={{ width: `${bar.value}%` }} />
                     </div>
+                    {/* The figure behind the percentage — "50%" alone says nothing. */}
+                    <div className="mt-1.5 text-[11px] font-medium text-white/45">{bar.detail}</div>
                   </div>
                 ))}
               </div>
@@ -188,28 +152,51 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
               </h2>
               <p className="mt-0.5 text-[12.5px] text-muted">Tasks that need a decision.</p>
             </div>
-            {tasks.length > 0 ? (
+            {urgentCount > 0 ? (
+              <span className="rounded-full bg-danger-soft px-2.5 py-1 text-[11px] font-semibold text-danger">
+                {urgentCount} urgent
+              </span>
+            ) : queue.length > 0 ? (
               <span className="rounded-full bg-warning-soft px-2.5 py-1 text-[11px] font-semibold text-warning">
-                {tasks.length} open
+                {queue.length} open
               </span>
             ) : null}
           </div>
-          {tasks.length === 0 ? (
+          {queue.length === 0 ? (
+            // Calm state, not an empty one: say what's true rather than showing a void.
             <div className="mt-5 flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-plum-softer px-4 py-8 text-center">
               <span className="grid size-11 place-items-center rounded-full bg-success-soft text-success">
                 <CheckCircle2 size={20} />
               </span>
-              <div className="mt-3 text-[13.5px] font-semibold text-ink">All clear</div>
-              <p className="mt-1 text-[12.5px] text-muted">No actions need your attention right now.</p>
+              <div className="mt-3 text-[13.5px] font-semibold text-ink">Nothing needs a decision</div>
+              <p className="mt-1 text-[12.5px] leading-5 text-muted">{calmSummary}</p>
             </div>
           ) : (
             <div className="mt-4 grid gap-2.5">
-              {tasks.map((task) => (
-                <label key={task} className="flex items-start gap-3 rounded-xl border border-line-2 bg-card p-3 text-[13px] font-medium hover:border-plum-line">
-                  <input type="checkbox" className="mt-0.5 size-4 accent-[var(--plum)]" />
-                  <span>{task}</span>
-                </label>
-              ))}
+              {queue.map((item) => {
+                const tone = queueTone[item.priority];
+                return (
+                  <article
+                    key={item.id}
+                    className="relative overflow-hidden rounded-xl border border-line-2 bg-card p-3 pl-4 transition hover:border-plum-line hover:shadow-[var(--shadow-soft)]"
+                  >
+                    <span className={`absolute inset-y-0 left-0 w-1 ${tone.rail}`} aria-hidden />
+                    <div className="flex items-start justify-between gap-2">
+                      <h3 className="text-[13px] font-semibold leading-5 text-ink">{item.title}</h3>
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tone.chip}`}>
+                        {tone.label}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[12px] leading-5 text-muted">{item.body}</p>
+                    <Link
+                      href={`/${businessSlug}/${item.action.path}`}
+                      className="mt-2 inline-flex items-center gap-1 text-[12px] font-semibold text-plum hover:gap-1.5"
+                    >
+                      {item.action.label} <ArrowRight size={12} />
+                    </Link>
+                  </article>
+                );
+              })}
             </div>
           )}
         </div>
@@ -239,85 +226,64 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
         </section>
       ) : null}
 
-      {/* Smart insights */}
-      {insights.length > 0 ? (
-        <section className="card p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-xl bg-plum-soft text-plum">
-              <Brain size={16} />
-            </span>
-            <div>
-              <h2 className="text-[15px] font-semibold">Smart insights</h2>
-              <p className="text-[12px] text-muted">What your operation is telling you right now.</p>
-            </div>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3">
-            {insights.map((insight) => {
-              const Icon = insight.icon;
-              return (
-                <div key={insight.title} className="flex flex-col rounded-2xl border border-line bg-gradient-to-b from-plum-softer to-card p-4">
-                  <div className="mb-2 inline-flex w-fit items-center gap-1.5 rounded-full bg-card px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-wide text-plum shadow-[var(--shadow-soft)]">
-                    <Icon size={12} /> {insight.kind}
-                  </div>
-                  <div className="text-[13.5px] font-semibold text-ink">{insight.title}</div>
-                  <p className="mt-1 flex-1 text-[12.5px] leading-5 text-muted">{insight.body}</p>
-                  {insight.href ? (
-                    <Link href={insight.href} className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-plum hover:gap-1.5">
-                      {insight.cta} <ArrowRight size={13} />
-                    </Link>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      ) : null}
-
       {/* Schedule + client signals */}
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.9fr)]">
         <div className="card p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-[15px] font-semibold">Today&apos;s schedule</h2>
-              <p className="mt-0.5 text-[12.5px] text-muted">Live bookings, status, staff and expected value.</p>
+              <h2 className="text-[15px] font-semibold">Next up today</h2>
+              <p className="mt-0.5 text-[12.5px] text-muted">What&apos;s left of the day, in order — including the gaps.</p>
             </div>
-            <Link href={`/${businessSlug}/appointments`} className="inline-flex items-center gap-1 rounded-xl border border-line px-3 py-2 text-[12.5px] font-semibold text-ink hover:bg-sunken">
+            <Link href={`/${businessSlug}/calendar`} className="inline-flex items-center gap-1 rounded-xl border border-line px-3 py-2 text-[12.5px] font-semibold text-ink hover:bg-sunken">
               Calendar <ArrowUpRight size={14} />
             </Link>
           </div>
-          {appointments.length === 0 ? (
+          {timeline.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-plum-softer px-4 py-10 text-center">
               <span className="grid size-11 place-items-center rounded-full bg-plum-soft text-plum">
                 <CalendarCheck size={20} />
               </span>
-              <div className="mt-3 text-[13.5px] font-semibold">Your schedule is clear</div>
-              <p className="mt-1 text-[12.5px] text-muted">No appointments booked for today yet.</p>
+              <div className="mt-3 text-[13.5px] font-semibold">Nothing left today</div>
+              <p className="mt-1 text-[12.5px] text-muted">The rest of the day is clear.</p>
               <Link href={`/${businessSlug}/appointments`} className="mt-4 rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-2 text-[12.5px] font-semibold text-white">
                 Create booking
               </Link>
             </div>
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-line">
-              <div className="grid grid-cols-[80px_1.3fr_1fr_120px_110px] bg-sunken px-4 py-2.5 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted max-[760px]:hidden">
-                <span>Time</span><span>Client</span><span>Staff</span><span>Status</span><span>Value</span>
-              </div>
-              {appointments.map((appt) => (
-                <div key={appt.id} className="grid grid-cols-[80px_1.3fr_1fr_120px_110px] items-center gap-3 border-t border-line-2 px-4 py-3.5 text-[13px] max-[760px]:grid-cols-2">
-                  <div className="font-semibold text-plum">{appt.time}</div>
-                  <div>
-                    <div className="font-semibold text-ink">{appt.client}</div>
-                    <div className="mt-0.5 text-[12px] text-muted">{appt.service}</div>
-                  </div>
-                  <div className="font-medium text-ink">{appt.staff}</div>
-                  <div>
-                    <span className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusTone(appt.status)}`}>
-                      {appt.status}
+            // Cards rather than a table: this reads on a phone at the front desk,
+            // and a gap row has no business pretending to be a table row.
+            <ol className="grid gap-2">
+              {timeline.map((entry) =>
+                entry.kind === "gap" ? (
+                  <li
+                    key={entry.id}
+                    className="flex items-center gap-3 rounded-xl border border-dashed border-line bg-sunken/60 px-4 py-2.5"
+                  >
+                    <Clock size={13} className="shrink-0 text-faint" />
+                    <span className="text-[12px] font-semibold text-muted">{entry.label}</span>
+                    <span className="text-[11.5px] text-faint">{entry.detail}</span>
+                  </li>
+                ) : (
+                  <li
+                    key={entry.id}
+                    className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line-2 bg-card px-4 py-3 transition hover:border-plum-line"
+                  >
+                    <span className="w-[52px] shrink-0 text-[13px] font-semibold text-plum">{entry.time}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[13px] font-semibold text-ink">{entry.client}</div>
+                      <div className="mt-0.5 truncate text-[12px] text-muted">
+                        {entry.service} · {entry.staff}
+                      </div>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusTone(entry.status)}`}>
+                      {entry.status}
                     </span>
-                  </div>
-                  <div className="font-semibold text-ink">{appt.value}</div>
-                </div>
-              ))}
-            </div>
+                    <Badge tone={entry.pay.tone}>{entry.pay.label}</Badge>
+                    <span className="w-[76px] shrink-0 text-right text-[13px] font-semibold text-ink">{entry.value}</span>
+                  </li>
+                ),
+              )}
+            </ol>
           )}
         </div>
 
