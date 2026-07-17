@@ -59,14 +59,17 @@ export async function getReportsData(businessSlug: string): Promise<ReportsData 
     await Promise.all([
       prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since30) }),
       prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since60, since30) }),
-      prisma.appointment.count({ where: { businessId: bid, startAt: { gte: since30 } } }),
-      prisma.appointment.count({ where: { businessId: bid, startAt: { gte: since60, lt: since30 } } }),
+      // `not: "HOLD"` throughout: a hold was never a booking. Cancellations stay
+      // counted here on purpose — these are gross bookings, and the completion
+      // rate below is measured against them. See docs/HOLDS.md.
+      prisma.appointment.count({ where: { businessId: bid, startAt: { gte: since30 }, status: { not: "HOLD" } } }),
+      prisma.appointment.count({ where: { businessId: bid, startAt: { gte: since60, lt: since30 }, status: { not: "HOLD" } } }),
       prisma.appointment.count({ where: { businessId: bid, startAt: { gte: since30 }, status: "COMPLETED" } }),
       prisma.appointment.aggregate({ _sum: { price: true }, _count: true, where: realisedWhere }),
       Promise.all(bucketBounds.map((b) => prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(b.start, b.end) }))),
       prisma.appointment.groupBy({ by: ["serviceId"], _sum: { price: true }, _count: true, where: realisedWhere }),
       prisma.appointment.groupBy({ by: ["staffMemberId"], _sum: { price: true }, _count: true, where: { ...realisedWhere, staffMemberId: { not: null } } }),
-      prisma.appointment.groupBy({ by: ["customerId"], _count: true, where: { businessId: bid, startAt: { gte: since60 } } }),
+      prisma.appointment.groupBy({ by: ["customerId"], _count: true, where: { businessId: bid, startAt: { gte: since60 }, status: { not: "HOLD" } } }),
     ]);
 
   const revenue30 = Number(rev30Agg._sum.amount ?? 0);

@@ -77,6 +77,32 @@ booking. Every one of these had to gain `"HOLD"`:
 **Rule of thumb: prefer allowlists.** State what counts, not what doesn't. A
 denylist silently absorbs every future enum value; an allowlist rejects it.
 
+### The third family: no filter at all
+
+Phase 1's audit grepped for status *literals*, which meant it could not see the
+most dangerous case — appointment queries that never mention `status`. Phase 3
+found four of them still leaking holds:
+
+| Site | Was leaking |
+| --- | --- |
+| `ai-insights` deposits | holds counted as collectable "cash at risk" |
+| `ai-insights` lapsing | a future hold made a vanished client look active |
+| `reports` bookings30/prev | holds inflated the bookings KPI |
+| `reports` retention | holds inflated repeat rate |
+
+To audit properly, enumerate **every** `prisma.appointment.*` call and check each
+one, rather than grepping for the enum names. Beware that a `where` built from a
+variable (e.g. `realisedWhere`) is filtered even though the call site contains no
+`status` string.
+
+Two deliberate asymmetries in the fixes:
+
+- `reports` bookings30 excludes only `HOLD`; cancellations stay counted, because
+  those are *gross* bookings and the completion rate is measured against them.
+- `ai-insights` deposits excludes `HOLD`, `CANCELLED` and `NO_SHOW` — you cannot
+  collect a deposit on any of them, and this now matches the other two
+  deposits-due surfaces, which already excluded all three.
+
 The same class of bug bit `toneForStatus` once before — `\bout\b` matching
 "Outstanding" — and is why the hold branch there is word-boundaried.
 
@@ -147,8 +173,19 @@ existing `sendEmail` / `NotificationLog` path. `sendEmail` gained a `customerId`
 so notifications finally populate `NotificationLog.customerId`, which the column
 always had and nothing wrote.
 
-**Phase 3 — expiry nudges.** An AI Insights card for holds expiring this week,
-then optionally a Vercel Cron for the outbound reminder. Not started.
+**Phase 3 — expiry nudges. ✅ Card DONE; cron deliberately not built.** AI
+Insights surfaces holds needing a decision: expired ones as `danger` ("2 holds
+have expired"), otherwise those expiring within 7 days as `warning`. Expired wins
+the slot outright rather than stacking two hold cards. This is the only place
+holds appear as a number, since every revenue figure excludes them.
+
+The outbound client reminder ("your hold expires tomorrow") is **not built**, on
+purpose. Email is the only transport that actually works — `SMS`/`WHATSAPP` are
+offered in the marketing UI but no code sends them (`TWILIO_*` /
+`WHATSAPP_BUSINESS_TOKEN` are unread env placeholders). For Ghanaian salon
+clients an automated email is the wrong channel and a personal WhatsApp or phone
+call is the right one, which the insight card already prompts staff to make. If
+this is ever revisited, wiring WhatsApp is the prerequisite — not the cron.
 
 ## Scope: this is staff-only
 
