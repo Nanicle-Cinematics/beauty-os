@@ -180,7 +180,7 @@ type NotifiableHold = {
   service: { name: string };
 };
 
-type EmailBusiness = { id: string; name: string; phone: string | null; timezone: string };
+type EmailBusiness = { id: string; name: string; phone: string | null; email: string | null; timezone: string };
 
 /**
  * Email a client about their hold. Best-effort by design: a client with no email
@@ -202,6 +202,7 @@ async function notifyHold(
   const when = `${formatLongDateInTz(hold.startAt, business.timezone)} at ${formatTimeInTz(hold.startAt, business.timezone)}`;
   const shared = {
     to,
+    businessEmail: business.email,
     clientName,
     businessName: business.name,
     serviceName: hold.service.name,
@@ -406,7 +407,7 @@ export async function firmHold({
       startAt: true,
       endAt: true,
       status: true,
-      business: { select: { id: true, name: true, phone: true, timezone: true } },
+      business: { select: { id: true, name: true, phone: true, email: true, timezone: true } },
     },
   });
 
@@ -497,7 +498,7 @@ export async function releaseHold({
       startAt: true,
       endAt: true,
       holdPriority: true,
-      business: { select: { id: true, name: true, phone: true, timezone: true } },
+      business: { select: { id: true, name: true, phone: true, email: true, timezone: true } },
     },
   });
 

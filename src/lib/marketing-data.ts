@@ -679,7 +679,7 @@ export async function sendCampaign(businessSlug: string, campaignId: string): Pr
 
   const campaign = await prisma.campaign.findFirst({
     where: { id: campaignId, business: { slug: businessSlug } },
-    include: { business: { select: { id: true, name: true } } },
+    include: { business: { select: { id: true, name: true, email: true } } },
   });
   if (!campaign) return { ok: false, error: "That campaign no longer exists." };
   if (campaign.status === "SENT") return { ok: false, error: "This campaign has already been sent." };
@@ -717,6 +717,9 @@ export async function sendCampaign(businessSlug: string, campaignId: string): Pr
         type: "campaign",
         businessId,
         customerId: r.id,
+        // Client-facing: show the salon as sender, replies go to the salon.
+        fromName: campaign.business.name,
+        replyTo: campaign.business.email,
       });
       if (res.ok) sent += 1;
       dryRun = dryRun || res.dryRun;

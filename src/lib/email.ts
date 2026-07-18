@@ -39,16 +39,47 @@ type SendEmailInput = {
   type: string; // NotificationLog.type
   businessId?: string | null;
   customerId?: string | null;
+  /** Salon name to show as the sender, over the shared sending address. */
+  fromName?: string | null;
+  /** Salon's own email so client replies reach them, not the platform. */
+  replyTo?: string | null;
 };
+
+const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+
+/** The bare address inside a "Name <addr>" string, or the string itself. */
+function bareAddress(from: string) {
+  const m = from.match(/<([^>]+)>/);
+  return (m ? m[1] : from).trim();
+}
+
+/**
+ * Build a From header that shows the salon's name over the shared sending
+ * address (we don't yet have per-tenant domains). The name is stripped of CR/LF
+ * and quotes first — it comes from a business's editable name, so it must never
+ * be able to inject extra headers.
+ */
+export function composeFrom(configuredFrom: string, fromName?: string | null) {
+  if (!fromName || !fromName.trim()) return configuredFrom;
+  const safeName = fromName.replace(/["\r\n]+/g, " ").trim().slice(0, 78);
+  return `"${safeName}" <${bareAddress(configuredFrom)}>`;
+}
+
+/** A reply-to only if it's a plausible address. */
+export function safeReplyTo(replyTo?: string | null) {
+  const v = replyTo?.trim();
+  return v && EMAIL_RE.test(v) ? v : undefined;
+}
 
 // Send a transactional email. Transport precedence: SMTP (nodemailer) → Resend
 // HTTP API → dry-run (log + record intent, never send, never crash). Setting
 // SMTP_* vars activates SMTP; remove them and a RESEND_API_KEY takes back over
 // — no code change needed. Every attempt is recorded in NotificationLog when a
 // business is attached.
-export async function sendEmail({ to, subject, html, text, type, businessId, customerId }: SendEmailInput): Promise<SendEmailResult> {
+export async function sendEmail({ to, subject, html, text, type, businessId, customerId, fromName, replyTo }: SendEmailInput): Promise<SendEmailResult> {
   const smtp = smtpConfig();
   const key = resendKey();
+  const reply = safeReplyTo(replyTo);
 
   let status: "SENT" | "FAILED" | "PENDING" = "PENDING";
   let sentAt: Date | null = null;
@@ -63,7 +94,8 @@ export async function sendEmail({ to, subject, html, text, type, businessId, cus
         secure: smtp.secure,
         auth: { user: smtp.user, pass: smtp.pass },
       });
-      await transporter.sendMail({ from: smtp.from, to, subject, text, html });
+      // Display name = the salon; envelope/address stays the shared sender.
+      await transporter.sendMail({ from: composeFrom(smtp.from, fromName), replyTo: reply, to, subject, text, html });
       status = "SENT";
       sentAt = new Date();
     } catch (err) {
@@ -71,12 +103,12 @@ export async function sendEmail({ to, subject, html, text, type, businessId, cus
       console.error("[email] SMTP send failed:", err instanceof Error ? err.message : err);
     }
   } else if (key) {
-    const from = process.env.EMAIL_FROM?.trim() || "Beauty OS <onboarding@beautyos.dev>";
+    const from = composeFrom(process.env.EMAIL_FROM?.trim() || "Beauty OS <onboarding@beautyos.dev>", fromName);
     try {
       const res = await fetch(RESEND_ENDPOINT, {
         method: "POST",
         headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to, subject, html, text }),
+        body: JSON.stringify({ from, to, subject, html, text, ...(reply ? { reply_to: reply } : {}) }),
       });
       if (res.ok) {
         status = "SENT";
@@ -195,6 +227,7 @@ export async function sendHoldPromotedEmail({
   serviceName,
   when,
   businessPhone,
+  businessEmail,
   businessId,
   customerId,
 }: {
@@ -204,6 +237,7 @@ export async function sendHoldPromotedEmail({
   serviceName: string;
   when: string;
   businessPhone?: string | null;
+  businessEmail?: string | null;
   businessId?: string | null;
   customerId?: string | null;
 }): Promise<SendEmailResult> {
@@ -227,7 +261,7 @@ export async function sendHoldPromotedEmail({
     body: `Hi ${escapeHtml(clientName)}, good news — <strong style="color:#18181b">${escapeHtml(when)}</strong> has just become available for your ${escapeHtml(serviceName)}. You were next in line, so it's yours if you'd still like it.<br><br>To confirm, ${escapeHtml(callTo)} and we'll lock it in.`,
   });
 
-  return sendEmail({ to, subject, html, text, type: "hold_promoted", businessId, customerId });
+  return sendEmail({ to, subject, html, text, type: "hold_promoted", businessId, customerId, fromName: businessName, replyTo: businessEmail });
 }
 
 /** The slot this client was holding went to someone who confirmed first. */
@@ -237,6 +271,7 @@ export async function sendHoldReleasedEmail({
   businessName,
   serviceName,
   when,
+  businessEmail,
   businessId,
   customerId,
 }: {
@@ -245,6 +280,7 @@ export async function sendHoldReleasedEmail({
   businessName: string;
   serviceName: string;
   when: string;
+  businessEmail?: string | null;
   businessId?: string | null;
   customerId?: string | null;
 }): Promise<SendEmailResult> {
@@ -266,7 +302,7 @@ export async function sendHoldReleasedEmail({
     body: `Hi ${escapeHtml(clientName)}, we're sorry — <strong style="color:#18181b">${escapeHtml(when)}</strong> has now been booked, so we've had to release the hold on your ${escapeHtml(serviceName)}.<br><br>Get in touch and we'll find you another time that works.`,
   });
 
-  return sendEmail({ to, subject, html, text, type: "hold_released", businessId, customerId });
+  return sendEmail({ to, subject, html, text, type: "hold_released", businessId, customerId, fromName: businessName, replyTo: businessEmail });
 }
 
 export async function sendVerificationEmail({
