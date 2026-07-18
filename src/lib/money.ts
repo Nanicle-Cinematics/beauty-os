@@ -120,3 +120,21 @@ export function settlement(bookedAmount: number, paidAmount: number) {
     fullySettled: paidAmount >= bookedAmount && bookedAmount > 0,
   };
 }
+
+/**
+ * Deposit policy: makeup artists (and most of this market) require 50% of the
+ * service charge to confirm a booking. The deposit is always computed from the
+ * price — there is no stored per-service deposit any more (retired), so there's
+ * one source of truth and "deposit due" always agrees with what confirming logs.
+ */
+export const DEPOSIT_RATE = 0.5;
+
+/** The deposit a booking should carry: 50% of price, to 2dp. */
+export function depositTarget(price: number) {
+  return Math.round(price * DEPOSIT_RATE * 100) / 100;
+}
+
+/** How much of the deposit is still owed given what's been paid so far. */
+export function depositDue(price: number, paid: number) {
+  return Math.max(0, Math.round((depositTarget(price) - paid) * 100) / 100);
+}

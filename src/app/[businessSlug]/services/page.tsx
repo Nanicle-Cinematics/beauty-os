@@ -120,16 +120,11 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                 <textarea name="description" rows={2} className="input" />
               </label>
 
-              <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
-                <label className="field-label">
-                  Price
-                  <input name="price" type="number" min="0" step="0.01" className="input" required />
-                </label>
-                <label className="field-label">
-                  Deposit
-                  <input name="depositAmount" type="number" min="0" step="0.01" className="input" />
-                </label>
-              </div>
+              <label className="field-label">
+                Price
+                <input name="price" type="number" min="0" step="0.01" className="input" required />
+                <span className="mt-1 block text-[11.5px] font-normal text-faint">Deposit to confirm is 50% of this, collected automatically.</span>
+              </label>
 
               <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">

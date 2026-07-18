@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
+import { depositTarget } from "@/lib/money";
 
 export type ServiceRow = {
   id: string;
@@ -139,7 +140,7 @@ export async function getServiceModuleData(businessSlug: string): Promise<Servic
       name: service.name,
       category: service.category?.name ?? "Uncategorised",
       price: money(Number(service.price), currency),
-      deposit: service.depositAmount ? money(Number(service.depositAmount), currency) : "—",
+      deposit: money(depositTarget(Number(service.price)), currency),
       duration: formatDuration(service.durationMinutes),
       staff: service.assignedStaff.map(
         (link) => link.staffMember.user?.name ?? link.staffMember.invitedEmail ?? "Staff",
@@ -161,7 +162,6 @@ export async function createService({
   name,
   description,
   price,
-  depositAmount,
   durationMinutes,
   colorHex,
   categoryId,
@@ -172,7 +172,6 @@ export async function createService({
   name: string;
   description: string;
   price: number;
-  depositAmount: number | null;
   durationMinutes: number;
   colorHex: string;
   categoryId: string;
@@ -222,7 +221,7 @@ export async function createService({
       name: name.trim(),
       description: description.trim() || null,
       price,
-      depositAmount: depositAmount != null && depositAmount > 0 ? depositAmount : null,
+      depositAmount: null, // retired — deposit is 50% of price (money.ts)
       durationMinutes,
       colorHex: colorHex || null,
       categoryId: resolvedCategoryId,
@@ -320,7 +319,6 @@ export async function updateService(input: {
   name: string;
   description: string;
   price: number;
-  depositAmount: number | null;
   durationMinutes: number;
   colorHex: string;
   categoryId: string;
@@ -335,11 +333,6 @@ export async function updateService(input: {
   if (!Number.isFinite(input.price) || input.price < 0) return { ok: false, error: "Enter a valid price." };
   if (!Number.isFinite(input.durationMinutes) || input.durationMinutes <= 0) {
     return { ok: false, error: "Duration must be at least 1 minute." };
-  }
-  if (input.depositAmount != null && input.depositAmount > input.price) {
-    // A deposit larger than the price would leave the client permanently in
-    // credit and make outstanding balances nonsense.
-    return { ok: false, error: "The deposit can't be more than the price." };
   }
 
   const service = await prisma.service.findFirst({
@@ -378,7 +371,7 @@ export async function updateService(input: {
           name: input.name.trim(),
           description: input.description.trim() || null,
           price: input.price,
-          depositAmount: input.depositAmount,
+          depositAmount: null, // retired — deposit is 50% of price (money.ts)
           durationMinutes: input.durationMinutes,
           colorHex: input.colorHex.trim() || null,
           categoryId,

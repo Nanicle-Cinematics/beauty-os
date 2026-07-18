@@ -114,22 +114,13 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
 
           <div className="border-t border-line-2 pt-5">
             <h2 className="text-[15px] font-semibold">Pricing &amp; time</h2>
-            <div className="mt-3 grid gap-4 sm:grid-cols-3">
+            <p className="mt-0.5 text-[12.5px] text-muted">
+              The deposit to confirm a booking is always 50% of the price — collected automatically on confirmation.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <label className="field-label">
                 Price ({symbol})
                 <input name="price" type="number" min="0" step="0.01" defaultValue={service.price} className="input" required />
-              </label>
-              <label className="field-label">
-                Deposit ({symbol})
-                <input
-                  name="depositAmount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  defaultValue={service.depositAmount}
-                  className="input"
-                  placeholder="None"
-                />
               </label>
               <label className="field-label">
                 Duration (minutes)

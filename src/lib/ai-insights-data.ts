@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { money, deltaLabel } from "@/lib/format";
+import { depositDue } from "@/lib/money";
 import type { BadgeTone } from "@/components/ui";
 
 export type Insight = {
@@ -47,11 +48,14 @@ export async function getAiInsightsData(businessSlug: string): Promise<AiInsight
   const [rev30Agg, revPrevAgg, upcomingAgg, svcGroups, lapseGroups, products, customerCount, expiredHolds, expiringHolds] = await Promise.all([
     prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since30) }),
     prisma.payment.aggregate({ _sum: { amount: true }, where: revenueWhere(since60, since30) }),
-    // Deposits you can actually collect. Holds owe nothing (nothing is
-    // committed), and a cancelled or no-show booking can't be chased either —
-    // this now matches the other two deposit surfaces (dashboard `liveToday`
-    // and payment-data's deposits-due), which already exclude all three.
-    prisma.appointment.aggregate({ _sum: { depositAmount: true }, _count: true, where: { businessId: bid, startAt: { gte: now }, depositPaid: false, depositAmount: { gt: 0 }, status: { notIn: ["HOLD", "CANCELLED", "NO_SHOW"] } } }),
+    // Upcoming bookings and their payments — the deposit is 50% of price
+    // (money.ts), computed per booking, so this needs the rows, not an aggregate
+    // on the retired depositAmount column. Bounded read (holds excluded).
+    prisma.appointment.findMany({
+      where: { businessId: bid, startAt: { gte: now }, status: { notIn: ["HOLD", "CANCELLED", "NO_SHOW"] } },
+      select: { price: true, payments: { select: { amount: true, type: true, status: true } } },
+      take: 500,
+    }),
     prisma.appointment.groupBy({ by: ["serviceId"], _sum: { price: true }, where: { businessId: bid, status: { in: ["COMPLETED", "CONFIRMED"] }, startAt: { gte: since30 } } }),
     // Holds excluded: a client who penciled a date and vanished has not been
     // seen, and letting a hold count as contact would hide them from this list.
@@ -68,8 +72,22 @@ export async function getAiInsightsData(businessSlug: string): Promise<AiInsight
   const insights: Insight[] = [];
   const rev30 = Number(rev30Agg._sum.amount ?? 0);
   const revPrev = Number(revPrevAgg._sum.amount ?? 0);
-  const upcomingCount = upcomingAgg._count;
-  const upcomingTotal = Number(upcomingAgg._sum.depositAmount ?? 0);
+  // 50%-deposit shortfall across upcoming bookings.
+  let upcomingCount = 0;
+  let upcomingTotal = 0;
+  for (const a of upcomingAgg) {
+    let paid = 0;
+    for (const p of a.payments) {
+      if (p.status !== "SUCCESS") continue;
+      if (p.type === "REFUND") paid -= Number(p.amount);
+      else if (["DEPOSIT", "FULL_PAYMENT", "BALANCE"].includes(p.type)) paid += Number(p.amount);
+    }
+    const due = depositDue(Number(a.price), paid);
+    if (due > 0) {
+      upcomingCount += 1;
+      upcomingTotal += due;
+    }
+  }
   if (rev30 > 0 || revPrev > 0) {
     const up = rev30 >= revPrev;
     insights.push({

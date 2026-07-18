@@ -72,14 +72,12 @@ export async function createServiceAction(formData: FormData) {
     redirect(`/${businessSlug}/services?toastError=${encodeURIComponent("Only owners and managers can add services.")}`);
   }
 
-  const deposit = parseMoney(getString(formData, "depositAmount"));
 
   await createService({
     businessSlug,
     name: getString(formData, "name"),
     description: getString(formData, "description"),
     price: parseMoney(getString(formData, "price")),
-    depositAmount: Number.isFinite(deposit) ? deposit : null,
     durationMinutes: parseWholeNumber(getString(formData, "durationMinutes")),
     colorHex: getString(formData, "colorHex"),
     categoryId: getString(formData, "categoryId"),
@@ -102,7 +100,6 @@ export async function updateServiceAction(formData: FormData) {
   }
 
   const before = await getServiceDetail(businessSlug, serviceId);
-  const deposit = parseMoney(getString(formData, "depositAmount"));
 
   const result = await updateService({
     businessSlug,
@@ -110,7 +107,6 @@ export async function updateServiceAction(formData: FormData) {
     name: getString(formData, "name"),
     description: getString(formData, "description"),
     price: parseMoney(getString(formData, "price")),
-    depositAmount: Number.isFinite(deposit) && deposit > 0 ? deposit : null,
     durationMinutes: parseWholeNumber(getString(formData, "durationMinutes")),
     colorHex: getString(formData, "colorHex"),
     categoryId: getString(formData, "categoryId"),

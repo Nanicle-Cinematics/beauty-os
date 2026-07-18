@@ -7,6 +7,8 @@ import {
   collected,
   outstanding,
   settlement,
+  depositTarget,
+  depositDue,
   BOOKED_STATUSES,
   BOOKING_PAYMENT_TYPES,
 } from "@/lib/money";
@@ -113,5 +115,20 @@ describe("settlement — the worked example from the brief", () => {
     const beforeCompletion = settlement(500, 200);
     const afterCompletion = settlement(500, 200);
     expect(afterCompletion).toEqual(beforeCompletion);
+  });
+});
+
+describe("deposit policy (50% of price)", () => {
+  it("is half the price, to two decimals", () => {
+    expect(depositTarget(500)).toBe(250);
+    expect(depositTarget(395)).toBe(197.5);
+    expect(depositTarget(99.99)).toBe(50); // 49.995 -> 50.00
+  });
+
+  it("deposit due is the target minus what's been paid, floored at zero", () => {
+    expect(depositDue(500, 0)).toBe(250); // nothing paid -> full deposit due
+    expect(depositDue(500, 250)).toBe(0); // deposit met
+    expect(depositDue(500, 500)).toBe(0); // fully paid, no deposit outstanding
+    expect(depositDue(500, 100)).toBe(150); // partial -> remainder of the 50%
   });
 });

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
-import { incomingWhere, refundWhere, bookingPaymentsWhere, collected, outstanding } from "@/lib/money";
+import { incomingWhere, refundWhere, bookingPaymentsWhere, collected, outstanding, depositDue } from "@/lib/money";
 import type { BadgeTone } from "@/components/ui";
 import {
   daysBetween,
@@ -249,12 +249,13 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
 
   /** What this specific booking still owes. */
   const owedOn = (a: { id: string; price: unknown }) => outstanding(Number(a.price), paidByAppointment.get(a.id) ?? 0);
-  const payStateOf = (a: { id: string; price: unknown; depositAmount: unknown; depositPaid: boolean }): PayState => {
+  const payStateOf = (a: { id: string; price: unknown }): PayState => {
     const paid = paidByAppointment.get(a.id) ?? 0;
-    if (paid >= Number(a.price) && Number(a.price) > 0) return { label: "Paid", tone: "success" };
+    const price = Number(a.price);
+    if (price > 0 && paid >= price) return { label: "Paid", tone: "success" };
     if (paid > 0) return { label: `${money(paid, currency)} paid`, tone: "warning" };
-    if (a.depositAmount && Number(a.depositAmount) > 0 && !a.depositPaid) return { label: "Deposit due", tone: "danger" };
-    return { label: "Unpaid", tone: "neutral" };
+    // Nothing paid — the 50% deposit is owed (money.ts). Every booking carries one.
+    return { label: "Deposit due", tone: "danger" };
   };
 
   // --- today's schedule ---
@@ -275,8 +276,10 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
   const outstandingToday = outstanding(bookedToday, collectedToday);
   const pendingToday = committedToday.filter((appointment) => appointment.status === "PENDING");
   const completedToday = todayAppointments.filter((appointment) => appointment.status === "COMPLETED");
+  // Bookings still owing part of their 50% deposit (money.ts). Confirming a
+  // booking auto-logs the deposit, so this is mostly pending bookings.
   const unpaidDeposits = committedToday.filter(
-    (appointment) => appointment.depositAmount && Number(appointment.depositAmount) > 0 && !appointment.depositPaid,
+    (appointment) => depositDue(Number(appointment.price), paidByAppointment.get(appointment.id) ?? 0) > 0,
   );
   const nextUp = committedToday.find((appointment) => appointment.startAt > now);
 

@@ -3,6 +3,7 @@ import "server-only";
 import { addMinutes, format, formatLongDateInTz, formatTimeInTz, toLocalInput, fromLocalInput } from "@/lib/date";
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { findOrCreateCustomer, findOrCreateService } from "@/lib/entity-resolve";
+import { depositTarget } from "@/lib/money";
 import {
   defaultHoldExpiry,
   holdExpiryLabel,
@@ -357,29 +358,39 @@ export async function createAppointment({
     holdPriority = nextHoldPriority(rivals.map((r) => r.holdPriority));
   }
 
-  await prisma.appointment.create({
-    data: {
-      businessId: business.id,
-      customerId,
-      serviceId: svc.id,
-      staffMemberId: staffMember.id,
-      startAt,
-      endAt,
-      status: hold ? "HOLD" : "CONFIRMED",
-      source: "ADMIN",
-      price: override != null ? override : svc.price,
-      depositAmount: svc.depositAmount,
-      // Never paid at creation. This previously read `Boolean(svc.depositAmount)`,
-      // which recorded "this service requires a deposit" as "the deposit was
-      // paid" — booking a service invented collected money nobody had handed
-      // over, and the unpaid-deposit chase lists could never fire. A deposit is
-      // settled in exactly one place: recordPayment, when a DEPOSIT payment is
-      // actually taken. See src/lib/money.ts.
-      depositPaid: false,
-      holdExpiresAt: hold ? (holdExpiresAt ?? defaultHoldExpiry(startAt)) : null,
-      holdPriority,
+  const resolvedPrice = override != null ? override : Number(svc.price);
+
+  await tenantTransaction(
+    async (tx) => {
+      const created = await tx.appointment.create({
+        data: {
+          businessId: business.id,
+          customerId,
+          serviceId: svc.id,
+          staffMemberId: staffMember.id,
+          startAt,
+          endAt,
+          status: hold ? "HOLD" : "CONFIRMED",
+          source: "ADMIN",
+          price: resolvedPrice,
+          // Deposit is no longer a stored per-service amount — it's 50% of price,
+          // computed (money.ts). This column is retired; kept only until dropped
+          // in its own migration.
+          depositAmount: null,
+          depositPaid: false,
+          holdExpiresAt: hold ? (holdExpiresAt ?? defaultHoldExpiry(startAt)) : null,
+          holdPriority,
+        },
+        select: { id: true },
+      });
+      // A booking created straight as CONFIRMED is a confirmation, so it carries
+      // its 50% deposit like any other. Holds stay provisional — no deposit.
+      if (!hold) {
+        await autoSettle(tx, { id: created.id, businessId: business.id, customerId, price: resolvedPrice }, "deposit");
+      }
     },
-  });
+    { timeout: 15000 },
+  );
 }
 
 /**
@@ -553,6 +564,61 @@ export async function releaseHold({
   return { ok: true, promotedName };
 }
 
+/** SUCCESS booking-payments in, minus refunds, for one appointment. */
+async function netPaidOnAppointment(
+  tx: { payment: { aggregate: typeof prisma.payment.aggregate } },
+  appointmentId: string,
+): Promise<number> {
+  const [paidAgg, refundAgg] = await Promise.all([
+    tx.payment.aggregate({
+      _sum: { amount: true },
+      where: { appointmentId, status: "SUCCESS", type: { in: ["DEPOSIT", "FULL_PAYMENT", "BALANCE"] } },
+    }),
+    tx.payment.aggregate({ _sum: { amount: true }, where: { appointmentId, status: "SUCCESS", type: "REFUND" } }),
+  ]);
+  return Number(paidAgg._sum.amount ?? 0) - Number(refundAgg._sum.amount ?? 0);
+}
+
+/**
+ * Auto-record a payment when a booking is confirmed or completed, per the 50%
+ * deposit policy (money.ts). It logs only the SHORTFALL to the goal, so it can
+ * never over-count:
+ *   - confirm  → top up to the 50% deposit  (goal = depositTarget)
+ *   - complete → top up to the full price   (goal = price)
+ * If the goal is already met, it logs nothing — so re-confirming or re-completing
+ * is a no-op, and a deposit taken on confirm means completion only logs the
+ * remaining balance, never another full charge. Method defaults to cash; staff
+ * can correct it on the payment afterward.
+ */
+async function autoSettle(
+  tx: Parameters<Parameters<typeof tenantTransaction>[0]>[0],
+  appointment: { id: string; businessId: string; customerId: string; price: unknown },
+  kind: "deposit" | "full",
+) {
+  const price = Number(appointment.price);
+  if (!(price > 0)) return;
+  const paid = await netPaidOnAppointment(tx, appointment.id);
+  const goal = kind === "deposit" ? depositTarget(price) : price;
+  const delta = Math.round((goal - paid) * 100) / 100;
+  if (delta <= 0) return; // goal already met — idempotent
+
+  await tx.payment.create({
+    data: {
+      businessId: appointment.businessId,
+      customerId: appointment.customerId,
+      appointmentId: appointment.id,
+      amount: delta,
+      method: "CASH",
+      // A completion with nothing paid yet is a full payment; with a prior
+      // deposit it's the balance.
+      type: kind === "deposit" ? "DEPOSIT" : paid > 0 ? "BALANCE" : "FULL_PAYMENT",
+      status: "SUCCESS",
+      note: kind === "deposit" ? "Auto-recorded: 50% deposit on confirm" : "Auto-recorded on completion",
+      paidAt: new Date(),
+    },
+  });
+}
+
 export async function updateAppointmentStatus({
   businessSlug,
   appointmentId,
@@ -566,16 +632,26 @@ export async function updateAppointmentStatus({
     return;
   }
 
-  await prisma.appointment.updateMany({
-    where: {
-      id: appointmentId,
-      business: { slug: businessSlug },
-    },
-    data: {
-      status,
-      cancelledAt: status === "CANCELLED" ? new Date() : null,
-    },
+  const appointment = await prisma.appointment.findFirst({
+    where: { id: appointmentId, business: { slug: businessSlug } },
+    select: { id: true, businessId: true, customerId: true, price: true },
   });
+  if (!appointment) return;
+
+  // Status change and its auto-payment are one transaction — the books can never
+  // reflect a confirmed/completed booking without its recorded payment, or vice
+  // versa.
+  await tenantTransaction(
+    async (tx) => {
+      await tx.appointment.update({
+        where: { id: appointment.id },
+        data: { status, cancelledAt: status === "CANCELLED" ? new Date() : null },
+      });
+      if (status === "CONFIRMED") await autoSettle(tx, appointment, "deposit");
+      else if (status === "COMPLETED") await autoSettle(tx, appointment, "full");
+    },
+    { timeout: 15000 },
+  );
 }
 
 const moneyCode = (amount: number, currency: string) =>
@@ -617,7 +693,8 @@ export async function getAppointmentDetail(businessSlug: string, appointmentId: 
     startAtLocal: toLocalInput(appointment.startAt, tz),
     status: appointment.status,
     price: String(appointment.price),
-    depositAmount: appointment.depositAmount != null ? String(appointment.depositAmount) : "",
+    // Deposit is 50% of price (money.ts), computed — the stored column is retired.
+    depositAmount: String(depositTarget(Number(appointment.price))),
     notes: appointment.notes ?? "",
     isHold: appointment.status === "HOLD",
     holdExpiresAtLocal: appointment.holdExpiresAt ? appointment.holdExpiresAt.toISOString().slice(0, 10) : "",

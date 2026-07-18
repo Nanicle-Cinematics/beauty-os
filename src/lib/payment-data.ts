@@ -2,7 +2,7 @@ import "server-only";
 
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { findOrCreateCustomer } from "@/lib/entity-resolve";
-import { bookedWhere, bookingPaymentsWhere, incomingWhere, refundWhere, collected, outstanding } from "@/lib/money";
+import { bookedWhere, bookingPaymentsWhere, incomingWhere, refundWhere, collected, outstanding, depositDue } from "@/lib/money";
 
 export type PaymentRow = {
   id: string;
@@ -83,6 +83,18 @@ function shortDate(date: Date | null) {
     return "—";
   }
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" }).format(date);
+}
+
+/** Net SUCCESS booking-payments (deposit/full/balance) minus refunds, from an
+ *  appointment's included payments. */
+function netPaidForAppointment(payments: { amount: unknown; type: string; status: string }[]) {
+  let paid = 0;
+  for (const p of payments) {
+    if (p.status !== "SUCCESS") continue;
+    if (["DEPOSIT", "FULL_PAYMENT", "BALANCE"].includes(p.type)) paid += Number(p.amount);
+    else if (p.type === "REFUND") paid -= Number(p.amount);
+  }
+  return paid;
 }
 
 function clientName(customer: { firstName: string; lastName: string | null } | null) {
@@ -168,7 +180,7 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
     prisma.appointment.findMany({
       where: { businessId: business.id, status: { notIn: ["CANCELLED", "NO_SHOW", "HOLD"] } },
       orderBy: { startAt: "desc" },
-      include: { customer: true, service: true },
+      include: { customer: true, service: true, payments: { select: { amount: true, type: true, status: true } } },
     }),
     prisma.customer.findMany({
       where: { businessId: business.id },
@@ -188,15 +200,23 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
   const collectedTotal = collected(Number(incomingAgg._sum.amount ?? 0), Number(refundAgg._sum.amount ?? 0));
   const refunded = Number(refundAgg._sum.amount ?? 0);
 
+  // Deposit is 50% of price (money.ts), owed until it's been paid. Since
+  // confirming a booking auto-logs the deposit, this list is now mostly the
+  // pending bookings that haven't paid their 50% yet.
   const depositsDueList: DepositDue[] = appointments
-    .filter((a) => a.depositAmount && Number(a.depositAmount) > 0 && !a.depositPaid)
-    .map((a) => ({
+    .map((a) => {
+      const paid = netPaidForAppointment(a.payments);
+      const due = depositDue(Number(a.price), paid);
+      return { a, due };
+    })
+    .filter((x) => x.due > 0)
+    .map(({ a, due }) => ({
       appointmentId: a.id,
       customerId: a.customerId,
       client: clientName(a.customer),
       service: a.service.name,
-      amount: money(Number(a.depositAmount), currency),
-      amountRaw: Number(a.depositAmount),
+      amount: money(due, currency),
+      amountRaw: due,
       when: shortDate(a.startAt),
     }));
   const depositsDueTotal = depositsDueList.reduce((sum, d) => sum + d.amountRaw, 0);
