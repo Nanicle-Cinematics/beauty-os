@@ -72,7 +72,13 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
             <label className="field-label">
               Channel
               <select name="channel" defaultValue={campaign.channel} className="input">
-                {module.channels.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+                {/* Keep this campaign's own channel selectable even if it's
+                    currently hidden (SMS/WhatsApp), so editing never silently
+                    flips it to email. */}
+                {(module.channels.some((c) => c.value === campaign.channel)
+                  ? module.channels
+                  : [{ value: campaign.channel, label: campaign.channel }, ...module.channels]
+                ).map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </label>
             <label className="field-label">

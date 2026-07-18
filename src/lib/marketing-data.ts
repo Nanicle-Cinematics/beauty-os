@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { isSmsConfigured, isWhatsappConfigured } from "@/lib/messaging";
 import { sendEmail, escapeHtml } from "@/lib/email";
 import { sendSms, sendWhatsapp } from "@/lib/messaging";
 
@@ -69,6 +70,22 @@ export const CAMPAIGN_TYPES = [
 const CHANNEL_LABELS = Object.fromEntries(CAMPAIGN_CHANNELS.map((c) => [c.value, c.label]));
 const TYPE_LABELS = Object.fromEntries(CAMPAIGN_TYPES.map((t) => [t.value, t.label]));
 const VALID_CHANNELS = new Set(CAMPAIGN_CHANNELS.map((c) => c.value));
+
+/**
+ * Channels currently OFFERED for new campaigns. Email always works (SMTP/Resend/
+ * dry-run). SMS and WhatsApp are paid and hidden until their transports are
+ * configured — showing a channel the studio can't actually send on just promises
+ * what it can't deliver. They reappear automatically once the Twilio / WhatsApp
+ * credentials are set. See docs/MESSAGING.md.
+ */
+export function availableChannels() {
+  return CAMPAIGN_CHANNELS.filter((c) => {
+    if (c.value === "SMS") return isSmsConfigured();
+    if (c.value === "WHATSAPP") return isWhatsappConfigured();
+    return true; // EMAIL
+  });
+}
+
 const VALID_TYPES = new Set(CAMPAIGN_TYPES.map((t) => t.value));
 
 function currencySymbol(currency: string) {
@@ -115,7 +132,7 @@ const fallbackMarketingData: Record<string, MarketingModuleData> = {
     coupons: [],
     tiers: [],
     loyalty: emptyLoyalty(),
-    channels: CAMPAIGN_CHANNELS,
+    channels: availableChannels(),
     types: CAMPAIGN_TYPES,
   },
   "luxe-lash-lab": {
@@ -130,7 +147,7 @@ const fallbackMarketingData: Record<string, MarketingModuleData> = {
     coupons: [],
     tiers: [],
     loyalty: emptyLoyalty(),
-    channels: CAMPAIGN_CHANNELS,
+    channels: availableChannels(),
     types: CAMPAIGN_TYPES,
   },
 };
@@ -212,7 +229,7 @@ export async function getMarketingModuleData(businessSlug: string): Promise<Mark
       pointsIssued,
       members,
     },
-    channels: CAMPAIGN_CHANNELS,
+    channels: availableChannels(),
     types: CAMPAIGN_TYPES,
   };
 }
