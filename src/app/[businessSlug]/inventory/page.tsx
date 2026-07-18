@@ -115,13 +115,13 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
               ) : (
                 <div className="mt-4 overflow-hidden rounded-2xl border border-line">
                   {data.movements.map((movement) => (
-                    <div key={movement.id} className="grid grid-cols-[1.4fr_1fr_80px_90px] items-center gap-3 border-b border-line-2 px-4 py-3 text-sm last:border-b-0">
+                    <div key={movement.id} className="grid grid-cols-[1.4fr_1fr_80px_90px] items-center gap-3 border-b border-line-2 px-4 py-3 text-sm last:border-b-0 max-[560px]:grid-cols-[1fr_auto]">
                       <span className="font-semibold">{movement.product}</span>
-                      <span className="font-semibold text-muted">{movement.type}</span>
-                      <span className={`font-semibold ${movement.quantity.startsWith("-") ? "text-rose-700" : "text-plum"}`}>
+                      <span className="font-semibold text-muted max-[560px]:order-3 max-[560px]:text-xs">{movement.type}</span>
+                      <span className={`font-semibold max-[560px]:order-4 max-[560px]:text-right ${movement.quantity.startsWith("-") ? "text-rose-700" : "text-plum"}`}>
                         {movement.quantity}
                       </span>
-                      <span className="text-right text-xs font-bold text-muted">{movement.when}</span>
+                      <span className="text-right text-xs font-bold text-muted max-[560px]:order-2">{movement.when}</span>
                     </div>
                   ))}
                 </div>

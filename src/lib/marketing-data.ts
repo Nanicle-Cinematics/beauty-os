@@ -1,6 +1,8 @@
 import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
+import { sendEmail, escapeHtml } from "@/lib/email";
+import { sendSms, sendWhatsapp } from "@/lib/messaging";
 
 export type CampaignRow = {
   id: string;
@@ -636,4 +638,83 @@ export async function deleteTier(businessSlug: string, tierId: string): Promise<
   if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
   const { count } = await prisma.clientTier.deleteMany({ where: { id: tierId, business: { slug: businessSlug } } });
   return count > 0 ? { ok: true } : { ok: false, error: "That tier no longer exists." };
+}
+
+// ── Sending campaigns (item: wire the channels) ─────────────────────────────
+
+export type CampaignSendResult =
+  | { ok: true; recipients: number; dryRun: boolean; channel: string }
+  | { ok: false; error: string };
+
+/**
+ * Dispatch a campaign to its opted-in audience over the campaign's channel.
+ *
+ * Consent is respected per channel — a client who opted out of SMS is never
+ * texted, even if they're opted in to email — and a recipient without the
+ * relevant contact detail is skipped. Sending stays dry-run (logged, no real
+ * message) until the channel's transport is configured, so this is safe to run
+ * before Twilio / WhatsApp credentials exist. Marking the campaign SENT makes it
+ * read-only (financial-history-style: a sent campaign is a record of what went
+ * out — see updateCampaign).
+ */
+export async function sendCampaign(businessSlug: string, campaignId: string): Promise<CampaignSendResult> {
+  if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
+
+  const campaign = await prisma.campaign.findFirst({
+    where: { id: campaignId, business: { slug: businessSlug } },
+    include: { business: { select: { id: true, name: true } } },
+  });
+  if (!campaign) return { ok: false, error: "That campaign no longer exists." };
+  if (campaign.status === "SENT") return { ok: false, error: "This campaign has already been sent." };
+  if (!campaign.content || !campaign.content.trim()) {
+    return { ok: false, error: "Add a message before sending." };
+  }
+
+  const channel = campaign.channel as "EMAIL" | "SMS" | "WHATSAPP";
+  const consentField =
+    channel === "EMAIL" ? "marketingOptInEmail" : channel === "SMS" ? "marketingOptInSms" : "marketingOptInWhatsapp";
+
+  const recipients = await prisma.customer.findMany({
+    where: { businessId: campaign.business.id, archivedAt: null, [consentField]: true },
+    select: { id: true, firstName: true, lastName: true, email: true, phone: true },
+    take: 2000,
+  });
+
+  const body = campaign.content.trim();
+  const subject = campaign.name;
+  const businessId = campaign.business.id;
+
+  let sent = 0;
+  let dryRun = false;
+  for (const r of recipients) {
+    const to = channel === "EMAIL" ? r.email : r.phone;
+    if (!to) continue; // no contact detail on that channel — skip, never guess
+
+    if (channel === "EMAIL") {
+      const safe = escapeHtml(body).replace(/\n/g, "<br>");
+      const res = await sendEmail({
+        to,
+        subject,
+        html: `<div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:14px;color:#231c22;line-height:22px">${safe}</div>`,
+        text: body,
+        type: "campaign",
+        businessId,
+        customerId: r.id,
+      });
+      if (res.ok) sent += 1;
+      dryRun = dryRun || res.dryRun;
+    } else if (channel === "SMS") {
+      const res = await sendSms({ to, body, type: "campaign", businessId, customerId: r.id });
+      if (res.ok) sent += 1;
+      dryRun = dryRun || res.dryRun;
+    } else {
+      const res = await sendWhatsapp({ to, body, type: "campaign", businessId, customerId: r.id });
+      if (res.ok) sent += 1;
+      dryRun = dryRun || res.dryRun;
+    }
+  }
+
+  await prisma.campaign.update({ where: { id: campaign.id }, data: { status: "SENT" } });
+
+  return { ok: true, recipients: sent, dryRun, channel };
 }

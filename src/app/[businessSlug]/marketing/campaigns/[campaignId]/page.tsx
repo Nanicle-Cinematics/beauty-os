@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Trash2, ShieldAlert } from "lucide-react";
+import { ArrowLeft, Trash2, ShieldAlert, Send } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { Badge } from "@/components/ui";
 import { getCampaignDetail, getMarketingModuleData } from "@/lib/marketing-data";
-import { updateCampaignAction, deleteCampaignAction } from "@/lib/marketing-actions";
+import { updateCampaignAction, deleteCampaignAction, sendCampaignAction } from "@/lib/marketing-actions";
+import { channelStatus } from "@/lib/messaging";
 import { requireTenantAccess } from "@/lib/auth";
 import { membershipIn, roleCan } from "@/lib/permissions";
 
@@ -37,6 +38,8 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
 
   const canEdit = roleCan(membership?.role, "marketing:edit") && campaign.editable;
   const canDelete = roleCan(membership?.role, "marketing:delete") && campaign.status !== "SENT";
+  const canSend = roleCan(membership?.role, "marketing:edit") && campaign.editable;
+  const channelLive = channelStatus(campaign.channel as "EMAIL" | "SMS" | "WHATSAPP").live;
 
   return (
     <div className="mx-auto grid w-full max-w-2xl gap-5">
@@ -101,6 +104,36 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
           ) : null}
         </fieldset>
       </form>
+
+      {canSend ? (
+        <section className="card p-5">
+          <div className="flex items-center gap-2">
+            <Send size={15} className="text-plum" />
+            <h2 className="text-[15px] font-semibold">Send</h2>
+          </div>
+          <p className="mt-0.5 text-[12.5px] leading-5 text-muted">
+            Sends over {campaign.channel.toLowerCase()} to every client who has opted in on that channel. Once sent,
+            the campaign becomes a read-only record.
+          </p>
+          {!channelLive ? (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-warning/25 bg-warning-soft px-3.5 py-2.5 text-[12.5px] font-medium text-warning">
+              <ShieldAlert size={14} className="shrink-0" />
+              {campaign.channel} isn&apos;t connected yet, so this runs in test mode — recipients are logged, no real
+              messages go out. Add the channel&apos;s credentials to send for real.
+            </div>
+          ) : null}
+          <form action={sendCampaignAction} className="mt-3">
+            <input type="hidden" name="businessSlug" value={businessSlug} />
+            <input type="hidden" name="campaignId" value={campaign.id} />
+            <SubmitButton
+              className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-plum to-wine px-5 py-3 text-sm font-semibold text-white"
+              pendingText="Sending…"
+            >
+              <Send size={15} /> {channelLive ? "Send campaign" : "Send in test mode"}
+            </SubmitButton>
+          </form>
+        </section>
+      ) : null}
 
       {canDelete ? (
         <section className="card border-danger/15 p-5">

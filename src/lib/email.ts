@@ -116,7 +116,7 @@ export async function sendEmail({ to, subject, html, text, type, businessId, cus
   return { ok: status !== "FAILED", dryRun };
 }
 
-function escapeHtml(value: string) {
+export function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")

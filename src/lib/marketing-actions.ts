@@ -14,6 +14,7 @@ import {
   deleteCoupon,
   updateTier,
   deleteTier,
+  sendCampaign,
 } from "@/lib/marketing-data";
 import { requireTenantAccess, type AppUser } from "@/lib/auth";
 import { membershipIn, roleCan, type Capability } from "@/lib/permissions";
@@ -171,6 +172,30 @@ export async function updateCampaignAction(formData: FormData) {
   await audit(businessSlug, user, membership?.staffMemberId ?? null, "campaign.updated", "campaign", campaignId, {});
   revalidatePath(`/${businessSlug}/marketing`);
   redirect(`/${businessSlug}/marketing?toast=${encodeURIComponent("Campaign updated")}`);
+}
+
+export async function sendCampaignAction(formData: FormData) {
+  const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
+  const campaignId = getString(formData, "campaignId");
+  const { user, membership, allowed } = await authorize(businessSlug, "marketing:edit");
+  const back = `/${businessSlug}/marketing/campaigns/${campaignId}`;
+  if (!allowed) redirect(`${back}?error=${encodeURIComponent("Only owners and managers can send campaigns.")}`);
+
+  const result = await sendCampaign(businessSlug, campaignId);
+  if (!result.ok) redirect(`${back}?error=${encodeURIComponent(result.error)}`);
+
+  await audit(businessSlug, user, membership?.staffMemberId ?? null, "campaign.sent", "campaign", campaignId, {
+    channel: result.channel,
+    recipients: result.recipients,
+    dryRun: result.dryRun,
+  });
+
+  revalidatePath(`/${businessSlug}/marketing`);
+  revalidatePath(back);
+  const note = result.dryRun ? " (test mode — channel not yet connected, no messages sent)" : "";
+  redirect(
+    `/${businessSlug}/marketing?toast=${encodeURIComponent(`Campaign sent to ${result.recipients} ${result.recipients === 1 ? "client" : "clients"}${note}`)}`,
+  );
 }
 
 export async function deleteCampaignAction(formData: FormData) {
