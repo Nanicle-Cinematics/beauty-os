@@ -36,10 +36,17 @@ export type TrialWarningSummary = {
 /**
  * Emails the owners of every workspace whose trial is about to run out.
  *
- * Runs from a cron with no signed-in user, so every read is wrapped in
- * withBypass: RLS is deny-by-default and a query with no tenant GUC returns
- * ZERO rows, which would look exactly like "nobody is expiring" and fail
- * silently forever.
+ * Invoked by a cron with no signed-in user, so there is no ambient tenant
+ * context and RLS is deny-by-default. The ENTIRE job runs inside one withBypass
+ * scope rather than wrapping individual queries, because the writes matter as
+ * much as the reads: sendEmail records its own NotificationLog row and swallows
+ * failures by design, so an unscoped write disappears without a trace and the
+ * dedupe it feeds never fires — warning the same owner every single day.
+ *
+ * Wrapping the whole job also removes the subtler trap. withBypass runs its
+ * callback inside AsyncLocalStorage, so a callback that merely *returns*
+ * prisma.foo() hands back a lazy PrismaPromise that does not dispatch until it
+ * is awaited outside the scope. Every await in here is inside the scope.
  */
 export async function sendExpiringTrialWarnings(now = new Date()): Promise<TrialWarningSummary> {
   const summary: TrialWarningSummary = {
@@ -55,15 +62,10 @@ export async function sendExpiringTrialWarnings(now = new Date()): Promise<Trial
     return summary;
   }
 
-  const horizon = new Date(now.getTime() + WARN_WITHIN_DAYS * 24 * 60 * 60 * 1000);
+  return withBypass(async () => {
+    const horizon = new Date(now.getTime() + WARN_WITHIN_DAYS * 24 * 60 * 60 * 1000);
 
-  // The callback MUST be async with the query awaited inside it. A plain arrow
-  // returning prisma.foo() only builds a lazy PrismaPromise — it does not run
-  // until the await outside storage.run(), by which point the bypass context is
-  // gone and RLS returns zero rows. That failure is silent: the job reports a
-  // clean "nobody is expiring" and warns no one, forever.
-  const candidates = await withBypass(async () => {
-    return await prisma.business.findMany({
+    const candidates = await prisma.business.findMany({
       where: {
         status: { in: ["TRIAL", "SUSPENDED"] },
         // A business with no subscription row falls back to createdAt + 7 days,
@@ -91,32 +93,30 @@ export async function sendExpiringTrialWarnings(now = new Date()): Promise<Trial
       },
       take: MAX_CANDIDATES,
     });
-  });
 
-  const baseUrl = await getBaseUrl();
+    const baseUrl = await getBaseUrl();
 
-  for (const business of candidates) {
-    const subscriptionStatus = business.subscription?.status;
+    for (const business of candidates) {
+      const subscriptionStatus = business.subscription?.status;
 
-    if (!isOnTrial({ businessStatus: business.status, subscriptionStatus })) {
-      continue;
-    }
+      if (!isOnTrial({ businessStatus: business.status, subscriptionStatus })) {
+        continue;
+      }
 
-    const endsAt = resolveTrialEnd({
-      businessCreatedAt: business.createdAt,
-      subscriptionTrialEndsAt: business.subscription?.trialEndsAt,
-    });
+      const endsAt = resolveTrialEnd({
+        businessCreatedAt: business.createdAt,
+        subscriptionTrialEndsAt: business.subscription?.trialEndsAt,
+      });
 
-    // Already lapsed workspaces are past warning — they see the lock screen,
-    // which tells them what to do. Warning them now would be noise.
-    if (endsAt.getTime() <= now.getTime() || endsAt.getTime() > horizon.getTime()) {
-      continue;
-    }
+      // Already lapsed workspaces are past warning — they see the lock screen,
+      // which tells them what to do. Warning them now would be noise.
+      if (endsAt.getTime() <= now.getTime() || endsAt.getTime() > horizon.getTime()) {
+        continue;
+      }
 
-    summary.candidates += 1;
+      summary.candidates += 1;
 
-    const priorWarning = await withBypass(async () => {
-      return await prisma.notificationLog.findFirst({
+      const priorWarning = await prisma.notificationLog.findFirst({
         where: {
           businessId: business.id,
           type: "trial_expiring",
@@ -127,46 +127,46 @@ export async function sendExpiringTrialWarnings(now = new Date()): Promise<Trial
         },
         select: { id: true },
       });
-    });
 
-    if (priorWarning) {
-      summary.alreadyWarned += 1;
-      continue;
+      if (priorWarning) {
+        summary.alreadyWarned += 1;
+        continue;
+      }
+
+      const recipients = business.staff.map((member) => member.user).filter((user) => user?.email);
+      if (recipients.length === 0) {
+        summary.noRecipient += 1;
+        continue;
+      }
+
+      const daysLeft = daysUntilTrialEnd(endsAt, now);
+      const endsOn = formatLongDateInTz(endsAt, business.timezone);
+      let sentAny = false;
+
+      for (const user of recipients) {
+        if (!user?.email) continue;
+        const result = await sendTrialExpiringEmail({
+          to: user.email,
+          name: user.name,
+          businessName: business.name,
+          endsOn,
+          daysLeft,
+          url: `${baseUrl}/${business.slug}`,
+          businessId: business.id,
+        });
+        // sendEmail records its own NotificationLog row either way; this only
+        // decides how the run is reported.
+        if (result.ok) sentAny = true;
+      }
+
+      if (sentAny) {
+        summary.warned += 1;
+        summary.slugs.push(business.slug);
+      } else {
+        summary.failed += 1;
+      }
     }
 
-    const recipients = business.staff.map((member) => member.user).filter((user) => user?.email);
-    if (recipients.length === 0) {
-      summary.noRecipient += 1;
-      continue;
-    }
-
-    const daysLeft = daysUntilTrialEnd(endsAt, now);
-    const endsOn = formatLongDateInTz(endsAt, business.timezone);
-    let sentAny = false;
-
-    for (const user of recipients) {
-      if (!user?.email) continue;
-      const result = await sendTrialExpiringEmail({
-        to: user.email,
-        name: user.name,
-        businessName: business.name,
-        endsOn,
-        daysLeft,
-        url: `${baseUrl}/${business.slug}`,
-        businessId: business.id,
-      });
-      // sendEmail records its own NotificationLog row either way; this only
-      // decides how the run is reported.
-      if (result.ok) sentAny = true;
-    }
-
-    if (sentAny) {
-      summary.warned += 1;
-      summary.slugs.push(business.slug);
-    } else {
-      summary.failed += 1;
-    }
-  }
-
-  return summary;
+    return summary;
+  });
 }
