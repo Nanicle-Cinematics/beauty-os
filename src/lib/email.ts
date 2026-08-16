@@ -310,6 +310,73 @@ export async function sendHoldReleasedEmail({
   return sendEmail({ to, subject, html, text, type: "hold_released", businessId, customerId, fromName: businessName, replyTo: businessEmail });
 }
 
+/**
+ * A platform admin activated this workspace. Sent from Beauty OS itself (no
+ * fromName/replyTo — this is the platform talking to its customer, not a salon
+ * talking to a client), and worded from whether the workspace was actually
+ * locked: a lapsed trial hears "unlocked", a mid-trial upgrade hears "active".
+ */
+/**
+ * Wording for the activation email. Exported pure so the lapsed-trial vs
+ * mid-trial-upgrade branch is testable without sending anything. CRLF is
+ * stripped from the business name because it reaches the Subject header and
+ * the owner controls it.
+ */
+export function reactivationCopy(businessName: string, wasLocked: boolean) {
+  const safe = businessName.replace(/[\r\n]+/g, " ").trim();
+  return {
+    subject: wasLocked ? `${safe} is unlocked on Beauty OS` : `${safe} is now on a full Beauty OS plan`,
+    heading: wasLocked ? "Your workspace is unlocked" : "Your workspace is now active",
+    lead: wasLocked
+      ? `Good news — ${safe} is active again and everything is exactly where you left it. Nothing was deleted while it was locked.`
+      : `${safe} is now on a full plan, so your workspace stays open with no trial countdown.`,
+  };
+}
+
+export async function sendWorkspaceReactivatedEmail({
+  to,
+  name,
+  businessName,
+  url,
+  wasLocked,
+  businessId,
+}: {
+  to: string;
+  name: string;
+  businessName: string;
+  url: string;
+  wasLocked: boolean;
+  businessId?: string | null;
+}): Promise<SendEmailResult> {
+  const { subject, heading, lead } = reactivationCopy(businessName, wasLocked);
+
+  const text = [
+    `Hi ${name},`,
+    ``,
+    lead,
+    ``,
+    `Pick up where you left off:`,
+    url,
+    ``,
+    `— Beauty OS`,
+  ].join("\n");
+
+  const html = `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fafafa;padding:32px">
+    <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e7e7ea;border-radius:24px;padding:28px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#9d4e7a">Beauty OS</div>
+      <h1 style="margin:8px 0 16px;font-size:22px;color:#18181b">${escapeHtml(heading)}</h1>
+      <p style="margin:0 0 16px;font-size:14px;color:#71717a;line-height:22px">
+        Hi ${escapeHtml(name)}, ${escapeHtml(lead)}
+      </p>
+      <a href="${url}" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;font-weight:800;font-size:14px;padding:12px 22px;border-radius:16px">Open ${escapeHtml(businessName)}</a>
+      <p style="margin:20px 0 0;font-size:12px;color:#a1a1aa">Any questions, just reply to this email.</p>
+    </div>
+  </div>`;
+
+  return sendEmail({ to, subject, html, text, type: "workspace_reactivated", businessId });
+}
+
 export async function sendVerificationEmail({
   to,
   name,

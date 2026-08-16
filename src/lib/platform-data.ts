@@ -1,7 +1,9 @@
 import "server-only";
 
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
-import { trialEndsAt } from "@/lib/trial";
+import { isTrialExpired, trialEndsAt } from "@/lib/trial";
+import { sendWorkspaceReactivatedEmail } from "@/lib/email";
+import { getBaseUrl } from "@/lib/urls";
 
 export type PlatformStat = { label: string; value: string; detail: string };
 
@@ -268,7 +270,14 @@ export async function setBusinessStatus({
   }
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, status: true, subscription: { select: { id: true, status: true } } },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      status: true,
+      createdAt: true,
+      subscription: { select: { id: true, status: true, trialEndsAt: true } },
+    },
   });
   if (!business || business.status === status) {
     return;
@@ -278,6 +287,15 @@ export async function setBusinessStatus({
   // TRIALING row behind used to re-lock the workspace the moment the old
   // trialEndsAt passed, and nothing in the admin UI could clear it.
   const activatesSubscription = status === "ACTIVE" && business.subscription?.status === "TRIALING";
+
+  // Read the lock state BEFORE the update, so the email can tell a lapsed trial
+  // ("unlocked") apart from a mid-trial upgrade ("now active").
+  const wasLocked = isTrialExpired({
+    businessStatus: business.status,
+    businessCreatedAt: business.createdAt,
+    subscriptionStatus: business.subscription?.status,
+    subscriptionTrialEndsAt: business.subscription?.trialEndsAt,
+  });
 
   await tenantTransaction(async (tx) => {
     await tx.business.update({
@@ -301,6 +319,44 @@ export async function setBusinessStatus({
       },
     });
   });
+
+  // Sent only after the transaction commits — never hold a transaction open
+  // across SMTP. Best-effort throughout: sendEmail already swallows and logs
+  // its own failures, and an owner with no reachable email is simply skipped.
+  // Without this the owner had no way to learn they were let back in except by
+  // trying to log in again.
+  if (status === "ACTIVE") {
+    await notifyOwnersOfActivation(business, wasLocked);
+  }
+}
+
+async function notifyOwnersOfActivation(
+  business: { id: string; slug: string; name: string },
+  wasLocked: boolean,
+) {
+  const owners = await prisma.staffMember.findMany({
+    where: { businessId: business.id, role: "OWNER", status: "ACTIVE", userId: { not: null } },
+    select: { user: { select: { email: true, name: true } } },
+  });
+
+  if (owners.length === 0) {
+    return;
+  }
+
+  const baseUrl = await getBaseUrl();
+  const url = `${baseUrl}/${business.slug}`;
+
+  for (const owner of owners) {
+    if (!owner.user?.email) continue;
+    await sendWorkspaceReactivatedEmail({
+      to: owner.user.email,
+      name: owner.user.name,
+      businessName: business.name,
+      url,
+      wasLocked,
+      businessId: business.id,
+    });
+  }
 }
 
 export async function changeBusinessPlan({
