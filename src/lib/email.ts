@@ -317,6 +317,68 @@ export async function sendHoldReleasedEmail({
  * locked: a lapsed trial hears "unlocked", a mid-trial upgrade hears "active".
  */
 /**
+ * Sent a couple of days before a trial runs out. The point is that nobody is
+ * surprised by the lock screen, so it leads with the date and says plainly what
+ * happens — locked, not deleted.
+ */
+export async function sendTrialExpiringEmail({
+  to,
+  name,
+  businessName,
+  endsOn,
+  daysLeft,
+  url,
+  businessId,
+}: {
+  to: string;
+  name: string;
+  businessName: string;
+  endsOn: string;
+  daysLeft: number;
+  url: string;
+  businessId?: string | null;
+}): Promise<SendEmailResult> {
+  const safeBusiness = businessName.replace(/[\r\n]+/g, " ").trim();
+  const window = daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days`;
+  const subject = `${safeBusiness}: your Beauty OS trial ends ${window}`;
+
+  const text = [
+    `Hi ${name},`,
+    ``,
+    `Your free trial for ${safeBusiness} ends ${window}, on ${endsOn}.`,
+    ``,
+    `When it does, the workspace locks until it is activated. Nothing is deleted —`,
+    `your clients, bookings and payments stay exactly as they are.`,
+    ``,
+    `To keep working without interruption, reply to this email and we'll activate you.`,
+    ``,
+    url,
+    ``,
+    `— Beauty OS`,
+  ].join("\n");
+
+  const html = `
+  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fafafa;padding:32px">
+    <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #e7e7ea;border-radius:24px;padding:28px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#9d4e7a">Beauty OS</div>
+      <h1 style="margin:8px 0 16px;font-size:22px;color:#18181b">Your trial ends ${escapeHtml(window)}</h1>
+      <p style="margin:0 0 16px;font-size:14px;color:#71717a;line-height:22px">
+        Hi ${escapeHtml(name)}, your free trial for <strong style="color:#18181b">${escapeHtml(safeBusiness)}</strong>
+        ends on <strong style="color:#18181b">${escapeHtml(endsOn)}</strong>.
+        <br><br>
+        After that the workspace locks until it's activated. <strong style="color:#18181b">Nothing is deleted</strong> —
+        your clients, bookings and payments stay exactly as they are.
+        <br><br>
+        To keep working without interruption, just reply to this email and we'll activate you.
+      </p>
+      <a href="${url}" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;font-weight:800;font-size:14px;padding:12px 22px;border-radius:16px">Open ${escapeHtml(safeBusiness)}</a>
+    </div>
+  </div>`;
+
+  return sendEmail({ to, subject, html, text, type: "trial_expiring", businessId });
+}
+
+/**
  * Wording for the activation email. Exported pure so the lapsed-trial vs
  * mid-trial-upgrade branch is testable without sending anything. CRLF is
  * stripped from the business name because it reaches the Subject header and

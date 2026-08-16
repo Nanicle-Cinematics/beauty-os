@@ -5,6 +5,36 @@ export function trialEndsAt(start = new Date()) {
   return new Date(start.getTime() + TRIAL_MS);
 }
 
+/**
+ * When this workspace's trial runs out. The subscription's own date wins; a
+ * business with no subscription row falls back to seven days from signup.
+ *
+ * Shared by the lock gate and the expiry warning on purpose — if these two ever
+ * computed the date differently we would warn people about the wrong day, or
+ * lock them without having warned them at all.
+ */
+export function resolveTrialEnd({
+  businessCreatedAt,
+  subscriptionTrialEndsAt,
+}: {
+  businessCreatedAt: Date;
+  subscriptionTrialEndsAt?: Date | null;
+}) {
+  return subscriptionTrialEndsAt ?? trialEndsAt(businessCreatedAt);
+}
+
+/** Whether a workspace is still on a trial at all (an explicit activation ends it). */
+export function isOnTrial({
+  businessStatus,
+  subscriptionStatus,
+}: {
+  businessStatus: string;
+  subscriptionStatus?: string | null;
+}) {
+  if (businessStatus === "ACTIVE" || subscriptionStatus === "ACTIVE") return false;
+  return businessStatus === "TRIAL" || subscriptionStatus === "TRIALING";
+}
+
 export function isTrialExpired({
   businessStatus,
   businessCreatedAt,
@@ -31,6 +61,10 @@ export function isTrialExpired({
     return false;
   }
 
-  const endsAt = subscriptionTrialEndsAt ?? trialEndsAt(businessCreatedAt);
-  return endsAt.getTime() <= now.getTime();
+  return resolveTrialEnd({ businessCreatedAt, subscriptionTrialEndsAt }).getTime() <= now.getTime();
+}
+
+/** Whole days from `now` until the trial ends; 0 once it has run out. */
+export function daysUntilTrialEnd(endsAt: Date, now = new Date()) {
+  return Math.max(0, Math.ceil((endsAt.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)));
 }
