@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Package } from "lucide-react";
+import { Package, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
 import { SubmitButton } from "@/components/submit-button";
@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import { addProductAction, adjustStockAction } from "@/lib/inventory-actions";
 import { getInventoryModuleData, type ProductStatus } from "@/lib/inventory-data";
 import { requireTenantAccess } from "@/lib/auth";
+import { industryCopy } from "@/lib/industry";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +34,11 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
   if (!data) {
     notFound();
   }
+  const copy = industryCopy(data.tenant.categoryKey);
 
   return (
     <div className="grid gap-5">
-      <PageHeader title="Inventory" description="Stock on hand, movement, and reorder risk." />
+      <PageHeader title={copy.pages.inventoryTitle} description={copy.pages.inventoryDescription} />
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
           {data.stats.map((stat) => {
@@ -47,22 +49,22 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
           })}
         </section>
 
-        <section className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-[1080px]:grid-cols-1">
+        <section className="grid gap-5">
           <div className="grid gap-5">
             <div className="card p-5">
               <div className="mb-4">
-                <h2 className="text-lg font-semibold">Stock on hand</h2>
+                <h2 className="text-lg font-semibold">{copy.pages.inventoryListTitle}</h2>
                 <p className="mt-1 text-sm text-muted">
-                  Levels, value, and expiry — adjust stock inline as you use or receive product.
+                  {copy.pages.inventoryListDescription}
                 </p>
               </div>
 
               {data.products.length === 0 ? (
-                <EmptyState icon={Package} title="No products yet" body="Add your first product from the panel on the right." />
+                <EmptyState icon={Package} title={`No ${copy.nav.inventory.toLowerCase()} yet`} body={`Add your first item using ${copy.pages.addInventoryTitle} below.`} />
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-line">
-                  <div className="grid grid-cols-[1.4fr_140px_100px_110px_150px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[980px]:hidden">
-                    <span>Product</span><span>Level</span><span>Value</span><span>Status</span><span>Adjust</span>
+                <div className="glass-panel overflow-hidden rounded-[26px]">
+                  <div className="grid grid-cols-[1.4fr_140px_100px_110px_150px] gap-3 bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[980px]:hidden">
+                    <span>{copy.nav.inventory === "Gear" ? "Item" : "Product"}</span><span>Level</span><span>Value</span><span>Status</span><span>Adjust</span>
                   </div>
                   {data.products.map((product) => (
                     <div key={product.id} className="grid grid-cols-[1.4fr_140px_100px_110px_150px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[980px]:grid-cols-1">
@@ -95,10 +97,10 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                           step="1"
                           placeholder="+/-"
                           aria-label={`Adjust ${product.name} stock`}
-                          className="h-9 w-16 rounded-xl border border-line bg-sunken px-2 text-sm outline-none focus:border-plum"
+                          className="h-9 w-16 rounded-[18px] border border-white/60 bg-white/42 px-2 text-sm outline-none focus:border-plum"
                           required
                         />
-                        <button className="h-9 rounded-xl bg-gradient-to-r from-plum to-wine px-3 text-xs font-semibold text-white">
+                        <button className="h-9 rounded-xl primary-action px-3 text-xs font-semibold text-white">
                           Apply
                         </button>
                       </form>
@@ -113,7 +115,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
               {data.movements.length === 0 ? (
                 <p className="mt-3 text-sm text-muted">No stock movements recorded yet.</p>
               ) : (
-                <div className="mt-4 overflow-hidden rounded-2xl border border-line">
+                <div className="mt-4 glass-panel overflow-hidden rounded-[26px]">
                   {data.movements.map((movement) => (
                     <div key={movement.id} className="grid grid-cols-[1.4fr_1fr_80px_90px] items-center gap-3 border-b border-line-2 px-4 py-3 text-sm last:border-b-0 max-[560px]:grid-cols-[1fr_auto]">
                       <span className="font-semibold">{movement.product}</span>
@@ -129,15 +131,18 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
             </div>
           </div>
 
-          <form action={addProductAction} className="card p-5">
-            <h2 className="text-lg font-semibold">Add product</h2>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Opening stock is recorded as a movement in {data.tenant.name}.
-            </p>
-
-            <input type="hidden" name="businessSlug" value={businessSlug} />
-
-            <div className="mt-5 grid gap-4">
+          <details id="add-product" className="group card overflow-hidden p-0">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+              <div>
+                <h2 className="text-lg font-semibold">{copy.pages.addInventoryTitle}</h2>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  Opening stock is recorded as a movement in {data.tenant.name}.
+                </p>
+              </div>
+              <ChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <form action={addProductAction} className="grid gap-4 border-t border-line-2 p-5">
+              <input type="hidden" name="businessSlug" value={businessSlug} />
               <label className="field-label">
                 Name
                 <input name="name" className="input" required />
@@ -145,7 +150,7 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
 
               <label className="field-label">
                 Category
-                <input name="category" placeholder="e.g. Hair, Nails" className="input" />
+                  <input name="category" placeholder={copy.pages.addInventoryCategoryPlaceholder} className="input" />
               </label>
 
               <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
@@ -186,11 +191,11 @@ export default async function InventoryPage({ params }: InventoryPageProps) {
                 </label>
               </div>
 
-              <SubmitButton className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white" pendingText="Adding…">
+              <SubmitButton className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white" pendingText="Adding…">
                 Add product
               </SubmitButton>
-            </div>
-          </form>
+            </form>
+          </details>
         </section>
     </div>
   );

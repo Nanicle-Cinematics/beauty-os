@@ -4,8 +4,6 @@ import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { incomingWhere, refundWhere, bookingPaymentsWhere, collected, outstanding, depositDue } from "@/lib/money";
 import type { BadgeTone } from "@/components/ui";
 import {
-  daysBetween,
-  formatDayMonthInTz,
   formatLongDateInTz,
   formatTimeInTz,
   zonedDayRange,
@@ -91,15 +89,117 @@ export type TenantDashboardData = {
   clientSignals: DashClientSignal[];
   staff: DashStaff[];
   inventory: DashInventory[];
+  aiGuidePrompt?: {
+    show: boolean;
+    title: string;
+    body: string;
+    action: { label: string; path: string };
+  };
 };
 
-const STAFF_COLORS = ["bg-emerald-500", "bg-rose-500", "bg-blue-500", "bg-amber-500", "bg-violet-500"];
 // Never on the schedule at all.
 const OFF_SCHEDULE = new Set(["CANCELLED", "NO_SHOW"]);
 // Provisional: a hold occupies the slot on screen but is not business yet, so it
 // must never reach revenue, utilization, capacity or deposits. See docs/HOLDS.md.
 const PROVISIONAL = new Set(["HOLD"]);
-const REALISED = new Set(["COMPLETED", "CONFIRMED"]);
+
+const fallbackDashboards: Record<string, TenantDashboardData> = {
+  "osu-glow-studio": {
+    tenant: {
+      id: "sample_osu_glow",
+      name: "Osu Glow Studio",
+      slug: "osu-glow-studio",
+      currency: "GHS",
+      planName: "Studio Pro",
+      staffSeats: 6,
+      branchCount: 1,
+      automationStatus: "automated reminders active",
+    },
+    todayLabel: formatLongDateInTz(new Date(), "Africa/Accra"),
+    hero: {
+      headline: "3 bookings today with 4.5 hrs still open.",
+      sub: "GH₵ 1,850 booked, GH₵ 535 collected. One hold needs a decision before the slot goes cold.",
+    },
+    secondary: { freeCapacity: "4.5 hrs", bookedValue: "GH₵ 1,850", returningToday: 2, busiest: "10am–1pm" },
+    stats: [
+      { label: "Booked today", value: "GH₵ 1,850", detail: "GH₵ 1,315 still to collect", tone: "rose" },
+      { label: "Collected today", value: "GH₵ 535", detail: "29% of today's booked value", tone: "teal" },
+      { label: "Bookings today", value: "3", detail: "1 pending confirmation", tone: "teal" },
+      { label: "Client retention", value: "68%", detail: "42 of 62 are repeat", tone: "blue" },
+    ],
+    revenueTrend: [
+      { label: "5w", value: 4200, display: "GH₵ 4,200" },
+      { label: "4w", value: 5100, display: "GH₵ 5,100" },
+      { label: "3w", value: 4700, display: "GH₵ 4,700" },
+      { label: "2w", value: 6200, display: "GH₵ 6,200" },
+      { label: "1w", value: 5900, display: "GH₵ 5,900" },
+      { label: "Now", value: 6800, display: "GH₵ 6,800" },
+    ],
+    pulse: [
+      { label: "Bookings", value: 67, detail: "2 of 3 confirmed" },
+      { label: "Capacity", value: 54, detail: "4.5 hrs of 8.5 hrs booked" },
+      { label: "Checkout", value: 50, detail: "1 of 2 paid in full" },
+    ],
+    pills: ["Next: 10:30", "2 unpaid deposits", "1 birthday today"],
+    queue: [
+      { id: "demo-deposits", priority: "urgent", title: "2 unpaid deposits", body: "GH₵ 715 of deposits is uncollected on today's book. Collect before check-in.", action: { label: "Collect deposits", path: "payments" } },
+      { id: "demo-hold", priority: "watch", title: "1 hold expires within 3 days", body: "Akua's wig install is blocking a premium slot. Confirm it or release the date.", action: { label: "Review holds", path: "appointments" } },
+      { id: "demo-stock", priority: "watch", title: "Lace adhesive and setting spray are low", body: "Reorder before it affects this week's services.", action: { label: "View inventory", path: "inventory" } },
+    ],
+    timeline: [
+      { kind: "appointment", id: "demo-1", time: "09:00", client: "Ama Serwaa", service: "Silk press + trim", staff: "Nadia", status: "Confirmed", value: "GH₵ 420", pay: { label: "Paid", tone: "success" } },
+      { kind: "appointment", id: "demo-2", time: "10:30", client: "Esi Manu", service: "Soft glam", staff: "Nadia", status: "Pending", value: "GH₵ 650", pay: { label: "Deposit due", tone: "danger" } },
+      { kind: "gap", id: "demo-gap", label: "1.5 hrs free", detail: "12:00 – 1:30" },
+      { kind: "appointment", id: "demo-3", time: "12:00", client: "Akua Mensah", service: "Wig install", staff: "Nadia", status: "Hold", value: "GH₵ 780", pay: { label: "Deposit due", tone: "danger" } },
+    ],
+    appointments: [
+      { id: "demo-1", time: "09:00", client: "Ama Serwaa", service: "Silk press + trim", staff: "Nadia", status: "Confirmed", value: "GH₵ 420", pay: { label: "Paid", tone: "success" } },
+      { id: "demo-2", time: "10:30", client: "Esi Manu", service: "Soft glam", staff: "Nadia", status: "Pending", value: "GH₵ 650", pay: { label: "Deposit due", tone: "danger" } },
+      { id: "demo-3", time: "12:00", client: "Akua Mensah", service: "Wig install", staff: "Nadia", status: "Hold", value: "GH₵ 780", pay: { label: "Deposit due", tone: "danger" } },
+    ],
+    clientSignals: [
+      { name: "Ama Serwaa", tag: "top spender", note: "Prefers early weekday slots", spend: "GH₵ 3,420" },
+      { name: "Esi Manu", tag: "owes", note: "Outstanding GH₵ 325", spend: "GH₵ 1,950" },
+      { name: "Akua Mensah", tag: "birthday", note: "Birthday today — send a treat", spend: "GH₵ 2,180" },
+    ],
+    staff: [
+      { name: "Nadia Mensah", role: "Owner", bookedLabel: "3 today", bookedPercent: 54, revenue: "GH₵ 1,850", color: "bg-emerald-500" },
+      { name: "Mabel Addo", role: "Artist", bookedLabel: "1 today", bookedPercent: 28, revenue: "GH₵ 420", color: "bg-rose-500" },
+    ],
+    inventory: [
+      { item: "Lace adhesive", stock: "2 in stock", level: 28 },
+      { item: "Setting spray", stock: "3 in stock", level: 34 },
+      { item: "Silk serum", stock: "9 in stock", level: 76 },
+    ],
+    aiGuidePrompt: {
+      show: false,
+      title: "AI setup guide",
+      body: "Get a step-by-step setup guide and weekly forecast.",
+      action: { label: "Open AI guide", path: "ai-insights" },
+    },
+  },
+};
+
+fallbackDashboards["luxe-lash-lab"] = {
+  ...fallbackDashboards["osu-glow-studio"],
+  tenant: {
+    ...fallbackDashboards["osu-glow-studio"].tenant,
+    id: "sample_luxe_lash",
+    name: "Luxe Lash Lab",
+    slug: "luxe-lash-lab",
+    planName: "Growth Suite",
+    staffSeats: 3,
+    automationStatus: "trial reminders active",
+  },
+  hero: {
+    headline: "2 bookings today with a refill slot open.",
+    sub: "GH₵ 580 booked, GH₵ 180 collected. One brow appointment still needs confirmation.",
+  },
+  appointments: [
+    { id: "demo-5", time: "09:00", client: "Yaa Boateng", service: "Classic lash set", staff: "Mina", status: "Confirmed", value: "GH₵ 360", pay: { label: "GH₵ 180 paid", tone: "warning" } },
+    { id: "demo-6", time: "11:30", client: "Afia Owusu", service: "Brow lamination", staff: "Mina", status: "Pending", value: "GH₵ 220", pay: { label: "Deposit due", tone: "danger" } },
+  ],
+};
 
 function currencySymbol(currency: string) {
   return currency === "GHS" ? "GH₵" : currency;
@@ -142,12 +242,8 @@ function hourLabel(hour: number) {
 }
 
 export async function getTenantDashboardData(businessSlug: string): Promise<TenantDashboardData | null> {
-  // No demo fallback. Returning fabricated numbers when the database is
-  // unreachable is worse than failing: the page would look healthy while showing
-  // another studio's invented takings. The caller renders notFound() instead —
-  // matching calendar/finance/ai-insights.
   if (!isDatabaseConfigured()) {
-    return null;
+    return fallbackDashboards[businessSlug] ?? null;
   }
 
   const business = await prisma.business.findUnique({
@@ -166,19 +262,15 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
   const currency = business.currency;
   const timeZone = business.timezone || "UTC";
   const now = new Date();
+  const DAY = 24 * 60 * 60 * 1000;
   const { start, end } = zonedDayRange(now, timeZone);
 
   const [
     todayAppointments,
-    activeStaff,
+    activeStaffCount,
     products,
-    customers,
-    repeatGroups,
-    totalCustomers,
     incomingTodayAgg,
     refundTodayAgg,
-    paidByCustomerGroups,
-    refundByCustomerGroups,
     paidByAppointmentGroups,
     openHolds,
     waitlist,
@@ -186,40 +278,29 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     prisma.appointment.findMany({
       where: { businessId: business.id, startAt: { gte: start, lt: end } },
       orderBy: { startAt: "asc" },
-      include: {
-        customer: true,
-        service: true,
-        staffMember: { include: { user: true } },
+      select: {
+        id: true,
+        startAt: true,
+        endAt: true,
+        status: true,
+        price: true,
+        depositAmount: true,
+        customerId: true,
+        staffMemberId: true,
+        customer: { select: { firstName: true, lastName: true } },
+        service: { select: { name: true } },
+        staffMember: { select: { invitedEmail: true, user: { select: { name: true } } } },
       },
     }),
-    prisma.staffMember.findMany({
-      where: { businessId: business.id, status: "ACTIVE" },
-      orderBy: { createdAt: "asc" },
-      include: { user: true },
+    prisma.staffMember.count({ where: { businessId: business.id, status: "ACTIVE" } }),
+    prisma.product.findMany({
+      where: { businessId: business.id, reorderThreshold: { not: null } },
+      select: { name: true, quantityOnHand: true, reorderThreshold: true },
     }),
-    prisma.product.findMany({ where: { businessId: business.id } }),
-    // Bounded read: the most recent clients, used to build the "client signals"
-    // list and today's birthdays. The retention % below is computed exactly in
-    // SQL (not from this capped list).
-    prisma.customer.findMany({
-      where: { businessId: business.id },
-      take: 500,
-      include: {
-        appointments: { select: { status: true, price: true, startAt: true }, orderBy: { startAt: "desc" } },
-      },
-    }),
-    // Exact retention: clients with 2+ real visits, over the full base. HOLD is
-    // excluded — a provisional date is not a visit, and counting it would make
-    // one-time clients look like repeats (docs/HOLDS.md).
-    prisma.appointment.groupBy({ by: ["customerId"], _count: true, where: { businessId: business.id, status: { notIn: ["CANCELLED", "NO_SHOW", "HOLD"] } } }),
-    prisma.customer.count({ where: { businessId: business.id } }),
     // Cash actually taken today, ranged on paidAt — when the money moved, not
     // when the appointment happens to sit on the calendar.
     prisma.payment.aggregate({ _sum: { amount: true }, where: incomingWhere(business.id, { from: start, to: end }) }),
     prisma.payment.aggregate({ _sum: { amount: true }, where: refundWhere(business.id, { from: start, to: end }) }),
-    // Per-client settlement, for the "owes you" signal below.
-    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, where: bookingPaymentsWhere(business.id) }),
-    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, where: refundWhere(business.id) }),
     // Paid per appointment — what makes "is this one settled?" answerable, and
     // therefore what makes the queue and the timeline's payment state real.
     prisma.payment.groupBy({ by: ["appointmentId"], _sum: { amount: true }, where: bookingPaymentsWhere(business.id) }),
@@ -239,8 +320,6 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     }),
   ]);
 
-  const paidByCustomer = new Map(paidByCustomerGroups.map((g) => [g.customerId, Number(g._sum.amount ?? 0)]));
-  const refundedByCustomer = new Map(refundByCustomerGroups.map((g) => [g.customerId, Number(g._sum.amount ?? 0)]));
   const paidByAppointment = new Map(
     paidByAppointmentGroups
       .filter((g): g is typeof g & { appointmentId: string } => g.appointmentId != null)
@@ -283,34 +362,10 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
   );
   const nextUp = committedToday.find((appointment) => appointment.startAt > now);
 
-  // --- retention (exact, from SQL aggregates) ---
-  const repeatClients = repeatGroups.filter((g) => g._count >= 2).length;
-  const retention = totalCustomers ? (repeatClients / totalCustomers) * 100 : 0;
-
-  // --- birthdays today (match month + day in tz) ---
-  const todayKey = formatDayMonthInTz(now, timeZone);
-  const birthdaysToday = customers.filter(
-    (customer) => customer.birthdate && formatDayMonthInTz(customer.birthdate, timeZone) === todayKey,
-  );
-
-  // --- inventory ---
+  // --- low-stock products for the decision queue ---
   const lowStock = products.filter(
     (product) => product.reorderThreshold != null && Number(product.quantityOnHand) <= Number(product.reorderThreshold),
   );
-  const inventory: DashInventory[] = [...products]
-    .map((product) => {
-      const qty = Number(product.quantityOnHand);
-      const threshold = product.reorderThreshold != null ? Number(product.reorderThreshold) : qty || 1;
-      return {
-        item: product.name,
-        stock: `${qty % 1 === 0 ? qty : qty.toFixed(1)} in stock`,
-        level: clampPercent(threshold > 0 ? (qty / (threshold * 2)) * 100 : 100),
-        ratio: threshold > 0 ? qty / threshold : Number.POSITIVE_INFINITY,
-      };
-    })
-    .sort((a, b) => a.ratio - b.ratio)
-    .slice(0, 4)
-    .map(({ item, stock, level }) => ({ item, stock, level }));
 
   // --- open minutes today (for capacity math) ---
   const weekdayIndex: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
@@ -324,74 +379,6 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     const [ch, cm] = todayHours.closeTime.split(":").map(Number);
     return Math.max(60, ch * 60 + cm - (oh * 60 + om));
   })();
-
-  // --- staff utilization ---
-  const staff: DashStaff[] = activeStaff.map((member, index) => {
-    const mine = committedToday.filter((appointment) => appointment.staffMemberId === member.id);
-    const bookedMinutes = mine.reduce(
-      (sum, appointment) => sum + Math.max(0, (appointment.endAt.getTime() - appointment.startAt.getTime()) / 60000),
-      0,
-    );
-    const revenue = mine.reduce((sum, appointment) => sum + Number(appointment.price), 0);
-    return {
-      name: member.user?.name ?? member.invitedEmail ?? "Staff member",
-      role: titleCase(member.role),
-      bookedLabel: `${mine.length} today`,
-      bookedPercent: clampPercent((bookedMinutes / openMinutes) * 100),
-      revenue: money(revenue, currency),
-      color: STAFF_COLORS[index % STAFF_COLORS.length],
-    };
-  });
-
-  // --- client signals (prioritise birthday > owed > at-risk > top spender) ---
-  const enrichedClients = customers.map((customer) => {
-    const realisedVisits = customer.appointments.filter((appointment) => REALISED.has(appointment.status));
-    // Spend is money handed over, not value booked. This previously summed
-    // appointment prices, so a client who booked GH₵800 and paid nothing ranked
-    // as the studio's top spender.
-    const spend = collected(paidByCustomer.get(customer.id) ?? 0, refundedByCustomer.get(customer.id) ?? 0);
-    const lastVisit = realisedVisits[0]?.startAt ?? null;
-    return {
-      name: [customer.firstName, customer.lastName].filter(Boolean).join(" "),
-      spend,
-      outstanding: outstanding(
-        customer.appointments
-          .filter((a) => REALISED.has(a.status))
-          .reduce((sum, a) => sum + Number(a.price), 0),
-        paidByCustomer.get(customer.id) ?? 0,
-      ),
-      isBirthday: customer.birthdate ? formatDayMonthInTz(customer.birthdate, timeZone) === todayKey : false,
-      lastVisitDays: lastVisit ? daysBetween(lastVisit, now) : null,
-      tags: customer.tags,
-      note: customer.skinNotes || customer.allergies || null,
-    };
-  });
-
-  const signalScore = (client: (typeof enrichedClients)[number]) => {
-    if (client.isBirthday) return 4;
-    if (client.outstanding > 0) return 3;
-    if (client.lastVisitDays != null && client.lastVisitDays > 45) return 2;
-    return client.spend > 0 ? 1 : 0;
-  };
-
-  const clientSignals: DashClientSignal[] = [...enrichedClients]
-    .sort((a, b) => signalScore(b) - signalScore(a) || b.spend - a.spend)
-    .slice(0, 3)
-    .map((client) => {
-      let tag = client.tags[0] ?? "client";
-      let note = client.note ?? "No notes yet";
-      if (client.isBirthday) {
-        tag = "birthday";
-        note = "Birthday today — send a treat";
-      } else if (client.outstanding > 0) {
-        tag = "owes";
-        note = `Outstanding ${money(client.outstanding, currency)}`;
-      } else if (client.lastVisitDays != null && client.lastVisitDays > 45) {
-        tag = "at risk";
-        note = `No visit in ${client.lastVisitDays} days`;
-      }
-      return { name: client.name, tag, note, spend: money(client.spend, currency) };
-    });
 
   // --- headline stats ---
   // "Booked today" and "Collected today" are deliberately separate tiles. The
@@ -420,58 +407,17 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
       detail: pendingToday.length ? `${pendingToday.length} pending confirmation` : "All confirmed",
       tone: "teal",
     },
-    {
-      label: "Client retention",
-      value: `${Math.round(retention)}%`,
-      detail: `${repeatClients} of ${customers.length} are repeat`,
-      tone: "blue",
-    },
-    {
-      label: "Inventory alerts",
-      value: String(lowStock.length),
-      detail: lowStock.length ? "below reorder point" : "stock healthy",
-      tone: "amber",
-    },
   ];
 
-  // --- studio pulse ---
-  // Each bar now states what it measures. "Bookings" previously divided today's
-  // count by a fabricated `staff × 6` ceiling, so the number meant nothing.
-  const realisedToday = committedToday.filter((a) => REALISED.has(a.status));
   const bookedMinutesToday = committedToday.reduce(
     (sum, a) => sum + Math.max(0, (a.endAt.getTime() - a.startAt.getTime()) / 60000),
     0,
   );
-  const capacityMinutes = Math.max(1, activeStaff.length * openMinutes);
-  // Fully settled means paid, not merely marked complete.
-  const paidCompleted = completedToday.filter((a) => owedOn(a) === 0);
-
-  const pulse: PulseBar[] = [
-    {
-      label: "Bookings",
-      value: clampPercent(committedToday.length ? (realisedToday.length / committedToday.length) * 100 : 0),
-      detail: committedToday.length
-        ? `${realisedToday.length} of ${committedToday.length} confirmed`
-        : "No bookings today",
-    },
-    {
-      label: "Capacity",
-      value: clampPercent((bookedMinutesToday / capacityMinutes) * 100),
-      detail: `${hoursLabel(bookedMinutesToday)} of ${hoursLabel(capacityMinutes)} booked`,
-    },
-    {
-      label: "Checkout",
-      value: clampPercent(completedToday.length ? (paidCompleted.length / completedToday.length) * 100 : 0),
-      detail: completedToday.length
-        ? `${paidCompleted.length} of ${completedToday.length} paid in full`
-        : "Nothing completed yet",
-    },
-  ];
+  const capacityMinutes = Math.max(1, activeStaffCount * openMinutes);
 
   const pills = [
     nextUp ? `Next: ${formatTimeInTz(nextUp.startAt, timeZone)}` : "No more bookings today",
     `${unpaidDeposits.length} unpaid ${unpaidDeposits.length === 1 ? "deposit" : "deposits"}`,
-    `${birthdaysToday.length} ${birthdaysToday.length === 1 ? "birthday" : "birthdays"} today`,
   ];
 
   // --- front desk queue ---
@@ -576,26 +522,8 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     });
   }
 
-  const atRisk = enrichedClients.find((client) => client.lastVisitDays != null && client.lastVisitDays > 45);
-  if (atRisk && queue.length < 6) {
-    queue.push({
-      id: "at-risk-client",
-      priority: "watch",
-      title: `${atRisk.name} hasn't been in for ${atRisk.lastVisitDays} days`,
-      body: "Regulars slip away quietly. A short message now is cheaper than winning them back later.",
-      action: { label: "View clients", path: "clients" },
-    });
-  }
-
   const PRIORITY_ORDER: Record<QueuePriority, number> = { urgent: 0, soon: 1, watch: 2 };
   queue.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
-
-  // Returning clients in today's chair — free, from the retention groups already
-  // fetched. A client with 2+ real visits has been here before.
-  const visitCounts = new Map(repeatGroups.map((g) => [g.customerId, g._count]));
-  const returningToday = new Set(
-    committedToday.filter((a) => (visitCounts.get(a.customerId) ?? 0) >= 2).map((a) => a.customerId),
-  ).size;
 
   const toDashAppointment = (appointment: (typeof scheduleToday)[number]): DashAppointment => ({
     id: appointment.id,
@@ -680,7 +608,7 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     if (freeMinutes < MIN_SELLABLE_GAP) {
       return {
         headline: "Today is fully booked.",
-        sub: `${committedToday.length} ${plural(committedToday.length, "booking")} across ${activeStaff.length} ${plural(activeStaff.length, "team member")} · ${money(bookedToday, currency)} booked.`,
+        sub: `${committedToday.length} ${plural(committedToday.length, "booking")} across ${activeStaffCount} ${plural(activeStaffCount, "team member")} · ${money(bookedToday, currency)} booked.`,
       };
     }
 
@@ -691,25 +619,6 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
         : `${money(bookedToday, currency)} booked, ${money(collectedToday, currency)} collected.`,
     };
   })();
-
-  // 6-week revenue trend for the dashboard mini chart.
-  const DAY = 24 * 60 * 60 * 1000;
-  const trendBounds = Array.from({ length: 6 }, (_unused, idx) => {
-    const i = 5 - idx;
-    return { label: i === 0 ? "Now" : `${i}w`, start: new Date(now.getTime() - (i + 1) * 7 * DAY), end: new Date(now.getTime() - i * 7 * DAY) };
-  });
-  const revTrendAggs = await Promise.all(
-    trendBounds.map((b) =>
-      prisma.payment.aggregate({
-        _sum: { amount: true },
-        where: { businessId: business.id, status: "SUCCESS", type: { not: "REFUND" }, createdAt: { gte: b.start, lt: b.end } },
-      }),
-    ),
-  );
-  const revenueTrend = trendBounds.map((b, i) => {
-    const v = Number(revTrendAggs[i]._sum.amount ?? 0);
-    return { label: b.label, value: v, display: money(v, currency) };
-  });
 
   return {
     tenant: {
@@ -724,21 +633,20 @@ export async function getTenantDashboardData(businessSlug: string): Promise<Tena
     },
     todayLabel: formatLongDateInTz(now, timeZone),
     stats,
-    revenueTrend,
-    pulse,
+    pulse: [],
     hero,
     secondary: {
       freeCapacity: hoursLabel(freeMinutes),
       bookedValue: money(bookedToday, currency),
-      returningToday,
+      returningToday: 0,
       busiest: busiestWindow,
     },
     pills,
     queue,
     timeline,
     appointments,
-    clientSignals,
-    staff,
-    inventory,
+    clientSignals: [],
+    staff: [],
+    inventory: [],
   };
 }

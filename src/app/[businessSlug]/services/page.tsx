@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatTile, statMetaFor, EmptyState, Badge } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { createServiceAction, toggleServiceActiveAction } from "@/lib/service-actions";
 import { getServiceModuleData } from "@/lib/service-data";
 import { requireTenantAccess } from "@/lib/auth";
+import { industryCopy } from "@/lib/industry";
 
 export const dynamic = "force-dynamic";
 
@@ -13,20 +14,27 @@ type ServicesPageProps = {
   params: Promise<{
     businessSlug: string;
   }>;
+  searchParams: Promise<{ new?: string }>;
 };
 
-export default async function ServicesPage({ params }: ServicesPageProps) {
+export default async function ServicesPage({ params, searchParams }: ServicesPageProps) {
   const { businessSlug } = await params;
+  const { new: newParam } = await searchParams;
+  const showNew = newParam === "1";
   await requireTenantAccess(businessSlug);
   const data = await getServiceModuleData(businessSlug);
 
   if (!data) {
     notFound();
   }
+  const copy = industryCopy(data.tenant.categoryKey);
+  const isPackagesPage = copy.nav.services === "Packages";
 
   return (
     <div className="grid gap-5">
-      <PageHeader title="Services" description="The menu you sell — pricing, duration, and categories." />
+      {!isPackagesPage ? (
+        <PageHeader title={copy.pages.serviceTitle} description={copy.pages.serviceDescription} />
+      ) : null}
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
           {data.stats.map((stat) => {
@@ -37,26 +45,26 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
           })}
         </section>
 
-        <section className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-[1080px]:grid-cols-1">
+        <section className="grid gap-5">
           <div className="card p-5">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold">Service menu</h2>
-              <p className="mt-1 text-sm text-muted">
-                Prices, deposits, duration, and the team who can deliver each service.
-              </p>
+                <h2 className="text-lg font-semibold">{copy.pages.serviceMenuTitle}</h2>
+                <p className="mt-1 text-sm text-muted">
+                  {copy.pages.serviceMenuDescription}
+                </p>
             </div>
 
             {data.services.length === 0 ? (
-              <EmptyState icon={Sparkles} title="No services yet" body="Add your first service from the panel on the right." />
+              <EmptyState icon={Sparkles} title={`No ${copy.nav.services.toLowerCase()} yet`} body={`Add your first ${copy.nav.services.toLowerCase().slice(0, -1)} using ${copy.pages.addServiceTitle} below.`} />
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-line">
-                <div className="grid grid-cols-[1.5fr_1fr_100px_90px_120px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[940px]:hidden">
-                  <span>Service</span><span>Team</span><span>Duration</span><span>Bookings</span><span>Price</span>
+              <div className="glass-panel overflow-hidden rounded-[26px]">
+                <div className="grid grid-cols-[1.5fr_1fr_100px_90px_120px_92px] gap-3 bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[940px]:hidden">
+                  <span>{copy.nav.services === "Packages" ? "Package" : "Service"}</span><span>{copy.nav.staff === "Crew" ? "Crew" : "Team"}</span><span>Duration</span><span>Bookings</span><span>Price</span><span></span>
                 </div>
                 {data.services.map((service) => (
                   <div
                     key={service.id}
-                    className={`grid grid-cols-[1.5fr_1fr_100px_90px_120px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[940px]:grid-cols-1 ${
+                    className={`grid grid-cols-[1.5fr_1fr_100px_90px_120px_92px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm max-[940px]:grid-cols-1 max-[940px]:border-t-4 max-[940px]:border-line ${
                       service.isActive ? "" : "opacity-60"
                     }`}
                   >
@@ -68,7 +76,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                               form, and a form inside an anchor is invalid. */}
                           <Link
                             href={`/${businessSlug}/services/${service.id}`}
-                            className="font-semibold text-ink hover:text-plum hover:underline"
+                            className={`${isPackagesPage ? "text-xl sm:text-lg" : "text-sm"} font-semibold leading-tight text-ink hover:text-plum hover:underline`}
                           >
                             {service.name}
                           </Link>
@@ -82,36 +90,37 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                     </div>
                     <div className="font-bold">{service.duration}</div>
                     <div className="font-semibold">{service.bookings}</div>
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <div className="font-semibold">{service.price}</div>
-                        <div className="text-xs font-semibold text-muted">{service.deposit} dep.</div>
-                      </div>
-                      <form action={toggleServiceActiveAction}>
-                        <input type="hidden" name="businessSlug" value={businessSlug} />
-                        <input type="hidden" name="serviceId" value={service.id} />
-                        <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
-                          {service.isActive ? "Retire" : "Restore"}
-                        </button>
-                      </form>
+                    <div className="whitespace-nowrap">
+                      <div className="font-semibold">{service.price}</div>
+                      <div className="text-xs font-semibold text-muted">{service.deposit} dep.</div>
                     </div>
+                    <form action={toggleServiceActiveAction} className="flex justify-end max-[940px]:justify-start">
+                      <input type="hidden" name="businessSlug" value={businessSlug} />
+                      <input type="hidden" name="serviceId" value={service.id} />
+                      <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
+                        {service.isActive ? "Retire" : "Restore"}
+                      </button>
+                    </form>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          <form action={createServiceAction} className="card p-5">
-            <h2 className="text-lg font-semibold">Add service</h2>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              New services become bookable in {data.tenant.name} immediately.
-            </p>
-
-            <input type="hidden" name="businessSlug" value={businessSlug} />
-
-            <div className="mt-5 grid gap-4">
+          <details id="add-service" open={showNew} className="group card overflow-hidden p-0">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+              <div>
+                <h2 className="text-lg font-semibold">{copy.pages.addServiceTitle}</h2>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  New {copy.nav.services.toLowerCase()} become bookable in {data.tenant.name} immediately.
+                </p>
+              </div>
+              <ChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <form action={createServiceAction} className="grid gap-4 border-t border-line-2 p-5">
+              <input type="hidden" name="businessSlug" value={businessSlug} />
               <label className="field-label">
-                Name
+                {copy.nav.services === "Packages" ? "Package name" : "Name"}
                 <input name="name" className="input" required />
               </label>
 
@@ -153,7 +162,7 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
               </label>
 
               <label className="field-label">
-                Assign staff
+                Assign {copy.nav.staff.toLowerCase()}
                 <select name="staffIds" multiple size={Math.min(4, Math.max(2, data.staff.length))} className="input">
                   {data.staff.map((member) => (
                     <option key={member.id} value={member.id}>{member.label}</option>
@@ -162,11 +171,11 @@ export default async function ServicesPage({ params }: ServicesPageProps) {
                 <span className="text-xs font-semibold text-muted">Hold ⌘/Ctrl to select multiple.</span>
               </label>
 
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">
+              <button className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white">
                 Add service
               </button>
-            </div>
-          </form>
+            </form>
+          </details>
         </section>
     </div>
   );

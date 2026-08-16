@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { TenantDashboard } from "@/components/tenant-dashboard";
 import { getTenantDashboardData } from "@/lib/dashboard-data";
 import { requireTenantAccess } from "@/lib/auth";
+import { timeDataLoad } from "@/lib/perf";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ type TenantPageProps = {
 export default async function TenantPage({ params }: TenantPageProps) {
   const { businessSlug } = await params;
   await requireTenantAccess(businessSlug);
-  const data = await getTenantDashboardData(businessSlug);
+  const data = await timeDataLoad(`dashboard:${businessSlug}`, () => getTenantDashboardData(businessSlug));
 
   if (!data) {
     notFound();

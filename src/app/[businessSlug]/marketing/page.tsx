@@ -47,7 +47,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
         </section>
 
         {/* Campaigns + Loyalty */}
-        <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
+        <section className="grid grid-cols-2 gap-5 max-[1080px]:grid-cols-1">
           <div className={cardClass}>
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Campaigns</h2>
@@ -57,7 +57,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
             {data.campaigns.length === 0 ? (
               <EmptyState icon={Megaphone} title="No campaigns yet" body="Create your first campaign below." />
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-line">
+              <div className="glass-panel overflow-hidden rounded-[26px]">
                 <div className="grid grid-cols-[1.6fr_1fr_1fr_100px_90px] px-4 py-2.5 data-head max-[940px]:hidden">
                   <span>Name</span><span>Channel</span><span>Type</span><span>When</span><span>Status</span>
                 </div>
@@ -73,7 +73,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
               </div>
             )}
 
-            <form action={createCampaignAction} className="mt-5 grid gap-3 rounded-2xl border border-line-2 bg-sunken p-4">
+            <form action={createCampaignAction} className="mt-5 grid gap-3 rounded-[24px] border border-white/55 bg-white/40 p-4">
               <input type="hidden" name="businessSlug" value={businessSlug} />
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">New campaign</div>
               <input name="name" placeholder="Campaign name" className={inputClass} required />
@@ -93,8 +93,8 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 Schedule (optional)
                 <input name="scheduledAt" type="datetime-local" className={inputClass} />
               </label>
-              <textarea name="content" rows={2} placeholder="Message content" className="rounded-xl border border-line bg-card px-3.5 py-2.5 text-ink outline-none focus:border-plum" />
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Create campaign</button>
+              <textarea name="content" rows={2} placeholder="Message content" className="rounded-[18px] border border-white/60 bg-white/50 px-3.5 py-2.5 text-ink outline-none focus:border-plum" />
+              <button className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white">Create campaign</button>
             </form>
           </div>
 
@@ -121,13 +121,13 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 <input type="checkbox" name="active" defaultChecked={data.loyalty.active} className="size-4 accent-plum" />
                 Program active
               </label>
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Save program</button>
+              <button className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white">Save program</button>
             </form>
           </div>
         </section>
 
         {/* Coupons + Tiers */}
-        <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
+        <section className="grid grid-cols-2 gap-5 max-[1080px]:grid-cols-1">
           <div className={cardClass}>
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Discount coupons</h2>
@@ -137,7 +137,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
             {data.coupons.length === 0 ? (
               <EmptyState icon={Ticket} title="No coupons yet" body="Create your first coupon below." />
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-line">
+              <div className="glass-panel overflow-hidden rounded-[26px]">
                 <div className="grid grid-cols-[1.3fr_100px_90px_100px_110px] px-4 py-2.5 data-head max-[940px]:hidden">
                   <span>Code</span><span>Discount</span><span>Uses</span><span>Expiry</span><span>Status</span>
                 </div>
@@ -160,7 +160,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
               </div>
             )}
 
-            <form action={createCouponAction} className="mt-5 grid gap-3 rounded-2xl border border-line-2 bg-sunken p-4">
+            <form action={createCouponAction} className="mt-5 grid gap-3 rounded-[24px] border border-white/55 bg-white/40 p-4">
               <input type="hidden" name="businessSlug" value={businessSlug} />
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">New coupon</div>
               <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
@@ -175,7 +175,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 <input name="maxUses" type="number" min="1" step="1" placeholder="Max uses" className={inputClass} />
                 <input name="expiresAt" type="date" className={inputClass} />
               </div>
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Create coupon</button>
+              <button className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white">Create coupon</button>
             </form>
           </div>
 
@@ -204,7 +204,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
               </div>
             )}
 
-            <form action={createTierAction} className="mt-5 grid gap-3 rounded-2xl border border-line-2 bg-sunken p-4">
+            <form action={createTierAction} className="mt-5 grid gap-3 rounded-[24px] border border-white/55 bg-white/40 p-4">
               <input type="hidden" name="businessSlug" value={businessSlug} />
               <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">New tier</div>
               <input name="name" placeholder="Tier name (e.g. Gold)" className={inputClass} required />
@@ -213,7 +213,7 @@ export default async function MarketingPage({ params }: MarketingPageProps) {
                 <input name="discountPercent" type="number" min="0" max="100" step="1" placeholder="Discount %" className={inputClass} />
               </div>
               <input name="perks" placeholder="Perks (optional)" className={inputClass} />
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">Create tier</button>
+              <button className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white">Create tier</button>
             </form>
           </div>
         </section>

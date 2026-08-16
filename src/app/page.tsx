@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Calendar, Users, IdCard, Package, CreditCard, Megaphone, Check, ArrowRight, Sparkles } from "lucide-react";
 import { getPublicPlans } from "@/lib/signup-data";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
 
 const features = [
   { icon: Calendar, title: "Bookings & calendar", body: "Appointments, deposits, waitlist and reminders — one clear day view per artist." },
@@ -28,7 +28,7 @@ export default async function LandingPage() {
         </Link>
         <nav className="flex items-center gap-2">
           <Link href="/login" className="rounded-xl border border-line bg-card px-4 py-2 text-sm font-medium hover:bg-sunken">Sign in</Link>
-          <Link href="/signup" className="rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">Start free</Link>
+          <Link href="/signup" className="rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">Start 7-day trial</Link>
         </nav>
       </header>
 
@@ -43,15 +43,52 @@ export default async function LandingPage() {
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-white/70">
             Bookings, clients, staff, inventory, payments and marketing for salons, makeup artists, lash &amp;
-            brow studios, barbershops and spas. Set up in a minute — free while you trial.
+            brow studios, barbershops and spas. Set up in a minute with a strict 7-day free trial.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="/signup" className="inline-flex items-center gap-1.5 rounded-xl bg-white px-6 py-3 text-sm font-semibold shadow-[0_8px_24px_rgba(0,0,0,0.2)] hover:brightness-95" style={{ color: "#1d1220" }}>
-              Start your free trial <ArrowRight size={16} />
+              Start your 7-day trial <ArrowRight size={16} />
             </Link>
             <Link href="/login" className="rounded-xl border border-white/20 px-6 py-3 text-sm font-semibold text-white hover:bg-white/10">
               Sign in
             </Link>
+          </div>
+          <div className="mt-9 grid max-w-4xl grid-cols-[1.2fr_0.9fr_0.9fr] gap-3 max-[900px]:grid-cols-1">
+            <div className="rounded-2xl border border-white/12 bg-white/[0.07] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">Today</span>
+                <span className="rounded-full bg-rose/15 px-2 py-0.5 text-[11px] font-bold text-rose">3 bookings</span>
+              </div>
+              <div className="mt-4 grid gap-2">
+                {[
+                  ["09:00", "Silk press + trim", "Paid"],
+                  ["10:30", "Soft glam", "Deposit due"],
+                  ["12:00", "Wig install", "Hold"],
+                ].map(([time, service, state]) => (
+                  <div key={`${time}-${service}`} className="grid grid-cols-[52px_minmax(0,1fr)_86px] items-center gap-3 rounded-xl bg-white/[0.06] px-3 py-2 text-sm">
+                    <span className="font-bold text-rose">{time}</span>
+                    <span className="truncate font-semibold text-white">{service}</span>
+                    <span className="truncate text-right text-[11px] font-semibold text-white/50">{state}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/12 bg-white/[0.07] p-4">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">Collected</span>
+              <div className="mt-3 font-serif text-3xl font-semibold">GH₵ 535</div>
+              <div className="mt-1 text-sm text-white/55">GH₵ 1,315 still to collect</div>
+              <div className="mt-4 h-2 rounded-full bg-white/10">
+                <div className="h-2 w-[29%] rounded-full bg-rose" />
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/12 bg-white/[0.07] p-4">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/45">Queue</span>
+              <div className="mt-3 grid gap-2 text-sm font-semibold">
+                <span className="rounded-xl bg-white/[0.06] px-3 py-2 text-white/75">2 unpaid deposits</span>
+                <span className="rounded-xl bg-white/[0.06] px-3 py-2 text-white/75">1 hold expiring</span>
+                <span className="rounded-xl bg-white/[0.06] px-3 py-2 text-white/75">2 stock alerts</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -82,7 +119,7 @@ export default async function LandingPage() {
       <section className="mx-auto max-w-6xl px-6 pb-16 max-[720px]:px-4">
         <h2 className="font-serif text-3xl font-semibold tracking-tight">Simple pricing</h2>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">
-          Start free, then pick the plan that fits. Prices in Ghana Cedis, billed monthly or yearly.
+          Start with 7 days free, then pick the plan that fits. Prices in Ghana Cedis, billed monthly or yearly.
         </p>
         <div className="mt-8 grid grid-cols-2 gap-4 max-[720px]:grid-cols-1">
           {plans.map((plan) => (
@@ -126,7 +163,7 @@ export default async function LandingPage() {
                 }`}
                 style={plan.highlighted ? { color: "#1d1220" } : undefined}
               >
-                Start free trial
+                Start 7-day trial
               </Link>
             </article>
           ))}
@@ -139,7 +176,7 @@ export default async function LandingPage() {
           <span>© {new Date().getFullYear()} Beauty OS · Nanicle Enterprise Solutions</span>
           <div className="flex gap-4">
             <Link href="/login" className="font-medium text-ink hover:text-plum">Sign in</Link>
-            <Link href="/signup" className="font-medium text-ink hover:text-plum">Start free</Link>
+            <Link href="/signup" className="font-medium text-ink hover:text-plum">Start 7-day trial</Link>
           </div>
         </div>
       </footer>

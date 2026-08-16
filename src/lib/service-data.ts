@@ -41,7 +41,7 @@ export type ServiceDetail = {
 export type ServiceWriteResult = { ok: true } | { ok: false; error: string };
 
 export type ServiceModuleData = {
-  tenant: { id: string; name: string; slug: string; currency: string };
+  tenant: { id: string; name: string; slug: string; currency: string; categoryKey: string };
   stats: ServiceStat[];
   services: ServiceRow[];
   categories: ServiceOption[];
@@ -55,6 +55,50 @@ function currencySymbol(currency: string) {
 function money(amount: number, currency: string) {
   return `${currencySymbol(currency)} ${Math.round(amount).toLocaleString("en-US")}`;
 }
+
+const fallbackServiceData: Record<string, ServiceModuleData> = {
+  "osu-glow-studio": {
+    tenant: { id: "sample_osu_glow", name: "Osu Glow Studio", slug: "osu-glow-studio", currency: "GHS", categoryKey: "hair_makeup_nails" },
+    stats: [
+      { label: "Active services", value: "5", detail: "All live" },
+      { label: "Categories", value: "3", detail: "Signature services" },
+      { label: "Average price", value: "GH₵ 546", detail: "Across active services" },
+      { label: "Average duration", value: "1h 44m", detail: "Per service" },
+    ],
+    categories: [
+      { id: "demo-cat-signature", label: "Signature services" },
+      { id: "demo-cat-bridal", label: "Bridal" },
+      { id: "demo-cat-hair", label: "Hair care" },
+    ],
+    staff: [{ id: "demo-staff-nadia", label: "Nadia Mensah" }],
+    services: [
+      { id: "demo-service-1", name: "Silk press + trim", category: "Hair care", price: "GH₵ 420", deposit: "GH₵ 210", duration: "1h 45m", staff: ["Nadia Mensah"], bookings: 18, colorHex: "#8b5cf6", isActive: true },
+      { id: "demo-service-2", name: "Soft glam", category: "Signature services", price: "GH₵ 650", deposit: "GH₵ 325", duration: "1h 30m", staff: ["Nadia Mensah"], bookings: 24, colorHex: "#db2777", isActive: true },
+      { id: "demo-service-3", name: "Wig install", category: "Signature services", price: "GH₵ 780", deposit: "GH₵ 390", duration: "2h 30m", staff: ["Nadia Mensah"], bookings: 12, colorHex: "#6d315f", isActive: true },
+      { id: "demo-service-4", name: "Bridal trial", category: "Bridal", price: "GH₵ 580", deposit: "GH₵ 290", duration: "2h", staff: ["Nadia Mensah"], bookings: 7, colorHex: "#c084fc", isActive: true },
+      { id: "demo-service-5", name: "Brow shape + tint", category: "Signature services", price: "GH₵ 300", deposit: "GH₵ 150", duration: "55m", staff: ["Nadia Mensah"], bookings: 15, colorHex: "#0f766e", isActive: true },
+    ],
+  },
+  "luxe-lash-lab": {
+    tenant: { id: "sample_luxe_lash", name: "Luxe Lash Lab", slug: "luxe-lash-lab", currency: "GHS", categoryKey: "lashes_brows" },
+    stats: [
+      { label: "Active services", value: "3", detail: "All live" },
+      { label: "Categories", value: "2", detail: "Lashes and brows" },
+      { label: "Average price", value: "GH₵ 267", detail: "Across active services" },
+      { label: "Average duration", value: "1h 20m", detail: "Per service" },
+    ],
+    categories: [
+      { id: "demo-cat-lashes", label: "Lashes" },
+      { id: "demo-cat-brows", label: "Brows" },
+    ],
+    staff: [{ id: "demo-staff-mina", label: "Mina Owusu" }],
+    services: [
+      { id: "demo-service-6", name: "Classic lash set", category: "Lashes", price: "GH₵ 360", deposit: "GH₵ 180", duration: "1h 45m", staff: ["Mina Owusu"], bookings: 14, colorHex: "#7c3aed", isActive: true },
+      { id: "demo-service-7", name: "Brow lamination", category: "Brows", price: "GH₵ 220", deposit: "GH₵ 110", duration: "1h", staff: ["Mina Owusu"], bookings: 10, colorHex: "#be185d", isActive: true },
+      { id: "demo-service-8", name: "Lash refill", category: "Lashes", price: "GH₵ 220", deposit: "GH₵ 110", duration: "1h 15m", staff: ["Mina Owusu"], bookings: 21, colorHex: "#0f766e", isActive: true },
+    ],
+  },
+};
 
 export function formatDuration(minutes: number) {
   if (minutes <= 0) {
@@ -72,15 +116,13 @@ export function formatDuration(minutes: number) {
 }
 
 export async function getServiceModuleData(businessSlug: string): Promise<ServiceModuleData | null> {
-  // No demo fallback — inventing a price list when the database is unreachable
-  // would show a studio services it does not offer. Caller 404s instead.
   if (!isDatabaseConfigured()) {
-    return null;
+    return fallbackServiceData[businessSlug] ?? null;
   }
 
   const business = await prisma.business.findUnique({
     where: { slug: businessSlug },
-    select: { id: true, name: true, slug: true, currency: true },
+    select: { id: true, name: true, slug: true, currency: true, category: { select: { key: true } } },
   });
 
   if (!business) {
@@ -133,7 +175,7 @@ export async function getServiceModuleData(businessSlug: string): Promise<Servic
   ];
 
   return {
-    tenant: business,
+    tenant: { id: business.id, name: business.name, slug: business.slug, currency: business.currency, categoryKey: business.category.key },
     stats,
     services: services.map((service) => ({
       id: service.id,

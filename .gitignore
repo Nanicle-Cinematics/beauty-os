@@ -44,3 +44,6 @@ next-env.d.ts
 # local scratch/dev scripts
 _*.mjs
 _mint-session.mjs
+
+# local tool installs (vercel CLI etc.) — not source
+/.tooling

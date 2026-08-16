@@ -9,6 +9,27 @@ function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
 }
 
+async function logoFromForm(formData: FormData) {
+  const remove = getString(formData, "removeLogo") === "true";
+  if (remove) return null;
+
+  const file = formData.get("logoFile");
+  if (file instanceof File && file.size > 0) {
+    if (!file.type.startsWith("image/")) {
+      return { error: "Workspace picture upload must be an image file." };
+    }
+    if (file.size > 750_000) {
+      return { error: "Workspace picture must be 750KB or smaller." };
+    }
+    const bytes = Buffer.from(await file.arrayBuffer());
+    return `data:${file.type};base64,${bytes.toString("base64")}`;
+  }
+
+  const url = getString(formData, "logoUrl").trim();
+  if (url) return url;
+  return getString(formData, "currentLogoUrl");
+}
+
 // requireTenantAccess has already scoped RLS to this tenant, so the membership
 // lookup is limited to the current business.
 // Was: a StaffMember lookup with NO businessId filter, i.e. "is this user a
@@ -24,13 +45,18 @@ export async function updateBusinessDetailsAction(formData: FormData) {
     redirect(`/${slug}/settings?error=${encodeURIComponent("Only owners and managers can change business settings.")}`);
   }
 
+  const logoUrl = await logoFromForm(formData);
+  if (typeof logoUrl === "object" && logoUrl && "error" in logoUrl) {
+    redirect(`/${slug}/settings?error=${encodeURIComponent(logoUrl.error)}`);
+  }
+
   const result = await updateBusinessDetails({
     slug,
     name: getString(formData, "name"),
     description: getString(formData, "description"),
     email: getString(formData, "email"),
     phone: getString(formData, "phone"),
-    logoUrl: getString(formData, "logoUrl"),
+    logoUrl,
     addressLine1: getString(formData, "addressLine1"),
     addressLine2: getString(formData, "addressLine2"),
     city: getString(formData, "city"),

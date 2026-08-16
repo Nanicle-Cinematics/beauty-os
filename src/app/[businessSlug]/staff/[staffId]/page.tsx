@@ -8,6 +8,7 @@ import { getStaffDetail, getServiceOptionsForStaff, BUSINESS_ROLES } from "@/lib
 import { updateStaffProfileAction, setStaffRoleAction } from "@/lib/staff-actions";
 import { requireTenantAccess } from "@/lib/auth";
 import { membershipIn, roleCan } from "@/lib/permissions";
+import { industryCopy, roleLabelForIndustry, roleOptionsForIndustry } from "@/lib/industry";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,8 @@ export default async function StaffDetailPage({ params, searchParams }: StaffDet
 
   const canEdit = roleCan(membership?.role, "staff:edit");
   const canRole = roleCan(membership?.role, "staff:role");
+  const copy = industryCopy(member.categoryKey);
+  const roles = roleOptionsForIndustry(BUSINESS_ROLES, member.categoryKey);
   const symbol = member.commissionType === "FIXED" ? "" : "%";
   // The role card is locked for the sole owner and for editing your own role —
   // both enforced server-side too; this just explains why the control is off.
@@ -43,7 +46,7 @@ export default async function StaffDetailPage({ params, searchParams }: StaffDet
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-5">
-      <PageHeader title={member.name} description="View and manage this team member.">
+      <PageHeader title={member.name} description={`View and manage this ${copy.nav.staff.toLowerCase()} member.`}>
         <Link
           href={`/${businessSlug}/staff`}
           className="inline-flex items-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-muted hover:bg-sunken"
@@ -69,9 +72,9 @@ export default async function StaffDetailPage({ params, searchParams }: StaffDet
       </section>
 
       {!canEdit ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-line bg-sunken px-4 py-3 text-[13px] font-medium text-muted">
+        <div className="flex items-center gap-2.5 rounded-[18px] border border-white/60 bg-white/42 px-4 py-3 text-[13px] font-medium text-muted">
           <ShieldAlert size={15} className="shrink-0 text-faint" />
-          Your role can view this team member but not change their details.
+          Your role can view this {copy.nav.staff.toLowerCase()} member but not change their details.
         </div>
       ) : null}
 
@@ -85,8 +88,8 @@ export default async function StaffDetailPage({ params, searchParams }: StaffDet
           A role decides what this person can do across the whole workspace. Only an owner can change it.
         </p>
         {roleLockReason ? (
-          <div className="mt-3 flex items-center gap-2 rounded-xl border border-line bg-sunken px-3.5 py-2.5 text-[13px] font-medium text-muted">
-            {roleLockReason} Current role: <span className="font-semibold text-ink">{titleCaseRole(member.role)}</span>
+          <div className="mt-3 flex items-center gap-2 rounded-[18px] border border-white/60 bg-white/42 px-3.5 py-2.5 text-[13px] font-medium text-muted">
+            {roleLockReason} Current role: <span className="font-semibold text-ink">{titleCaseRole(member.role, member.categoryKey)}</span>
           </div>
         ) : (
           <form action={setStaffRoleAction} className="mt-3 flex flex-wrap items-end gap-3">
@@ -95,7 +98,7 @@ export default async function StaffDetailPage({ params, searchParams }: StaffDet
             <label className="field-label">
               Role
               <select name="role" defaultValue={member.role} className="input" disabled={!canRole}>
-                {BUSINESS_ROLES.map((r) => (
+                {roles.map((r) => (
                   <option key={r.value} value={r.value}>
                     {r.label}
                   </option>
@@ -146,7 +149,7 @@ export default async function StaffDetailPage({ params, searchParams }: StaffDet
                 </select>
               </label>
               <label className="field-label">
-                Value {symbol ? `(${symbol})` : ""}
+                Commission value {symbol ? `(${symbol})` : ""}
                 <input
                   name="commissionValue"
                   type="number"
@@ -161,7 +164,7 @@ export default async function StaffDetailPage({ params, searchParams }: StaffDet
           </div>
 
           <div className="border-t border-line-2 pt-5">
-            <h2 className="text-[15px] font-semibold">Services</h2>
+            <h2 className="text-[15px] font-semibold">{copy.nav.services}</h2>
             <p className="mt-0.5 text-[12.5px] text-muted">What this person is able to perform.</p>
             {services.length === 0 ? (
               <p className="mt-2 text-[12.5px] text-muted">No services yet.</p>
@@ -209,7 +212,7 @@ export default async function StaffDetailPage({ params, searchParams }: StaffDet
           {canEdit ? (
             <div className="flex flex-wrap gap-2.5 border-t border-line-2 pt-5">
               <SubmitButton
-                className="rounded-2xl bg-gradient-to-r from-plum to-wine px-5 py-3 text-sm font-semibold text-white"
+                className="rounded-2xl primary-action px-5 py-3 text-sm font-semibold text-white"
                 pendingText="Saving…"
               >
                 Save changes
@@ -228,6 +231,6 @@ export default async function StaffDetailPage({ params, searchParams }: StaffDet
   );
 }
 
-function titleCaseRole(role: string) {
-  return BUSINESS_ROLES.find((r) => r.value === role)?.label ?? role;
+function titleCaseRole(role: string, categoryKey?: string | null) {
+  return roleLabelForIndustry(role, categoryKey);
 }

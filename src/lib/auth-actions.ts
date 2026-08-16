@@ -5,14 +5,7 @@ import { cookies } from "next/headers";
 import { signIn, startSession, mfaChallengeCookieName } from "@/lib/auth";
 import { signChallenge, verifyChallenge } from "@/lib/mfa";
 import { verifyMfaCode } from "@/lib/mfa-data";
-
-function safeNextPath(value: FormDataEntryValue | null) {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
-    return "/app";
-  }
-
-  return value;
-}
+import { normalizeInternalPath } from "@/lib/redirects";
 
 async function setChallengeCookie(userId: string) {
   const store = await cookies();
@@ -28,7 +21,8 @@ async function setChallengeCookie(userId: string) {
 export async function loginAction(formData: FormData) {
   const email = String(formData.get("email") ?? "");
   const password = String(formData.get("password") ?? "");
-  const nextPath = safeNextPath(formData.get("next"));
+  const nextValue = formData.get("next");
+  const nextPath = normalizeInternalPath(typeof nextValue === "string" ? nextValue : null);
   const result = await signIn(email, password);
 
   if (result.status === "invalid") {
@@ -44,7 +38,8 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function verifyMfaAction(formData: FormData) {
-  const nextPath = safeNextPath(formData.get("next"));
+  const nextValue = formData.get("next");
+  const nextPath = normalizeInternalPath(typeof nextValue === "string" ? nextValue : null);
   const code = String(formData.get("code") ?? "");
 
   const store = await cookies();

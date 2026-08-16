@@ -47,7 +47,7 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
         </div>
       ) : null}
       {sp.removed ? (
-        <div className="flex items-center gap-2 rounded-xl border border-line bg-sunken px-4 py-3 text-sm font-semibold text-muted">
+        <div className="flex items-center gap-2 rounded-[18px] border border-white/60 bg-white/42 px-4 py-3 text-sm font-semibold text-muted">
           <CheckCircle2 size={16} /> Expense deleted.
         </div>
       ) : null}
@@ -75,7 +75,7 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
           <input name="q" defaultValue={filters.q} placeholder="Description keyword" className="input" />
         </label>
         <div className="flex gap-2">
-          <button className="inline-flex h-11 items-center gap-1.5 rounded-xl bg-gradient-to-r from-plum to-wine px-4 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
+          <button className="inline-flex h-11 items-center gap-1.5 rounded-xl primary-action px-4 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
             <Filter size={15} /> Filter
           </button>
           {hasFilters ? (
@@ -147,7 +147,7 @@ export default async function ExpensesPage({ params, searchParams }: ExpensesPag
             body={hasFilters ? "Try widening your filters or clearing them." : "Log an expense from the Finance overview to see it here."}
           />
         ) : (
-          <div className="overflow-hidden rounded-2xl border border-line">
+          <div className="glass-panel overflow-hidden rounded-[26px]">
             <div className="grid grid-cols-[150px_1fr_130px_110px_84px] px-4 py-2.5 data-head max-[720px]:hidden">
               <span>Category</span><span>Description</span><span>Date</span><span>Amount</span><span className="text-right">Actions</span>
             </div>

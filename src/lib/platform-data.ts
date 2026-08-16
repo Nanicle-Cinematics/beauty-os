@@ -1,6 +1,7 @@
 import "server-only";
 
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
+import { trialEndsAt } from "@/lib/trial";
 
 export type PlatformStat = { label: string; value: string; detail: string };
 
@@ -319,7 +320,7 @@ export async function changeBusinessPlan({
       await tx.subscription.update({ where: { id: business.subscription.id }, data: { planId: plan.id } });
     } else {
       await tx.subscription.create({
-        data: { businessId: business.id, planId: plan.id, billingCycle: "MONTHLY", status: "TRIALING" },
+        data: { businessId: business.id, planId: plan.id, billingCycle: "MONTHLY", status: "TRIALING", trialEndsAt: trialEndsAt() },
       });
     }
     await tx.auditLog.create({

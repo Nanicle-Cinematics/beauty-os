@@ -31,9 +31,9 @@ export function NameNudgeBanner({ slug, currentName }: { slug: string; currentNa
             required
             placeholder="Business name"
             aria-label="Business name"
-            className="h-10 w-44 rounded-xl border border-line bg-card px-3 text-sm text-ink outline-none focus:border-plum"
+            className="h-10 w-44 rounded-[18px] border border-white/60 bg-white/50 px-3 text-sm text-ink outline-none focus:border-plum"
           />
-          <SubmitButton className="h-10 shrink-0 rounded-xl bg-gradient-to-r from-plum to-wine px-4 text-sm font-semibold text-white" pendingText="Saving…">
+          <SubmitButton className="h-10 shrink-0 rounded-xl primary-action px-4 text-sm font-semibold text-white" pendingText="Saving…">
             Save
           </SubmitButton>
         </form>

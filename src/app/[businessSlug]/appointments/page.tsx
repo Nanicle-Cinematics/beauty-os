@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarPlus, BookmarkPlus } from "lucide-react";
+import { CalendarPlus, BookmarkPlus, ChevronDown, Trash2 } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
 import { SubmitButton } from "@/components/submit-button";
@@ -10,14 +10,19 @@ import {
   updateAppointmentStatusAction,
   firmHoldAction,
   releaseHoldAction,
+  deleteAppointmentAction,
 } from "@/lib/appointment-actions";
 import { getAppointmentModuleData } from "@/lib/appointment-data";
 import { requireTenantAccess } from "@/lib/auth";
+import { membershipIn, roleCan } from "@/lib/permissions";
+import { industryCopy } from "@/lib/industry";
+import { timeDataLoad } from "@/lib/perf";
 
 type AppointmentsPageProps = {
   params: Promise<{
     businessSlug: string;
   }>;
+  searchParams: Promise<{ new?: string }>;
 };
 
 const statusOptions = [
@@ -27,96 +32,141 @@ const statusOptions = [
   { label: "Cancel", value: "CANCELLED" },
 ];
 
-export default async function AppointmentsPage({ params }: AppointmentsPageProps) {
+function groupedAppointments(data: Awaited<ReturnType<typeof getAppointmentModuleData>>) {
+  if (!data) return [];
+  const groups = new Map<string, { key: string; label: string; items: typeof data.appointments }>();
+  for (const appointment of data.appointments) {
+    const existing = groups.get(appointment.dateKey);
+    if (existing) {
+      existing.items.push(appointment);
+    } else {
+      groups.set(appointment.dateKey, { key: appointment.dateKey, label: appointment.dateLabel, items: [appointment] });
+    }
+  }
+  return [...groups.values()];
+}
+
+export default async function AppointmentsPage({ params, searchParams }: AppointmentsPageProps) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
-  const data = await getAppointmentModuleData(businessSlug);
+  const { new: newParam } = await searchParams;
+  const showNew = newParam === "1";
+  const user = await requireTenantAccess(businessSlug);
+  const membership = await membershipIn(user, businessSlug);
+  const canDelete = roleCan(membership?.role, "appointments:delete");
+  const data = await timeDataLoad(`appointments:${businessSlug}`, () => getAppointmentModuleData(businessSlug));
 
   if (!data) {
     notFound();
   }
+  const copy = industryCopy(data.tenant.categoryKey);
+  const appointmentGroups = groupedAppointments(data);
 
   return (
     <div className="grid gap-5">
-      <PageHeader title="Appointments" description="Every booking for this business — confirm, complete, and keep the day flowing." />
+      <PageHeader title={copy.pages.appointmentsTitle} description={copy.pages.appointmentsDescription} />
 
-        <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
+        <section className="grid gap-5">
           <div className="card p-5">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold">Schedule</h2>
+              <h2 className="text-lg font-semibold">{copy.pages.scheduleTitle}</h2>
               <p className="mt-1 text-sm text-muted">
-                Tenant-scoped appointment records for this business only.
+                {copy.pages.scheduleDescription}
               </p>
             </div>
 
             {data.appointments.length === 0 ? (
-              <EmptyState icon={CalendarPlus} title="No appointments yet" body="Create your first booking from the panel on the right." />
+              <EmptyState icon={CalendarPlus} title={`No ${copy.nav.appointments.toLowerCase()} yet`} body={`Create your first ${copy.quickAdd.booking.toLowerCase()} with the ${copy.quickAdd.booking} button.`} />
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-line">
-                <div className="grid grid-cols-[82px_1fr_1fr_130px_110px_220px] px-4 py-2.5 data-head max-[940px]:hidden">
-                  <span>Time</span><span>Client</span><span>Service</span><span>Status</span><span>Value</span><span>Actions</span>
-                </div>
-                {data.appointments.map((appointment) => (
-                  <div key={appointment.id} className="grid grid-cols-[82px_1fr_1fr_130px_110px_220px] items-center gap-3 border-t border-line-2 px-4 py-3.5 text-sm max-[940px]:grid-cols-1">
-                    <span className="font-semibold text-plum">{appointment.time}</span>
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <Avatar name={appointment.client} size={30} />
-                      <div className="min-w-0">
-                        <Link href={`/${businessSlug}/appointments/${appointment.id}`} className="truncate font-semibold text-ink hover:text-plum hover:underline">
-                          {appointment.client}
-                        </Link>
-                        <div className="mt-0.5 truncate text-xs text-muted">{appointment.staff}</div>
-                      </div>
+              <div className="grid gap-4">
+                {appointmentGroups.map((group) => (
+                  <div key={group.key} className="glass-panel overflow-hidden rounded-[26px]">
+                    <div className="border-b border-line-2 bg-white/35 px-4 py-3">
+                      <h3 className="text-sm font-semibold text-ink">{group.label}</h3>
+                      <p className="mt-0.5 text-xs font-medium text-muted">
+                        {group.items.length} {group.items.length === 1 ? copy.quickAdd.booking.toLowerCase() : copy.nav.appointments.toLowerCase()}
+                      </p>
                     </div>
-                    <span className="font-medium text-ink">{appointment.service}</span>
-                    <div className="grid gap-1">
-                      <div className="flex flex-wrap items-center gap-1">
-                        <Badge tone={toneForStatus(appointment.status)}>{appointment.status}</Badge>
-                        {appointment.holdQueueLabel ? (
-                          <span className="rounded-full bg-sunken px-2 py-0.5 text-[10.5px] font-semibold text-muted">
-                            {appointment.holdQueueLabel}
-                          </span>
-                        ) : null}
-                      </div>
-                      {appointment.holdExpiryLabel ? (
-                        <span className={`text-[11px] font-medium ${appointment.holdExpired ? "text-danger" : "text-faint"}`}>
-                          {appointment.holdExpiryLabel}
+                    <div className="overflow-x-auto">
+                      <div className="min-w-0 sm:min-w-[680px]">
+                        <div className="hidden grid-cols-[64px_minmax(150px,1.6fr)_minmax(150px,1.3fr)_96px_168px] gap-3 px-4 py-2.5 data-head sm:grid sm:[&>*+*]:border-l sm:[&>*+*]:border-line sm:[&>*+*]:pl-3">
+                          <span>Time</span><span>Client</span><span>Service &amp; status</span><span>Value</span><span>Actions</span>
+                        </div>
+                        {group.items.map((appointment) => (
+                          <div key={appointment.id} className="grid grid-cols-1 gap-3 border-t border-line-2 px-4 py-3.5 text-sm sm:grid-cols-[64px_minmax(150px,1.6fr)_minmax(150px,1.3fr)_96px_168px] sm:[&>*+*]:border-l sm:[&>*+*]:border-line sm:[&>*+*]:pl-3">
+                        <span className="flex items-center font-semibold text-plum">{appointment.time}</span>
+                        <div className="flex min-w-0 items-center gap-2.5">
+                          <Avatar name={appointment.client} size={30} />
+                          <div className="min-w-0">
+                            <Link href={`/${businessSlug}/appointments/${appointment.id}`} className="block truncate font-semibold text-ink hover:text-plum hover:underline">
+                              {appointment.client}
+                            </Link>
+                            <div className="mt-0.5 truncate text-xs text-muted">{appointment.staff}</div>
+                          </div>
+                        </div>
+                        <div className="flex min-w-0 flex-col justify-center gap-1">
+                          <span className="truncate font-medium text-ink">{appointment.service}</span>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Badge tone={toneForStatus(appointment.status)}>{appointment.status}</Badge>
+                            {appointment.holdQueueLabel ? (
+                              <span className="rounded-full bg-sunken px-2 py-0.5 text-[10.5px] font-semibold text-muted">
+                                {appointment.holdQueueLabel}
+                              </span>
+                            ) : null}
+                            {appointment.holdExpiryLabel ? (
+                              <span className={`text-[11px] font-medium ${appointment.holdExpired ? "text-danger" : "text-faint"}`}>
+                                {appointment.holdExpiryLabel}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <span className={`flex items-center font-semibold ${appointment.isHold ? "text-faint" : "text-ink"}`}>
+                          {appointment.value}
                         </span>
-                      ) : null}
-                    </div>
-                    <span className={`font-semibold ${appointment.isHold ? "text-faint" : "text-ink"}`}>
-                      {appointment.value}
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {appointment.isHold ? (
-                        <>
-                          <form action={firmHoldAction}>
-                            <input type="hidden" name="businessSlug" value={businessSlug} />
-                            <input type="hidden" name="appointmentId" value={appointment.id} />
-                            <button className="rounded-lg border border-plum-line bg-plum-soft px-2.5 py-1.5 text-xs font-semibold text-plum hover:bg-plum hover:text-white">
-                              Confirm hold
-                            </button>
-                          </form>
-                          <form action={releaseHoldAction}>
-                            <input type="hidden" name="businessSlug" value={businessSlug} />
-                            <input type="hidden" name="appointmentId" value={appointment.id} />
-                            <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-danger/30 hover:bg-danger-soft hover:text-danger">
-                              Release
-                            </button>
-                          </form>
-                        </>
-                      ) : (
-                        statusOptions.map((option) => (
-                          <form key={option.value} action={updateAppointmentStatusAction}>
-                            <input type="hidden" name="businessSlug" value={businessSlug} />
-                            <input type="hidden" name="appointmentId" value={appointment.id} />
-                            <input type="hidden" name="status" value={option.value} />
-                            <button className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
-                              {option.label}
-                            </button>
-                          </form>
-                        ))
-                      )}
+                        <div className="grid grid-cols-2 content-center gap-1.5">
+                          {appointment.isHold ? (
+                            <>
+                              <form action={firmHoldAction}>
+                                <input type="hidden" name="businessSlug" value={businessSlug} />
+                                <input type="hidden" name="appointmentId" value={appointment.id} />
+                                <button className="w-full rounded-lg border border-plum-line bg-plum-soft px-2 py-1.5 text-xs font-semibold text-plum hover:bg-plum hover:text-white">
+                                  Confirm
+                                </button>
+                              </form>
+                              <form action={releaseHoldAction}>
+                                <input type="hidden" name="businessSlug" value={businessSlug} />
+                                <input type="hidden" name="appointmentId" value={appointment.id} />
+                                <button className="w-full rounded-lg border border-line px-2 py-1.5 text-xs font-medium text-muted hover:border-danger/30 hover:bg-danger-soft hover:text-danger">
+                                  Release
+                                </button>
+                              </form>
+                            </>
+                          ) : (
+                            <>
+                              {statusOptions.map((option) => (
+                                <form key={option.value} action={updateAppointmentStatusAction}>
+                                  <input type="hidden" name="businessSlug" value={businessSlug} />
+                                  <input type="hidden" name="appointmentId" value={appointment.id} />
+                                  <input type="hidden" name="status" value={option.value} />
+                                  <button className="w-full rounded-lg border border-line px-2 py-1.5 text-xs font-medium text-muted hover:border-plum-line hover:bg-plum-soft hover:text-plum">
+                                    {option.label}
+                                  </button>
+                                </form>
+                              ))}
+                              {canDelete ? (
+                                <form action={deleteAppointmentAction} className="col-span-2">
+                                  <input type="hidden" name="businessSlug" value={businessSlug} />
+                                  <input type="hidden" name="appointmentId" value={appointment.id} />
+                                  <button className="inline-flex w-full items-center justify-center gap-1 rounded-lg border border-danger/25 bg-danger-soft px-2 py-1.5 text-xs font-semibold text-danger hover:bg-danger hover:text-white">
+                                    <Trash2 size={12} /> Delete
+                                  </button>
+                                </form>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -124,15 +174,32 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
             )}
           </div>
 
-          <form action={createAppointmentAction} className="card p-5">
-            <h2 className="text-lg font-semibold">Create booking</h2>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Books {data.tenant.name} — or holds the date provisionally if the client hasn&apos;t committed yet.
-            </p>
-
-            <input type="hidden" name="businessSlug" value={businessSlug} />
-
-            <div className="mt-5 grid gap-4">
+          <details id="new-booking" open={showNew} className="group card overflow-hidden p-0">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+              <div>
+                <h2 className="text-lg font-semibold">{copy.pages.createBookingTitle}</h2>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  Books {data.tenant.name} — or holds the date provisionally if the client hasn&apos;t committed yet.
+                </p>
+              </div>
+              <ChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <form action={createAppointmentAction} className="grid gap-4 border-t border-line-2 p-5">
+              <input type="hidden" name="businessSlug" value={businessSlug} />
+              <div className="grid gap-3 rounded-[24px] border border-white/55 bg-white/32 p-4 text-sm sm:grid-cols-3">
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-plum">1. Pick client</div>
+                  <p className="mt-1 text-xs leading-5 text-muted">Search existing clients or type a new name.</p>
+                </div>
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-plum">2. Choose service</div>
+                  <p className="mt-1 text-xs leading-5 text-muted">Price can stay automatic or be adjusted.</p>
+                </div>
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-[0.12em] text-plum">3. Confirm or hold</div>
+                  <p className="mt-1 text-xs leading-5 text-muted">Confirmed bookings collect deposit; holds reserve only.</p>
+                </div>
+              </div>
               <label className="field-label">
                 Client
                 <Combobox name="customer" options={data.customers.map((customer) => customer.label)} required placeholder="Search or type a new client…" />
@@ -162,7 +229,7 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
                 <input
                   name="startAt"
                   type="datetime-local"
-                  defaultValue="2026-07-13T14:00"
+                  defaultValue={data.defaultStartAtLocal}
                   className="input"
                   required
                 />
@@ -192,11 +259,11 @@ export default async function AppointmentsPage({ params }: AppointmentsPageProps
                 </div>
               </div>
 
-              <SubmitButton className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white" pendingText="Saving…">
+              <SubmitButton className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white" pendingText="Saving…">
                 Add to calendar
               </SubmitButton>
-            </div>
-          </form>
+            </form>
+          </details>
         </section>
     </div>
   );

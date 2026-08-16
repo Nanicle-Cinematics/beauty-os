@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatTile, statMetaFor, Badge, toneForStatus, Avatar } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { inviteStaffAction, setStaffStatusAction } from "@/lib/staff-actions";
 import { getStaffModuleData } from "@/lib/staff-data";
 import { requireTenantAccess } from "@/lib/auth";
+import { industryCopy } from "@/lib/industry";
 
 export const dynamic = "force-dynamic";
 
@@ -41,10 +43,11 @@ export default async function StaffPage({ params }: StaffPageProps) {
   if (!data) {
     notFound();
   }
+  const copy = industryCopy(data.tenant.categoryKey);
 
   return (
     <div className="grid gap-5">
-      <PageHeader title="Staff" description="Your team — roles, access, and who is on the floor." />
+      <PageHeader title={copy.pages.staffTitle} description={copy.pages.staffDescription} />
 
         <section className="grid grid-cols-4 gap-4 max-[1080px]:grid-cols-2 max-[640px]:grid-cols-1">
           {data.stats.map((stat) => {
@@ -55,17 +58,17 @@ export default async function StaffPage({ params }: StaffPageProps) {
           })}
         </section>
 
-        <section className="grid grid-cols-[minmax(0,1fr)_380px] gap-5 max-[1080px]:grid-cols-1">
+        <section className="grid gap-5">
           <div className="card p-5">
             <div className="mb-4">
-              <h2 className="text-lg font-semibold">Team roster</h2>
+              <h2 className="text-lg font-semibold">{copy.pages.staffRosterTitle}</h2>
               <p className="mt-1 text-sm text-muted">
-                Roles, commission, workload, and revenue for this business.
+                {copy.pages.staffRosterDescription}
               </p>
             </div>
 
-            <div className="overflow-hidden rounded-2xl border border-line">
-              <div className="grid grid-cols-[1.5fr_1fr_110px_80px_120px_150px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[980px]:hidden">
+            <div className="glass-panel overflow-hidden rounded-[26px]">
+              <div className="grid grid-cols-[1.5fr_1fr_110px_80px_120px_150px] gap-3 bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[980px]:hidden">
                 <span>Member</span><span>Role</span><span>Commission</span><span>Books</span><span>Revenue</span><span>Status</span>
               </div>
               {data.staff.map((member) => (
@@ -105,15 +108,23 @@ export default async function StaffPage({ params }: StaffPageProps) {
             </div>
           </div>
 
-          <form action={inviteStaffAction} className="card p-5">
-            <h2 className="text-lg font-semibold">Invite staff</h2>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Invites join {data.tenant.name} as pending until activated.
-            </p>
+          <details id="invite-staff" className="group card overflow-hidden p-0">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+              <div>
+                <h2 className="text-lg font-semibold">Invite {copy.nav.staff.toLowerCase()}</h2>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  Invites join {data.tenant.name} as pending until activated.
+                </p>
+              </div>
+              <ChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <form action={inviteStaffAction} className="grid gap-4 border-t border-line-2 p-5">
+              <input type="hidden" name="businessSlug" value={businessSlug} />
+              <label className="field-label">
+                Name
+                <input name="name" className="input" placeholder="e.g. Nadia Mensah" />
+              </label>
 
-            <input type="hidden" name="businessSlug" value={businessSlug} />
-
-            <div className="mt-5 grid gap-4">
               <label className="field-label">
                 Email
                 <input name="email" type="email" className="input" required />
@@ -138,7 +149,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
                   </select>
                 </label>
                 <label className="field-label">
-                  Value
+                  Commission value
                   <input name="commissionValue" type="number" min="0" step="0.01" placeholder="e.g. 15" className="input" />
                 </label>
               </div>
@@ -153,11 +164,11 @@ export default async function StaffPage({ params }: StaffPageProps) {
                 <textarea name="bio" rows={2} className="input" />
               </label>
 
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">
+              <button className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white">
                 Send invite
               </button>
-            </div>
-          </form>
+            </form>
+          </details>
         </section>
     </div>
   );

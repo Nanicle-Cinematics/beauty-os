@@ -60,7 +60,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
       ) : null}
 
       {!canEdit ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-line bg-sunken px-4 py-3 text-[13px] font-medium text-muted">
+        <div className="flex items-center gap-2.5 rounded-[18px] border border-white/60 bg-white/42 px-4 py-3 text-[13px] font-medium text-muted">
           <ShieldAlert size={15} className="shrink-0 text-faint" />
           Your role can view this service but not change its pricing or setup.
         </div>
@@ -198,7 +198,7 @@ export default async function ServiceDetailPage({ params, searchParams }: Servic
           {canEdit ? (
             <div className="flex flex-wrap gap-2.5 border-t border-line-2 pt-5">
               <SubmitButton
-                className="rounded-2xl bg-gradient-to-r from-plum to-wine px-5 py-3 text-sm font-semibold text-white"
+                className="rounded-2xl primary-action px-5 py-3 text-sm font-semibold text-white"
                 pendingText="Saving…"
               >
                 Save changes

@@ -60,13 +60,15 @@ function fallbackWorkspacesForUser(user: AppUser): WorkspaceSummary[] {
 export type TenantChrome = {
   name: string;
   slug: string;
+  logoUrl: string | null;
+  categoryKey: string;
   planName: string;
   status: string;
   isTrial: boolean;
   namePlaceholder: boolean;
   staffSeats: number;
   branchCount: number;
-  account: { email: string; canSwitch: boolean; isAdmin: boolean };
+  account: { email: string; name: string; avatarUrl: string | null; themePreference: string; canSwitch: boolean; isAdmin: boolean };
 };
 
 // Lightweight data for the shared app shell (sidebar plan card + account footer).
@@ -81,19 +83,29 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
     return {
       name: current.name,
       slug: current.slug,
+      logoUrl: null,
+      categoryKey: "hair_makeup_nails",
       planName: current.plan,
       status: current.status,
       isTrial: current.status.toLowerCase() === "trial",
       namePlaceholder: false,
       staffSeats: current.slug === "osu-glow-studio" ? 6 : 3,
       branchCount: 1,
-      account: { email: user.email, canSwitch: user.isPlatformAdmin, isAdmin: user.isPlatformAdmin },
+      account: {
+        email: user.email,
+        name: user.name,
+        avatarUrl: user.avatarUrl,
+        themePreference: user.themePreference,
+        canSwitch: user.isPlatformAdmin,
+        isAdmin: user.isPlatformAdmin,
+      },
     };
   }
 
   const business = await prisma.business.findUnique({
     where: { slug },
     include: {
+      category: true,
       subscription: { include: { plan: true } },
       _count: { select: { staff: true } },
     },
@@ -116,13 +128,22 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
   return {
     name: business.name,
     slug: business.slug,
+    logoUrl: business.logoUrl,
+    categoryKey: business.category.key,
     planName: business.subscription?.plan.name ?? "No plan",
     status: readableStatus(business.status),
     isTrial: business.status === "TRIAL",
     namePlaceholder: business.namePlaceholder,
     staffSeats: business._count.staff,
     branchCount: 1,
-    account: { email: user.email, canSwitch, isAdmin: user.isPlatformAdmin },
+    account: {
+      email: user.email,
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      themePreference: user.themePreference,
+      canSwitch,
+      isAdmin: user.isPlatformAdmin,
+    },
   };
 }
 
@@ -165,4 +186,3 @@ export async function getWorkspaceSummaries(user: AppUser): Promise<WorkspaceSum
     status: readableStatus(business.status),
   }));
 }
-

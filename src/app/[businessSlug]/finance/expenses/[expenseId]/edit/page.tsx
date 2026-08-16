@@ -65,7 +65,7 @@ export default async function EditExpensePage({ params, searchParams }: EditExpe
         </label>
 
         <div className="flex gap-2">
-          <button className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-plum to-wine px-5 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
+          <button className="inline-flex items-center gap-1.5 rounded-xl primary-action px-5 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
             <Save size={15} /> Save changes
           </button>
           <Link href={`/${businessSlug}/finance/expenses`} className="inline-flex items-center rounded-xl border border-line px-5 py-3 text-sm font-medium text-muted hover:bg-sunken">

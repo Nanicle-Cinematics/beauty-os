@@ -54,7 +54,7 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
       ) : null}
 
       {!campaign.editable ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-sunken px-4 py-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-[18px] border border-white/60 bg-white/42 px-4 py-3">
           <Badge tone="success">Sent</Badge>
           <span className="text-[13px] font-medium text-muted">This campaign has been sent, so it&apos;s read-only — a record of what went out.</span>
         </div>
@@ -104,7 +104,7 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
           </label>
           {canEdit ? (
             <div className="flex flex-wrap gap-2.5 border-t border-line-2 pt-4">
-              <SubmitButton className="rounded-2xl bg-gradient-to-r from-plum to-wine px-5 py-3 text-sm font-semibold text-white" pendingText="Saving…">Save changes</SubmitButton>
+              <SubmitButton className="rounded-2xl primary-action px-5 py-3 text-sm font-semibold text-white" pendingText="Saving…">Save changes</SubmitButton>
               <Link href={`/${businessSlug}/marketing`} className="rounded-2xl border border-line px-5 py-3 text-sm font-semibold text-muted hover:bg-sunken">Cancel</Link>
             </div>
           ) : null}
@@ -132,7 +132,7 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
             <input type="hidden" name="businessSlug" value={businessSlug} />
             <input type="hidden" name="campaignId" value={campaign.id} />
             <SubmitButton
-              className="inline-flex items-center gap-1.5 rounded-2xl bg-gradient-to-r from-plum to-wine px-5 py-3 text-sm font-semibold text-white"
+              className="inline-flex items-center gap-1.5 rounded-2xl primary-action px-5 py-3 text-sm font-semibold text-white"
               pendingText="Sending…"
             >
               <Send size={15} /> {channelLive ? "Send campaign" : "Send in test mode"}
@@ -154,7 +154,7 @@ export default async function CampaignDetailPage({ params, searchParams }: Props
           </form>
         </section>
       ) : !roleCan(membership?.role, "marketing:edit") ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-line bg-sunken px-4 py-3 text-[13px] font-medium text-muted">
+        <div className="flex items-center gap-2.5 rounded-[18px] border border-white/60 bg-white/42 px-4 py-3 text-[13px] font-medium text-muted">
           <ShieldAlert size={15} className="shrink-0 text-faint" /> Your role can view this campaign but not change it.
         </div>
       ) : null}

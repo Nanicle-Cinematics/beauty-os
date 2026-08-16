@@ -10,12 +10,12 @@ import {
   CheckCircle2,
   Sparkles,
   ListChecks,
-  Package,
   Cake,
   Coins,
-  TrendingUp,
+  CalendarPlus,
+  UserPlus,
+  ReceiptText,
 } from "lucide-react";
-import { TrendChart } from "@/components/trend-chart";
 import { Badge } from "@/components/ui";
 import type { TenantDashboardData, DashStat, QueuePriority } from "@/lib/dashboard-data";
 
@@ -34,7 +34,7 @@ const statIcon: Record<string, typeof Wallet> = {
 const statAccent: Record<string, string> = {
   rose: "bg-plum-soft text-plum",
   teal: "bg-success-soft text-success",
-  blue: "bg-[#eef1f6] text-[#4a5b7a]",
+  blue: "bg-aqua/12 text-[#236f89]",
   amber: "bg-warning-soft text-warning",
 };
 
@@ -43,7 +43,7 @@ function statusTone(status: string): string {
   if (s.includes("complete")) return "bg-success-soft text-success";
   if (s.includes("cancel") || s.includes("no")) return "bg-danger-soft text-danger";
   if (s.includes("pending") || s.includes("wait")) return "bg-warning-soft text-warning";
-  if (s.includes("service") || s.includes("checked")) return "bg-[#eef1f6] text-[#4a5b7a]";
+  if (s.includes("service") || s.includes("checked")) return "bg-aqua/12 text-[#236f89]";
   return "bg-plum-soft text-plum";
 }
 
@@ -60,10 +60,10 @@ const queueTone: Record<QueuePriority, { chip: string; rail: string; label: stri
 function StatCard({ stat }: { stat: DashStat }) {
   const Icon = statIcon[stat.tone] ?? Coins;
   return (
-    <article className="card p-5 transition hover:shadow-[var(--shadow-lift)]">
+    <article className="card p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]">
       <div className="flex items-center justify-between">
         <span className="text-[12px] font-medium text-muted">{stat.label}</span>
-        <span className={`grid size-8 place-items-center rounded-xl ${statAccent[stat.tone] ?? "bg-plum-soft text-plum"}`}>
+        <span className={`icon-chip grid size-9 place-items-center rounded-2xl ${statAccent[stat.tone] ?? "bg-plum-soft text-plum"}`}>
           <Icon size={16} />
         </span>
       </div>
@@ -74,8 +74,9 @@ function StatCard({ stat }: { stat: DashStat }) {
 }
 
 export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
-  const { hero, secondary, stats, pulse, pills, queue, timeline, clientSignals, staff, inventory } = data;
+  const { hero, secondary, stats, pills, queue, timeline } = data;
   const urgentCount = queue.filter((item) => item.priority === "urgent").length;
+  const visibleStats = stats.filter((stat) => stat.label !== "Client retention").slice(0, 3);
 
   // When there's nothing to chase, say what IS true rather than showing a void.
   const calmSummary = (() => {
@@ -94,52 +95,58 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
     if (p.includes("birthday")) return Cake;
     return Clock;
   };
+  const quickActions = [
+    { label: "New booking", href: `/${businessSlug}/appointments?new=1#new-booking`, icon: CalendarPlus },
+    { label: "Add client", href: `/${businessSlug}/clients?new=1#add-client`, icon: UserPlus },
+    { label: "Record payment", href: `/${businessSlug}/payments?new=1#record-payment`, icon: Coins },
+    { label: "New invoice", href: `/${businessSlug}/invoices/new`, icon: ReceiptText },
+  ];
 
   return (
     <div className="animate-fade-up grid gap-5">
-      {/* Command row: Studio Pulse + Front Desk Queue */}
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {quickActions.map((action) => {
+          const Icon = action.icon;
+          return (
+            <Link
+              key={action.label}
+              href={action.href}
+              className="glass-panel flex min-h-20 flex-col items-center justify-center gap-2 rounded-[24px] px-4 py-4 text-center text-[14px] font-semibold text-ink transition hover:border-plum-line hover:bg-white/65 hover:text-plum sm:min-h-24"
+            >
+              <span className="icon-chip grid size-10 place-items-center rounded-[18px] bg-plum-soft text-plum">
+                <Icon size={20} />
+              </span>
+              <span className="truncate">{action.label}</span>
+            </Link>
+          );
+        })}
+      </section>
+
+      {/* Command row: daily summary + Front Desk Queue */}
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.3fr)_minmax(340px,0.85fr)]">
-        <div className="relative overflow-hidden rounded-[var(--radius-card)] text-white shadow-[var(--shadow-lift)]">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_88%_-10%,rgba(198,120,155,0.32),transparent_16rem),linear-gradient(135deg,#1d1220,#2a172b_55%,#54213f)]" />
-          <div className="relative grid gap-6 p-6 md:grid-cols-[minmax(0,1fr)_220px] md:p-7">
-            <div className="flex flex-col justify-between gap-6">
-              <div>
-                <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-rose">
-                  <Sparkles size={12} /> {data.todayLabel}
-                </div>
-                <h2 className="font-serif text-[30px] font-semibold leading-[1.1] tracking-tight md:text-[34px]">
-                  {hero.headline}
-                </h2>
-                <p className="mt-3 max-w-md text-[13.5px] leading-6 text-white/65">{hero.sub}</p>
+        <div className="brand-dark relative overflow-hidden rounded-[var(--radius-card)] text-white shadow-[var(--shadow-lift)]">
+          <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.12),transparent_30%),radial-gradient(circle_at_82%_8%,rgba(255,255,255,0.18),transparent_15rem)]" />
+          <div className="absolute right-6 top-6 hidden h-28 w-28 rounded-[36px] border border-white/15 bg-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] backdrop-blur-xl md:block" />
+          <div className="absolute right-20 top-20 hidden h-24 w-24 rounded-[32px] border border-white/10 bg-aqua/15 backdrop-blur-xl md:block" />
+          <div className="relative flex min-h-[260px] flex-col justify-between gap-8 p-6 md:p-7">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/14 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/78 backdrop-blur">
+                <Sparkles size={12} /> {data.todayLabel}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {pills.map((pill) => {
-                  const PillIcon = pillIcon(pill);
-                  return (
-                    <span key={pill} className="inline-flex items-center gap-1.5 rounded-full bg-white/[0.09] px-3 py-1.5 text-[12px] font-medium text-white/85">
-                      <PillIcon size={13} className="text-rose" /> {pill}
-                    </span>
-                  );
-                })}
-              </div>
+              <h2 className="max-w-2xl font-serif text-[32px] font-semibold leading-[1.1] tracking-tight md:text-[38px]">
+                {hero.headline}
+              </h2>
+              <p className="mt-3 max-w-xl text-[14px] leading-6 text-white/68">{hero.sub}</p>
             </div>
-            <div className="rounded-2xl border border-white/[0.1] bg-white/[0.06] p-4 backdrop-blur">
-              <div className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-white/50">Studio pulse</div>
-              <div className="mt-4 grid gap-3.5">
-                {pulse.map((bar) => (
-                  <div key={bar.label}>
-                    <div className="mb-1.5 flex justify-between text-[12px] font-medium">
-                      <span className="text-white/75">{bar.label}</span>
-                      <span className="font-semibold">{bar.value}%</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-white/12">
-                      <div className="h-full rounded-full bg-gradient-to-r from-rose to-mauve" style={{ width: `${bar.value}%` }} />
-                    </div>
-                    {/* The figure behind the percentage — "50%" alone says nothing. */}
-                    <div className="mt-1.5 text-[11px] font-medium text-white/45">{bar.detail}</div>
-                  </div>
-                ))}
-              </div>
+            <div className="flex flex-wrap gap-2">
+              {pills.map((pill) => {
+                const PillIcon = pillIcon(pill);
+                return (
+                  <span key={pill} className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.12] px-3 py-1.5 text-[12px] font-medium text-white/86 backdrop-blur">
+                    <PillIcon size={13} className="text-aqua" /> {pill}
+                  </span>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -164,8 +171,8 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
           </div>
           {queue.length === 0 ? (
             // Calm state, not an empty one: say what's true rather than showing a void.
-            <div className="mt-5 flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-plum-softer px-4 py-8 text-center">
-              <span className="grid size-11 place-items-center rounded-full bg-success-soft text-success">
+            <div className="glass-panel mt-5 flex flex-1 flex-col items-center justify-center rounded-[26px] border-dashed px-4 py-8 text-center">
+              <span className="icon-chip grid size-12 place-items-center rounded-[22px] bg-success-soft text-success">
                 <CheckCircle2 size={20} />
               </span>
               <div className="mt-3 text-[13.5px] font-semibold text-ink">Nothing needs a decision</div>
@@ -178,7 +185,7 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
                 return (
                   <article
                     key={item.id}
-                    className="relative overflow-hidden rounded-xl border border-line-2 bg-card p-3 pl-4 transition hover:border-plum-line hover:shadow-[var(--shadow-soft)]"
+                    className="relative overflow-hidden rounded-[20px] border border-white/55 bg-white/45 p-3 pl-4 transition hover:border-plum-line hover:bg-white/68 hover:shadow-[var(--shadow-soft)]"
                   >
                     <span className={`absolute inset-y-0 left-0 w-1 ${tone.rail}`} aria-hidden />
                     <div className="flex items-start justify-between gap-2">
@@ -203,49 +210,32 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
       </section>
 
       {/* KPI row */}
-      <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map((stat) => (
+      <section className="grid gap-4 sm:grid-cols-3">
+        {visibleStats.map((stat) => (
           <StatCard key={stat.label} stat={stat} />
         ))}
       </section>
 
-      {data.revenueTrend && data.revenueTrend.length > 0 ? (
-        <section className="card p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <span className="grid size-8 place-items-center rounded-xl bg-plum-soft text-plum"><TrendingUp size={16} /></span>
-            <div>
-              <h2 className="text-[15px] font-semibold">Revenue trend</h2>
-              <p className="text-[12px] text-muted">Weekly takings over the last 6 weeks — hover for exact figures.</p>
-            </div>
-          </div>
-          <TrendChart
-            height={180}
-            ariaLabel="Weekly revenue over the last 6 weeks"
-            series={[{ name: "Revenue", color: "var(--plum)", points: data.revenueTrend }]}
-          />
-        </section>
-      ) : null}
-
-      {/* Schedule + client signals */}
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.9fr)]">
+      {/* Schedule */}
+      <section>
         <div className="card p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-[15px] font-semibold">Next up today</h2>
               <p className="mt-0.5 text-[12.5px] text-muted">What&apos;s left of the day, in order — including the gaps.</p>
             </div>
-            <Link href={`/${businessSlug}/calendar`} className="inline-flex items-center gap-1 rounded-xl border border-line px-3 py-2 text-[12.5px] font-semibold text-ink hover:bg-sunken">
+            <Link href={`/${businessSlug}/calendar`} className="inline-flex items-center gap-1 rounded-2xl border border-white/65 bg-white/45 px-3 py-2 text-[12.5px] font-semibold text-ink hover:bg-white/70">
               Calendar <ArrowUpRight size={14} />
             </Link>
           </div>
           {timeline.length === 0 ? (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-plum-softer px-4 py-10 text-center">
-              <span className="grid size-11 place-items-center rounded-full bg-plum-soft text-plum">
+            <div className="glass-panel flex flex-col items-center justify-center rounded-[26px] border-dashed px-4 py-10 text-center">
+              <span className="icon-chip grid size-12 place-items-center rounded-[22px] bg-plum-soft text-plum">
                 <CalendarCheck size={20} />
               </span>
               <div className="mt-3 text-[13.5px] font-semibold">Nothing left today</div>
               <p className="mt-1 text-[12.5px] text-muted">The rest of the day is clear.</p>
-              <Link href={`/${businessSlug}/appointments`} className="mt-4 rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-2 text-[12.5px] font-semibold text-white">
+              <Link href={`/${businessSlug}/appointments`} className="primary-action mt-4 rounded-2xl px-4 py-2 text-[12.5px] font-semibold text-white">
                 Create booking
               </Link>
             </div>
@@ -257,7 +247,7 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
                 entry.kind === "gap" ? (
                   <li
                     key={entry.id}
-                    className="flex items-center gap-3 rounded-xl border border-dashed border-line bg-sunken/60 px-4 py-2.5"
+                    className="flex items-center gap-3 rounded-[20px] border border-dashed border-line bg-white/38 px-4 py-2.5"
                   >
                     <Clock size={13} className="shrink-0 text-faint" />
                     <span className="text-[12px] font-semibold text-muted">{entry.label}</span>
@@ -266,7 +256,7 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
                 ) : (
                   <li
                     key={entry.id}
-                    className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line-2 bg-card px-4 py-3 transition hover:border-plum-line"
+                    className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[20px] border border-white/55 bg-white/45 px-4 py-3 transition hover:border-plum-line hover:bg-white/68"
                   >
                     <span className="w-[52px] shrink-0 text-[13px] font-semibold text-plum">{entry.time}</span>
                     <div className="min-w-0 flex-1">
@@ -284,110 +274,6 @@ export function TenantDashboard({ data, businessSlug }: TenantDashboardProps) {
                 ),
               )}
             </ol>
-          )}
-        </div>
-
-        <div className="card p-5">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-            <Users size={17} className="text-plum" /> Client retention
-          </h2>
-          <p className="mt-0.5 text-[12.5px] text-muted">Who to bring back before they lapse.</p>
-          {clientSignals.length === 0 ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-line bg-plum-softer px-4 py-8 text-center text-[12.5px] text-muted">
-              No client signals to surface yet.
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-2.5">
-              {clientSignals.map((client) => (
-                <div key={client.name} className="rounded-2xl border border-line-2 p-3.5 hover:border-plum-line">
-                  <div className="flex items-center justify-between gap-2">
-                    <strong className="text-[13.5px] text-ink">{client.name}</strong>
-                    <span className="rounded-full bg-plum-soft px-2 py-0.5 text-[10.5px] font-semibold text-plum">{client.tag}</span>
-                  </div>
-                  <div className="mt-1.5 text-[12.5px] text-muted">{client.note}</div>
-                  <div className="mt-1.5 text-[12px] font-semibold text-ink">{client.spend} lifetime</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* Team + inventory */}
-      <section className="grid gap-5 lg:grid-cols-2">
-        <div className="card p-5">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-            <Sparkles size={17} className="text-plum" /> Staff utilization
-          </h2>
-          <p className="mt-0.5 text-[12.5px] text-muted">Booked hours and revenue by team member.</p>
-          {staff.length === 0 ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-line bg-plum-softer px-4 py-8 text-center text-[12.5px] text-muted">
-              No active staff members yet.
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-4">
-              {staff.map((person) => (
-                <div key={person.name}>
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                      <span className="grid size-9 place-items-center rounded-full bg-plum-soft text-[12px] font-semibold text-plum">
-                        {person.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
-                      </span>
-                      <div>
-                        <div className="text-[13.5px] font-semibold text-ink">{person.name}</div>
-                        <div className="text-[12px] text-muted">{person.role}</div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[13px] font-semibold text-ink">{person.revenue}</div>
-                      <div className="text-[11.5px] text-muted">{person.bookedLabel}</div>
-                    </div>
-                  </div>
-                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sunken">
-                    <div className="h-full rounded-full bg-gradient-to-r from-plum to-mauve" style={{ width: `${person.bookedPercent}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="card p-5">
-          <h2 className="flex items-center gap-2 text-[15px] font-semibold">
-            <Package size={17} className="text-plum" /> Inventory risk
-          </h2>
-          <p className="mt-0.5 text-[12.5px] text-muted">Stock health across tracked products.</p>
-          {inventory.length === 0 ? (
-            <div className="mt-5 rounded-2xl border border-dashed border-line bg-plum-softer px-4 py-8 text-center text-[12.5px] text-muted">
-              Everything is well stocked.
-            </div>
-          ) : (
-            <div className="mt-4 grid gap-3.5">
-              {inventory.map((product) => {
-                const critical = product.level < 35;
-                const warn = product.level < 70;
-                return (
-                  <div key={product.item}>
-                    <div className="mb-1.5 flex items-center justify-between gap-3 text-[13px]">
-                      <span className="flex items-center gap-2 font-semibold text-ink">
-                        {critical ? <TriangleAlert size={14} className="text-danger" /> : null}
-                        {product.item}
-                      </span>
-                      <span className={`font-semibold ${critical ? "text-danger" : "text-muted"}`}>{product.stock}</span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-sunken">
-                      <div
-                        className={`h-full rounded-full ${critical ? "bg-danger" : warn ? "bg-warning" : "bg-success"}`}
-                        style={{ width: `${Math.max(product.level, 4)}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-              <Link href={`/${businessSlug}/inventory`} className="mt-1 inline-flex items-center gap-1 text-[12.5px] font-semibold text-plum hover:gap-1.5">
-                Manage inventory <ArrowRight size={13} />
-              </Link>
-            </div>
           )}
         </div>
       </section>

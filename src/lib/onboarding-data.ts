@@ -4,6 +4,9 @@ import { createHash, randomBytes } from "crypto";
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { setTenantContext } from "@/lib/tenant-context";
 import { hashPassword } from "@/lib/password";
+import { seedStarterWorkspaceData } from "@/lib/starter-data";
+import { roleLabelForIndustry } from "@/lib/industry";
+import { trialEndsAt } from "@/lib/trial";
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -80,6 +83,7 @@ export async function getOnboardingOptions(): Promise<OnboardingOptions> {
       categories: [
         { value: "sample_hair", label: "Hair, makeup, nails" },
         { value: "sample_lashes", label: "Lashes and brows" },
+        { value: "sample_photo", label: "Photographer" },
       ],
       plans: [
         { value: "sample_growth", label: "Growth Suite" },
@@ -89,6 +93,12 @@ export async function getOnboardingOptions(): Promise<OnboardingOptions> {
       timezones: TIMEZONES,
     };
   }
+
+  await prisma.businessCategory.upsert({
+    where: { key: "photographer" },
+    update: { label: "Photographer", icon: "camera", sortOrder: 30, isActive: true },
+    create: { key: "photographer", label: "Photographer", icon: "camera", sortOrder: 30 },
+  });
 
   const [categories, plans] = await Promise.all([
     prisma.businessCategory.findMany({ where: { isActive: true }, orderBy: { sortOrder: "asc" }, select: { id: true, label: true } }),
@@ -146,7 +156,7 @@ export async function createBusiness({
   const safeCurrency = VALID_CURRENCIES.has(currency) ? currency : "GHS";
   const safeTimezone = VALID_TIMEZONES.has(timezone) ? timezone : "Africa/Accra";
 
-  const category = await prisma.businessCategory.findFirst({ where: { id: categoryId, isActive: true }, select: { id: true } });
+  const category = await prisma.businessCategory.findFirst({ where: { id: categoryId, isActive: true }, select: { id: true, key: true } });
   if (!category) {
     return { ok: false, error: "Choose a business category." };
   }
@@ -187,13 +197,19 @@ export async function createBusiness({
 
       // The owner starts as an invited-but-unlinked membership; accepting the
       // invite creates their User and links it (mirrors the staff-invite flow).
-      await tx.staffMember.create({
+      const ownerStaff = await tx.staffMember.create({
         data: {
           businessId: business.id,
           invitedEmail: oEmail,
           role: "OWNER",
           status: "INVITED",
         },
+      });
+
+      await seedStarterWorkspaceData(tx, {
+        businessId: business.id,
+        categoryKey: category.key,
+        ownerStaffId: ownerStaff.id,
       });
 
       await tx.businessInvite.create({
@@ -214,7 +230,7 @@ export async function createBusiness({
             planId: planIdToUse,
             billingCycle: "MONTHLY",
             status: "TRIALING",
-            trialEndsAt: new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000),
+            trialEndsAt: trialEndsAt(now),
           },
         });
       }
@@ -256,12 +272,17 @@ export async function getInvite(token: string) {
   setTenantContext({ bypass: true });
   const invite = await prisma.businessInvite.findUnique({
     where: { tokenHash: hashToken(token) },
-    include: { business: { select: { name: true } } },
+    include: { business: { select: { name: true, category: { select: { key: true } } } } },
   });
   if (!invite || invite.acceptedAt || invite.revokedAt || invite.expiresAt < new Date()) {
     return null;
   }
-  return { email: invite.email, name: invite.name, businessName: invite.business.name };
+  return {
+    email: invite.email,
+    name: invite.name,
+    businessName: invite.business.name,
+    roleLabel: roleLabelForIndustry(invite.role, invite.business.category.key),
+  };
 }
 
 export async function acceptInvite({
@@ -279,9 +300,6 @@ export async function acceptInvite({
   // Public path (unauthenticated) — creates the owner User + links StaffMember
   // across the tenant boundary; runs with RLS bypassed.
   setTenantContext({ bypass: true });
-  if (!password || password.length < 8) {
-    return { ok: false, error: "Password must be at least 8 characters." };
-  }
 
   const invite = await prisma.businessInvite.findUnique({
     where: { tokenHash: hashToken(token) },
@@ -292,24 +310,32 @@ export async function acceptInvite({
   }
 
   const existing = await prisma.user.findUnique({ where: { email: invite.email }, select: { id: true } });
-  if (existing) {
-    return { ok: false, error: "An account with this email already exists — please sign in instead." };
+  if (!existing && (!password || password.length < 8)) {
+    return { ok: false, error: "Password must be at least 8 characters." };
   }
 
   const finalName = name.trim() || invite.name;
-  const passwordHash = await hashPassword(password);
+  const passwordHash = existing ? null : await hashPassword(password);
   const now = new Date();
 
   try {
     const result = await tenantTransaction(async (tx) => {
-      const user = await tx.user.create({
-        // Clicking the emailed invite link proves control of the address, so
-        // the invited owner is verified on acceptance (no separate verify step).
-        data: { email: invite.email, name: finalName, passwordHash, isPlatformAdmin: false, emailVerifiedAt: now },
-      });
+      const user = existing
+        ? await tx.user.update({ where: { id: existing.id }, data: { name: finalName }, select: { id: true } })
+        : await tx.user.create({
+            // Clicking the emailed invite link proves control of the address, so
+            // the invited member is verified on acceptance (no separate verify step).
+            data: { email: invite.email, name: finalName, passwordHash: passwordHash!, isPlatformAdmin: false, emailVerifiedAt: now },
+            select: { id: true },
+          });
 
       const pending = await tx.staffMember.findFirst({
-        where: { businessId: invite.businessId, invitedEmail: invite.email, userId: null, status: "INVITED" },
+        where: {
+          businessId: invite.businessId,
+          invitedEmail: invite.email,
+          status: "INVITED",
+          OR: existing ? [{ userId: existing.id }, { userId: null }] : [{ userId: null }],
+        },
         select: { id: true },
       });
       if (pending) {

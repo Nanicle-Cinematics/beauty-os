@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Hourglass, ArrowUpRight } from "lucide-react";
+import { Hourglass, ArrowUpRight, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Combobox } from "@/components/combobox";
 import { SubmitButton } from "@/components/submit-button";
@@ -36,7 +36,7 @@ export default async function WaitlistPage({ params }: Props) {
         description="Clients waiting for a slot — promote them to a hold when one opens up."
       />
 
-      <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
+      <section className="grid gap-5">
         <div className="card p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
@@ -48,10 +48,10 @@ export default async function WaitlistPage({ params }: Props) {
           </div>
 
           {data.entries.length === 0 ? (
-            <EmptyState icon={Hourglass} title="No one waiting" body="Add a client from the panel on the right when a service is fully booked." />
+            <EmptyState icon={Hourglass} title="No one waiting" body="Add a client using Add to waitlist below when a service is fully booked." />
           ) : (
-            <div className="overflow-hidden rounded-2xl border border-line">
-              <div className="grid grid-cols-[1.3fr_1fr_1fr_110px_150px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[940px]:hidden">
+            <div className="glass-panel overflow-hidden rounded-[26px]">
+              <div className="grid grid-cols-[1.3fr_1fr_1fr_110px_150px] gap-3 bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[940px]:hidden">
                 <span>Client</span><span>Service</span><span>Window</span><span>Status</span><span>Actions</span>
               </div>
               {data.entries.map((entry) => (
@@ -91,11 +91,17 @@ export default async function WaitlistPage({ params }: Props) {
           )}
         </div>
 
-        <form action={createWaitlistEntryAction} className="card p-5">
-          <h2 className="text-lg font-semibold">Add to waitlist</h2>
-          <p className="mt-1 text-sm leading-6 text-muted">For a client wanting a slot that isn&apos;t free yet.</p>
-          <input type="hidden" name="businessSlug" value={businessSlug} />
-          <fieldset disabled={!canManage} className="mt-5 grid gap-4 disabled:opacity-60">
+        <details id="add-waitlist" className="group card overflow-hidden p-0">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+            <div>
+              <h2 className="text-lg font-semibold">Add to waitlist</h2>
+              <p className="mt-1 text-sm leading-6 text-muted">For a client wanting a slot that isn&apos;t free yet.</p>
+            </div>
+            <ChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <form action={createWaitlistEntryAction} className="border-t border-line-2 p-5">
+            <input type="hidden" name="businessSlug" value={businessSlug} />
+            <fieldset disabled={!canManage} className="grid gap-4 disabled:opacity-60">
             <label className="field-label">
               Client
               <Combobox name="customer" options={data.customers.map((c) => c.label)} required placeholder="Search or type a client…" />
@@ -121,11 +127,12 @@ export default async function WaitlistPage({ params }: Props) {
                 <input name="latestDate" type="date" className="input" />
               </label>
             </div>
-            <SubmitButton className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white" pendingText="Adding…">
+            <SubmitButton className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white" pendingText="Adding…">
               Add to waitlist
             </SubmitButton>
           </fieldset>
-        </form>
+          </form>
+        </details>
       </section>
     </div>
   );

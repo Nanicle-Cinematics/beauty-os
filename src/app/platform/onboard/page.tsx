@@ -45,7 +45,7 @@ export default async function OnboardPage({ searchParams }: OnboardPageProps) {
           <section className={cardClass}>
             <div>
               <h2 className="text-lg font-semibold">Business details</h2>
-              <p className="mt-1 text-sm text-muted">Starts on a free trial — assign a plan below if you like.</p>
+              <p className="mt-1 text-sm text-muted">Starts on a strict 7-day trial — assign a plan below if you like.</p>
             </div>
 
             <label className={labelClass}>

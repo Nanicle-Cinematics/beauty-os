@@ -7,6 +7,7 @@ import { getOwnedWorkspaces } from "@/lib/account-data";
 import { PasswordInput } from "@/components/password-input";
 import { TwoFactor } from "@/components/two-factor";
 import { DangerZone } from "@/components/danger-zone";
+import { themeOptions } from "@/lib/theme";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +18,16 @@ type SettingsPageProps = {
 const inputClass = "h-12 w-full rounded-2xl border border-line bg-sunken px-4 outline-none focus:border-plum";
 const labelClass = "grid gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-muted";
 const cardClass = "grid gap-4 card p-5";
+
+function initials(name: string, email: string) {
+  return (name || email)
+    .split(/\s+|@/)
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
 
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const user = await requireUser("/settings");
@@ -30,13 +41,22 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
   const name = account?.name ?? user.name;
   const phone = account?.phone ?? "";
   const email = account?.email ?? user.email;
+  const avatarUrl = account?.avatarUrl ?? user.avatarUrl ?? "";
+  const themePreference = account?.themePreference ?? user.themePreference;
 
   return (
-    <main className="min-h-screen bg-canvas px-6 py-6 text-ink max-[720px]:px-3">
+    <main data-theme={themePreference} className="min-h-screen px-6 py-6 text-ink max-[720px]:px-3">
       <div className="mx-auto grid max-w-2xl gap-5">
         <header className="card flex items-center justify-between gap-4 px-5 py-4">
           <div className="flex items-center gap-3.5">
-            <span className="grid size-11 place-items-center rounded-2xl bg-gradient-to-br from-plum to-wine font-serif text-lg font-semibold text-white shadow-[0_6px_18px_rgba(84,33,63,0.4)]">B</span>
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="" className="size-12 rounded-2xl object-cover shadow-[var(--shadow-soft)]" />
+            ) : (
+              <span className="primary-action grid size-12 place-items-center rounded-2xl font-serif text-lg font-semibold text-white">
+                {initials(name, email)}
+              </span>
+            )}
             <div>
               <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-plum">Account</div>
               <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
@@ -68,7 +88,22 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               ) : null}
             </p>
           </div>
-          <form action={updateProfileAction} className="grid gap-3">
+          <form action={updateProfileAction} encType="multipart/form-data" className="grid gap-4">
+            <input type="hidden" name="currentAvatarUrl" value={avatarUrl} />
+            <div className="flex items-center gap-4 rounded-[24px] border border-white/55 bg-white/35 p-4">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="" className="size-20 rounded-[28px] object-cover shadow-[var(--shadow-soft)]" />
+              ) : (
+                <span className="grid size-20 place-items-center rounded-[28px] bg-plum-soft text-xl font-bold text-plum">
+                  {initials(name, email)}
+                </span>
+              )}
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-ink">Profile picture</div>
+                <p className="mt-1 text-xs leading-5 text-muted">Upload a square image under 750KB, or paste an image URL.</p>
+              </div>
+            </div>
             <label className={labelClass}>
               Name
               <input name="name" defaultValue={name} className={inputClass} required />
@@ -77,7 +112,49 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               Phone (optional)
               <input name="phone" defaultValue={phone} placeholder="+233 …" className={inputClass} />
             </label>
-            <button className="mt-1 w-fit rounded-2xl bg-gradient-to-r from-plum to-wine px-6 py-3 text-sm font-semibold text-white">Save profile</button>
+            <div className="grid grid-cols-2 gap-3 max-[620px]:grid-cols-1">
+              <label className={labelClass}>
+                Image URL
+                <input name="avatarUrl" defaultValue={avatarUrl.startsWith("data:image/") ? "" : avatarUrl} placeholder="https://…" className={inputClass} />
+              </label>
+              <label className={labelClass}>
+                Upload image
+                <input name="avatarFile" type="file" accept="image/*" className="block h-12 w-full rounded-2xl border border-line bg-sunken px-4 py-2.5 text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-plum-soft file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-plum" />
+              </label>
+            </div>
+            {avatarUrl ? (
+              <label className="flex items-center gap-2 text-sm font-semibold text-muted">
+                <input type="checkbox" name="removeAvatar" value="true" className="size-4 accent-plum" />
+                Remove current profile picture
+              </label>
+            ) : null}
+
+            <div className="grid gap-2">
+              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-muted">Theme</div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {themeOptions.map((theme) => (
+                  <label
+                    key={theme.key}
+                    data-theme={theme.key}
+                    className="glass-panel flex cursor-pointer gap-3 rounded-[22px] p-3 ring-plum transition has-[:checked]:ring-2"
+                  >
+                    <input type="radio" name="themePreference" value={theme.key} defaultChecked={themePreference === theme.key} className="mt-1 size-4 shrink-0 accent-plum" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-semibold text-ink">{theme.label}</span>
+                      <span className="mt-0.5 block text-xs leading-5 text-muted">{theme.description}</span>
+                      <span className="mt-2 flex gap-1.5">
+                        <span className="size-4 rounded-full bg-plum" />
+                        <span className="size-4 rounded-full bg-rose" />
+                        <span className="size-4 rounded-full bg-aqua" />
+                        <span className="size-4 rounded-full bg-mint" />
+                      </span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button className="primary-action mt-1 w-fit rounded-2xl px-6 py-3 text-sm font-semibold text-white">Save profile</button>
           </form>
         </section>
 
@@ -102,7 +179,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
                 <PasswordInput name="confirmPassword" minLength={8} autoComplete="new-password" className={inputClass} required />
               </label>
             </div>
-            <button className="mt-1 w-fit rounded-2xl bg-gradient-to-r from-plum to-wine px-6 py-3 text-sm font-semibold text-white">Change password</button>
+            <button className="primary-action mt-1 w-fit rounded-2xl px-6 py-3 text-sm font-semibold text-white">Change password</button>
           </form>
         </section>
 

@@ -1,6 +1,6 @@
 import "server-only";
 
-import { prisma } from "@/lib/prisma";
+import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import type { AppUser } from "@/lib/auth";
 
 export type BusinessRole =
@@ -58,6 +58,15 @@ export const CAPABILITIES = {
   "payments:edit": ["OWNER", "MANAGER", "CASHIER"],
   "payments:refund": ["OWNER", "MANAGER"],
   "payments:void": ["OWNER", "MANAGER"],
+  "invoices:edit": ["OWNER", "MANAGER", "RECEPTIONIST", "CASHIER"],
+  "invoices:send": ["OWNER", "MANAGER", "RECEPTIONIST", "CASHIER"],
+  "invoices:void": ["OWNER", "MANAGER"],
+  // Galleries protect deliverables and control when clients receive originals.
+  // Reception can send links, but unlock/revoke/complete stay owner/manager.
+  "galleries:edit": ["OWNER", "MANAGER", "RECEPTIONIST"],
+  "galleries:unlock": ["OWNER", "MANAGER"],
+  "galleries:complete": ["OWNER", "MANAGER"],
+  "galleries:delete": ["OWNER", "MANAGER"],
   "business:settings": ["OWNER", "MANAGER"],
 } as const satisfies Record<string, readonly BusinessRole[]>;
 
@@ -80,6 +89,17 @@ export async function membershipIn(user: AppUser, businessSlug: string): Promise
   // support work into raw SQL. They have no StaffMember row, hence the null id.
   if (user.isPlatformAdmin) {
     return { staffMemberId: null, role: "OWNER" };
+  }
+
+  if (!isDatabaseConfigured()) {
+    const demoMemberships: Record<string, readonly string[]> = {
+      "owner@osuglow.example": ["osu-glow-studio"],
+      "owner@luxelash.example": ["luxe-lash-lab"],
+    };
+
+    return demoMemberships[user.email]?.includes(businessSlug)
+      ? { staffMemberId: null, role: "OWNER" }
+      : null;
   }
 
   const membership = await prisma.staffMember.findFirst({

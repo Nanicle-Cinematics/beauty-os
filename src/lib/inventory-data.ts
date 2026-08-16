@@ -53,7 +53,7 @@ export type ProductDetail = {
 export type InventoryWriteResult = { ok: true } | { ok: false; error: string };
 
 export type InventoryModuleData = {
-  tenant: { id: string; name: string; slug: string; currency: string };
+  tenant: { id: string; name: string; slug: string; currency: string; categoryKey: string };
   stats: InventoryStat[];
   products: ProductRow[];
   suppliers: SupplierOption[];
@@ -117,7 +117,7 @@ export async function getInventoryModuleData(businessSlug: string): Promise<Inve
 
   const business = await prisma.business.findUnique({
     where: { slug: businessSlug },
-    select: { id: true, name: true, slug: true, currency: true },
+    select: { id: true, name: true, slug: true, currency: true, category: { select: { key: true } } },
   });
 
   if (!business) {
@@ -187,7 +187,7 @@ export async function getInventoryModuleData(businessSlug: string): Promise<Inve
   ];
 
   return {
-    tenant: business,
+    tenant: { id: business.id, name: business.name, slug: business.slug, currency: business.currency, categoryKey: business.category.key },
     stats,
     products: productRows,
     suppliers: suppliers.map((supplier) => ({ id: supplier.id, label: supplier.name })),

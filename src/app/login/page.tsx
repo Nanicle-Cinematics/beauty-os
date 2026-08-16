@@ -4,6 +4,7 @@ import { Sparkles } from "lucide-react";
 import { loginAction } from "@/lib/auth-actions";
 import { getCurrentUser } from "@/lib/auth";
 import { isSocialLoginConfigured, isMicrosoftLoginEnabled } from "@/lib/sso";
+import { normalizeInternalPath } from "@/lib/redirects";
 import { PasswordInput } from "@/components/password-input";
 import { SubmitButton } from "@/components/submit-button";
 
@@ -21,20 +22,12 @@ type LoginPageProps = {
   }>;
 };
 
-function safeNextPath(value?: string) {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/app";
-  }
-
-  return value;
-}
-
 const inputClass =
   "h-12 rounded-xl border border-line bg-sunken px-4 text-ink outline-none focus:border-plum";
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const [{ next, error }, user] = await Promise.all([searchParams, getCurrentUser()]);
-  const nextPath = safeNextPath(next);
+  const nextPath = normalizeInternalPath(next);
   const socialEnabled = isSocialLoginConfigured();
   const microsoftEnabled = isMicrosoftLoginEnabled();
   const errorMessage = error ? errorMessages[error] : null;
@@ -73,7 +66,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
           <div className="mt-10 rounded-2xl border border-white/10 bg-white/[0.06] p-4 text-sm text-white/70">
             New to Beauty OS?{" "}
-            <Link href="/signup" className="font-semibold text-rose">Start a free trial</Link> and get your own workspace in a minute.
+            <Link href="/signup" className="font-semibold text-rose">Start a 7-day trial</Link> and get your own workspace in a minute.
           </div>
         </div>
 

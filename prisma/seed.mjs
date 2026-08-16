@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import { randomBytes, scryptSync } from "crypto";
 
 const prisma = new PrismaClient();
+const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
 
 function hashPassword(password) {
   const salt = randomBytes(16).toString("hex");
@@ -51,6 +52,11 @@ async function seedLookupData() {
       update: { label: "Lashes and brows", icon: "eye", sortOrder: 20, isActive: true },
       create: { key: "lashes_brows", label: "Lashes and brows", icon: "eye", sortOrder: 20 },
     }),
+    prisma.businessCategory.upsert({
+      where: { key: "photographer" },
+      update: { label: "Photographer", icon: "camera", sortOrder: 30, isActive: true },
+      create: { key: "photographer", label: "Photographer", icon: "camera", sortOrder: 30 },
+    }),
   ]);
 
   const plans = await Promise.all([
@@ -97,6 +103,7 @@ async function seedLookupData() {
   return {
     hairCategory: categories[0],
     lashCategory: categories[1],
+    photoCategory: categories[2],
     studioPlan: plans[0],
     growthPlan: plans[1],
   };
@@ -157,16 +164,16 @@ async function seedBusiness({
       planId,
       billingCycle: "MONTHLY",
       status: status === "TRIAL" ? "TRIALING" : "ACTIVE",
-      trialEndsAt: status === "TRIAL" ? new Date("2026-08-13T00:00:00.000Z") : null,
-      currentPeriodEnd: new Date("2026-08-13T00:00:00.000Z"),
+      trialEndsAt: status === "TRIAL" ? new Date(Date.now() + TRIAL_MS) : null,
+      currentPeriodEnd: new Date(Date.now() + TRIAL_MS),
     },
     create: {
       businessId: business.id,
       planId,
       billingCycle: "MONTHLY",
       status: status === "TRIAL" ? "TRIALING" : "ACTIVE",
-      trialEndsAt: status === "TRIAL" ? new Date("2026-08-13T00:00:00.000Z") : null,
-      currentPeriodEnd: new Date("2026-08-13T00:00:00.000Z"),
+      trialEndsAt: status === "TRIAL" ? new Date(Date.now() + TRIAL_MS) : null,
+      currentPeriodEnd: new Date(Date.now() + TRIAL_MS),
     },
   });
 

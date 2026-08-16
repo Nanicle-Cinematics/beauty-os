@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { Wallet, ArrowDownRight, Receipt, Plus, CheckCircle2, TrendingUp } from "lucide-react";
+import { Wallet, ArrowDownRight, Receipt, Plus, CheckCircle2, TrendingUp, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { TrendChart } from "@/components/trend-chart";
 import { BreakdownBar } from "@/components/breakdown-bar";
@@ -67,7 +67,7 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
         />
       </section>
 
-      <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
+      <section className="grid gap-5">
         <div className="card p-5">
           <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Wallet size={17} className="text-plum" /> Cash flow (30 days)</h2>
           <p className="mt-0.5 text-[12.5px] text-muted">Revenue against expenses, and what&apos;s left.</p>
@@ -87,13 +87,16 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
           </div>
         </div>
 
-        <form action={createExpenseAction} className="card grid h-fit gap-4 p-5">
-          <div>
-            <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Plus size={17} className="text-plum" /> Log expense</h2>
-            <p className="mt-1 text-[12.5px] leading-5 text-muted">Record a cost — it updates your totals right away.</p>
-          </div>
-
-          <input type="hidden" name="businessSlug" value={businessSlug} />
+        <details id="log-expense" className="group card h-fit overflow-hidden p-0">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+            <div>
+              <h2 className="flex items-center gap-2 text-[15px] font-semibold"><Plus size={17} className="text-plum" /> Log expense</h2>
+              <p className="mt-1 text-[12.5px] leading-5 text-muted">Record a cost — it updates your totals right away.</p>
+            </div>
+            <ChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+          </summary>
+          <form action={createExpenseAction} className="grid gap-4 border-t border-line-2 p-5">
+            <input type="hidden" name="businessSlug" value={businessSlug} />
 
           <label className="field-label">
             Category
@@ -121,10 +124,11 @@ export default async function FinancePage({ params, searchParams }: FinancePageP
             <input name="description" placeholder="What was it for?" className="input" />
           </label>
 
-          <button className="rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
-            Log expense
-          </button>
-        </form>
+            <button className="rounded-xl primary-action px-4 py-3 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
+              Log expense
+            </button>
+          </form>
+        </details>
       </section>
 
       <section className="card p-5">

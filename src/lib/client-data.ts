@@ -8,6 +8,9 @@ export type ClientRow = {
   archived: boolean;
   name: string;
   contact: string;
+  contactTone: "ready" | "partial" | "missing";
+  signal: string;
+  signalTone: "vip" | "birthday" | "owed" | "new" | "quiet";
   tags: string[];
   visits: number;
   lastVisit: string;
@@ -46,8 +49,11 @@ export type ClientDetail = {
   historyCount: number;
   appointmentCount: number;
   paymentCount: number;
+  invoiceCount: number;
   lifetimeSpend: string;
   outstanding: string;
+  invoiceBalance: string;
+  invoices: { id: string; number: string; status: string; total: string; balance: string; issued: string }[];
 };
 
 export type ClientWriteResult = { ok: true } | { ok: false; error: string };
@@ -77,6 +83,15 @@ function shortDate(date: Date | null) {
   }
 
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", timeZone: "UTC" }).format(date);
+}
+
+function daysUntilMonthDay(date: Date, now: Date) {
+  const current = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  let next = Date.UTC(now.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+  if (next < current) {
+    next = Date.UTC(now.getUTCFullYear() + 1, date.getUTCMonth(), date.getUTCDate());
+  }
+  return Math.round((next - current) / 86_400_000);
 }
 
 // Statuses that represent money the studio actually earned from a visit.
@@ -138,12 +153,33 @@ export async function getClientModuleData(businessSlug: string): Promise<ClientM
       ?? customer.appointments[0]?.startAt
       ?? null;
     const outstandingRaw = outstanding(booked, paidByCustomer.get(customer.id) ?? 0);
+    const hasPhone = Boolean(customer.phone);
+    const hasEmail = Boolean(customer.email);
+    const birthdaySoon = customer.birthdate ? daysUntilMonthDay(customer.birthdate, now) <= 30 : false;
+    const contactTone = hasPhone && hasEmail ? "ready" : hasPhone || hasEmail ? "partial" : "missing";
+    const signal = outstandingRaw > 0
+      ? "Collect balance"
+      : birthdaySoon
+        ? "Birthday soon"
+        : lifetimeSpend > 0
+          ? "Repeat client"
+          : "New client";
+    const signalTone = outstandingRaw > 0
+      ? "owed"
+      : birthdaySoon
+        ? "birthday"
+        : lifetimeSpend > 0
+          ? "vip"
+          : "new";
 
     return {
       id: customer.id,
       archived: customer.archivedAt != null,
       name: [customer.firstName, customer.lastName].filter(Boolean).join(" "),
       contact: customer.phone || customer.email || "No contact on file",
+      contactTone,
+      signal,
+      signalTone,
       tags: customer.tags,
       visits: realisedVisits.length,
       lastVisit: shortDate(lastVisit),
@@ -187,7 +223,19 @@ export async function getClientDetail(businessSlug: string, clientId: string): P
     include: {
       business: { select: { currency: true } },
       appointments: { select: { status: true, price: true } },
-      _count: { select: { appointments: true, payments: true } },
+      invoices: {
+        orderBy: { issuedAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          invoiceNumber: true,
+          status: true,
+          total: true,
+          issuedAt: true,
+          payments: { select: { amount: true, type: true, status: true } },
+        },
+      },
+      _count: { select: { appointments: true, payments: true, invoices: true } },
     },
   });
   if (!customer) return null;
@@ -208,6 +256,24 @@ export async function getClientDetail(businessSlug: string, clientId: string): P
   const booked = customer.appointments
     .filter((a) => (REALISED_STATUSES as readonly string[]).includes(a.status))
     .reduce((sum, a) => sum + Number(a.price), 0);
+  const invoiceRows = customer.invoices.map((invoice) => {
+    const paymentNet = invoice.payments.reduce((sum, payment) => {
+      if (payment.status !== "SUCCESS") return sum;
+      if (payment.type === "REFUND") return sum - Number(payment.amount);
+      return sum + Number(payment.amount);
+    }, 0);
+    const balance = invoice.status === "VOID" ? 0 : Math.max(0, Number(invoice.total) - paymentNet);
+    return {
+      id: invoice.id,
+      number: invoice.invoiceNumber,
+      status: invoice.status.toLowerCase().split("_").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" "),
+      total: money(Number(invoice.total), currency),
+      balance: money(balance, currency),
+      balanceRaw: balance,
+      issued: shortDate(invoice.issuedAt),
+    };
+  });
+  const invoiceBalance = invoiceRows.reduce((sum, invoice) => sum + invoice.balanceRaw, 0);
 
   return {
     id: customer.id,
@@ -228,11 +294,14 @@ export async function getClientDetail(businessSlug: string, clientId: string): P
     favoriteServiceId: customer.favoriteServiceId ?? "",
     favoriteStaffId: customer.favoriteStaffId ?? "",
     archived: customer.archivedAt != null,
-    historyCount: customer._count.appointments + customer._count.payments,
+    historyCount: customer._count.appointments + customer._count.payments + customer._count.invoices,
     appointmentCount: customer._count.appointments,
     paymentCount: customer._count.payments,
+    invoiceCount: customer._count.invoices,
     lifetimeSpend: money(collected(paid, Number(refundAgg._sum.amount ?? 0)), currency),
     outstanding: money(outstanding(booked, paid), currency),
+    invoiceBalance: money(invoiceBalance, currency),
+    invoices: invoiceRows,
   };
 }
 

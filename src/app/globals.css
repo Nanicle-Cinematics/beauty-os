@@ -1,30 +1,34 @@
 @import "tailwindcss";
 
 /* ============================================================
-   Beauty OS — "Beauty Luxe Plum" design system
-   Premium, calm, operational. Plum builds identity + hierarchy;
-   the workspace stays light, spacious, and highly readable.
+   Beauty OS — Liquid Studio design system
+   Frosted layers, soft depth, and One UI-inspired comfort spacing
+   without changing the operational product surface.
    ============================================================ */
 
 :root {
   /* Surfaces */
-  --canvas: #fbf7f4; /* warm ivory workspace */
-  --card: #fffdfc; /* card background */
-  --sunken: #f7f2f5; /* inputs, table heads, wells */
-  --sidebar: #1d1220; /* deep plum-black */
-  --sidebar-2: #2a172b; /* dark plum */
+  --canvas: #fbf8fb;
+  --card: rgba(255, 255, 255, 0.72);
+  --sunken: rgba(255, 255, 255, 0.54);
+  --sidebar: rgba(255, 250, 254, 0.62);
+  --sidebar-2: rgba(246, 235, 244, 0.74);
+  --glass: rgba(255, 255, 255, 0.6);
+  --glass-strong: rgba(255, 255, 255, 0.82);
 
   /* Brand plums */
-  --plum: #6d315f; /* primary plum */
-  --wine: #54213f; /* rich wine plum */
-  --mauve: #a8759b; /* soft mauve */
-  --rose: #c6789b; /* muted rose */
-  --gold: #c9a46a; /* champagne gold */
+  --plum: #7b2d6f;
+  --wine: #531d49;
+  --mauve: #9b78ff;
+  --rose: #ef7faa;
+  --gold: #d69f3e;
+  --aqua: #46b7d8;
+  --mint: #48b997;
 
   /* Tints */
-  --plum-soft: #f6edf2; /* accent-soft fill */
-  --plum-softer: #faf5f8;
-  --plum-line: #e9dee5; /* soft plum border */
+  --plum-soft: rgba(123, 45, 111, 0.1);
+  --plum-softer: rgba(255, 255, 255, 0.48);
+  --plum-line: rgba(123, 45, 111, 0.15);
 
   /* Text — muted meets WCAG AA (≥4.5:1) on canvas/card/sunken; faint clears the
      3:1 UI/placeholder threshold. */
@@ -33,16 +37,16 @@
   --faint: #8a8088; /* tertiary / placeholder (~3.4–3.8:1) */
 
   /* Lines */
-  --line: #e9dee5; /* default hairline */
-  --line-2: #f0e8ed; /* faintest divider */
+  --line: rgba(113, 91, 108, 0.16);
+  --line-2: rgba(113, 91, 108, 0.1);
 
   /* Semantic */
   --success: #3f7a5c;
-  --success-soft: #ecf4ef;
+  --success-soft: rgba(72, 185, 151, 0.13);
   --warning: #b07d34;
-  --warning-soft: #f7efe1;
+  --warning-soft: rgba(214, 159, 62, 0.15);
   --danger: #b04a45;
-  --danger-soft: #f8ecea;
+  --danger-soft: rgba(176, 74, 69, 0.12);
 
   /* Back-compat aliases (existing code references these) */
   --background: var(--canvas);
@@ -62,6 +66,8 @@
   --color-mauve: var(--mauve);
   --color-rose: var(--rose);
   --color-gold: var(--gold);
+  --color-aqua: var(--aqua);
+  --color-mint: var(--mint);
 
   --color-plum-soft: var(--plum-soft);
   --color-plum-softer: var(--plum-softer);
@@ -90,9 +96,175 @@
   --font-serif: var(--font-serif);
 
   /* Shared radii + shadows */
-  --radius-card: 20px;
-  --shadow-soft: 0 1px 2px rgba(35, 28, 34, 0.04), 0 12px 32px rgba(84, 33, 63, 0.06);
-  --shadow-lift: 0 2px 6px rgba(35, 28, 34, 0.06), 0 20px 48px rgba(84, 33, 63, 0.1);
+  --radius-card: 28px;
+  --shadow-soft: 0 1px 2px rgba(35, 28, 34, 0.05), 0 16px 44px rgba(84, 33, 63, 0.08);
+  --shadow-lift: 0 10px 28px rgba(35, 28, 34, 0.1), 0 28px 72px rgba(84, 33, 63, 0.14);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.88), inset 0 -1px 0 rgba(84, 33, 63, 0.04);
+  --body-bg:
+    radial-gradient(circle at 14% 10%, rgba(239, 127, 170, 0.18), transparent 22rem),
+    radial-gradient(circle at 86% 0%, rgba(70, 183, 216, 0.16), transparent 24rem),
+    radial-gradient(circle at 78% 92%, rgba(72, 185, 151, 0.12), transparent 24rem),
+    linear-gradient(135deg, #fff9fb 0%, #f7f3ff 48%, #eef8fb 100%);
+}
+
+[data-theme="pearl"] {
+  --canvas: #fbfaf6;
+  --card: rgba(255, 255, 255, 0.78);
+  --sunken: rgba(255, 255, 255, 0.58);
+  --sidebar: rgba(255, 252, 246, 0.7);
+  --plum: #7b5a31;
+  --wine: #4e3521;
+  --mauve: #d1a85b;
+  --rose: #d9b78d;
+  --gold: #c99a4a;
+  --aqua: #7fb7aa;
+  --mint: #9ac9a8;
+  --plum-soft: rgba(123, 90, 49, 0.11);
+  --plum-line: rgba(123, 90, 49, 0.16);
+  --body-bg:
+    radial-gradient(circle at 14% 10%, rgba(217, 183, 141, 0.24), transparent 22rem),
+    radial-gradient(circle at 86% 0%, rgba(127, 183, 170, 0.14), transparent 24rem),
+    linear-gradient(135deg, #fffdfa 0%, #f7f1e6 52%, #eef7f3 100%);
+}
+
+[data-theme="noir"] {
+  --canvas: #fff2e4;
+  --card: rgba(255, 248, 238, 0.78);
+  --sunken: rgba(255, 239, 222, 0.66);
+  --sidebar: rgba(83, 32, 12, 0.94);
+  --sidebar-2: rgba(113, 46, 18, 0.88);
+  --glass: rgba(255, 246, 235, 0.7);
+  --glass-strong: rgba(255, 250, 243, 0.88);
+  --plum: #7a3418;
+  --wine: #4a1d0b;
+  --mauve: #d07032;
+  --rose: #e06a30;
+  --gold: #d7a56a;
+  --aqua: #b77745;
+  --mint: #c99665;
+  --ink: #2a1309;
+  --muted: #725341;
+  --faint: #9b7a67;
+  --line: rgba(91, 39, 16, 0.16);
+  --line-2: rgba(91, 39, 16, 0.1);
+  --plum-soft: rgba(224, 106, 48, 0.15);
+  --plum-line: rgba(122, 52, 24, 0.18);
+  --warning: #b86a2c;
+  --warning-soft: rgba(208, 112, 50, 0.17);
+  --body-bg:
+    radial-gradient(circle at 16% 8%, rgba(224, 106, 48, 0.21), transparent 23rem),
+    radial-gradient(circle at 84% 4%, rgba(215, 165, 106, 0.24), transparent 24rem),
+    radial-gradient(circle at 76% 92%, rgba(83, 32, 12, 0.09), transparent 24rem),
+    linear-gradient(135deg, #fff5e8 0%, #fae3cc 52%, #fff1df 100%);
+}
+
+[data-theme="blush"] {
+  --canvas: #fff7fa;
+  --plum: #8c2d68;
+  --wine: #5e1e49;
+  --mauve: #c87bb4;
+  --rose: #f071a6;
+  --gold: #d4a24e;
+  --aqua: #8cc7d8;
+  --mint: #7cc6a9;
+  --plum-soft: rgba(240, 113, 166, 0.13);
+  --plum-line: rgba(140, 45, 104, 0.16);
+  --body-bg:
+    radial-gradient(circle at 18% 9%, rgba(240, 113, 166, 0.22), transparent 23rem),
+    radial-gradient(circle at 88% 4%, rgba(200, 123, 180, 0.18), transparent 22rem),
+    linear-gradient(135deg, #fff8fb 0%, #fff0f6 52%, #f3fbfb 100%);
+}
+
+[data-theme="ocean"] {
+  --canvas: #f4fbfc;
+  --plum: #1d6f89;
+  --wine: #164a61;
+  --mauve: #5b8fe8;
+  --rose: #68b7d0;
+  --gold: #c59b46;
+  --aqua: #28a9c6;
+  --mint: #42b995;
+  --plum-soft: rgba(40, 169, 198, 0.12);
+  --plum-line: rgba(29, 111, 137, 0.16);
+  --body-bg:
+    radial-gradient(circle at 16% 8%, rgba(40, 169, 198, 0.2), transparent 24rem),
+    radial-gradient(circle at 84% 4%, rgba(66, 185, 149, 0.16), transparent 24rem),
+    linear-gradient(135deg, #f6fdff 0%, #edf9fb 50%, #f4fff9 100%);
+}
+
+html[data-color-mode="light"] body[data-theme],
+html[data-color-mode="light"] [data-theme] {
+  color-scheme: light;
+}
+
+html[data-color-mode="dark"] body[data-theme],
+html[data-color-mode="dark"] [data-theme] {
+  color-scheme: dark;
+  --canvas: #111014;
+  --card: rgba(31, 27, 34, 0.78);
+  --sunken: rgba(20, 17, 23, 0.74);
+  --sidebar: rgba(18, 15, 21, 0.84);
+  --sidebar-2: rgba(32, 26, 36, 0.78);
+  --glass: rgba(29, 25, 33, 0.68);
+  --glass-strong: rgba(39, 34, 45, 0.9);
+  --ink: #f6eef6;
+  --muted: #c8bcc7;
+  --faint: #9f929e;
+  --line: rgba(244, 229, 242, 0.14);
+  --line-2: rgba(244, 229, 242, 0.08);
+  --plum-soft: rgba(239, 127, 170, 0.14);
+  --plum-softer: rgba(255, 255, 255, 0.08);
+  --plum-line: rgba(239, 127, 170, 0.22);
+  --success: #73d3a9;
+  --success-soft: rgba(72, 185, 151, 0.18);
+  --warning: #e2b965;
+  --warning-soft: rgba(226, 185, 101, 0.16);
+  --danger: #f08b83;
+  --danger-soft: rgba(240, 139, 131, 0.16);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.24), 0 18px 52px rgba(0, 0, 0, 0.28);
+  --shadow-lift: 0 14px 32px rgba(0, 0, 0, 0.28), 0 32px 90px rgba(0, 0, 0, 0.36);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.16);
+  --body-bg:
+    radial-gradient(circle at 14% 10%, rgba(239, 127, 170, 0.14), transparent 22rem),
+    radial-gradient(circle at 88% 2%, rgba(70, 183, 216, 0.12), transparent 24rem),
+    radial-gradient(circle at 78% 92%, rgba(72, 185, 151, 0.1), transparent 24rem),
+    linear-gradient(135deg, #100e13 0%, #17131d 48%, #10191d 100%);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-color-mode="light"]) body[data-theme],
+  html:not([data-color-mode="light"]) [data-theme] {
+    color-scheme: dark;
+    --canvas: #111014;
+    --card: rgba(31, 27, 34, 0.78);
+    --sunken: rgba(20, 17, 23, 0.74);
+    --sidebar: rgba(18, 15, 21, 0.84);
+    --sidebar-2: rgba(32, 26, 36, 0.78);
+    --glass: rgba(29, 25, 33, 0.68);
+    --glass-strong: rgba(39, 34, 45, 0.9);
+    --ink: #f6eef6;
+    --muted: #c8bcc7;
+    --faint: #9f929e;
+    --line: rgba(244, 229, 242, 0.14);
+    --line-2: rgba(244, 229, 242, 0.08);
+    --plum-soft: rgba(239, 127, 170, 0.14);
+    --plum-softer: rgba(255, 255, 255, 0.08);
+    --plum-line: rgba(239, 127, 170, 0.22);
+    --success: #73d3a9;
+    --success-soft: rgba(72, 185, 151, 0.18);
+    --warning: #e2b965;
+    --warning-soft: rgba(226, 185, 101, 0.16);
+    --danger: #f08b83;
+    --danger-soft: rgba(240, 139, 131, 0.16);
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.24), 0 18px 52px rgba(0, 0, 0, 0.28);
+    --shadow-lift: 0 14px 32px rgba(0, 0, 0, 0.28), 0 32px 90px rgba(0, 0, 0, 0.36);
+    --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 0 -1px 0 rgba(0, 0, 0, 0.16);
+    --body-bg:
+      radial-gradient(circle at 14% 10%, rgba(239, 127, 170, 0.14), transparent 22rem),
+      radial-gradient(circle at 88% 2%, rgba(70, 183, 216, 0.12), transparent 24rem),
+      radial-gradient(circle at 78% 92%, rgba(72, 185, 151, 0.1), transparent 24rem),
+      linear-gradient(135deg, #100e13 0%, #17131d 48%, #10191d 100%);
+  }
 }
 
 * {
@@ -106,18 +278,19 @@ html {
 
 body {
   margin: 0;
-  background: var(--canvas);
+  background: var(--body-bg);
+  background-attachment: fixed;
   color: var(--ink);
   font-family: var(--font-geist-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  letter-spacing: -0.011em;
+  letter-spacing: 0;
 }
 
 /* Luxury serif — brand + rare editorial moments only, never data/tables/forms */
 .font-serif {
   font-family: var(--font-serif), Georgia, "Times New Roman", serif;
-  letter-spacing: -0.01em;
+  letter-spacing: 0;
 }
 
 button,
@@ -165,7 +338,7 @@ button:disabled {
 }
 
 button:not(:disabled):hover {
-  filter: brightness(0.96);
+  filter: saturate(1.05) brightness(0.99);
 }
 
 button:not(:disabled):active,
@@ -196,19 +369,63 @@ textarea:focus-visible {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius-card);
-  box-shadow: var(--shadow-soft);
+  box-shadow: var(--shadow-soft), var(--glass-highlight);
+  backdrop-filter: blur(24px) saturate(1.28);
+  -webkit-backdrop-filter: blur(24px) saturate(1.28);
+}
+
+.glass-panel {
+  background: var(--glass);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow: var(--shadow-soft), var(--glass-highlight);
+  backdrop-filter: blur(26px) saturate(1.32);
+  -webkit-backdrop-filter: blur(26px) saturate(1.32);
+}
+
+.glass-strong {
+  background: var(--glass-strong);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow: var(--shadow-soft), var(--glass-highlight);
+  backdrop-filter: blur(28px) saturate(1.35);
+  -webkit-backdrop-filter: blur(28px) saturate(1.35);
+}
+
+html[data-color-mode="dark"] .glass-panel,
+html[data-color-mode="dark"] .glass-strong {
+  border-color: rgba(255, 255, 255, 0.13);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-color-mode="light"]) .glass-panel,
+  html:not([data-color-mode="light"]) .glass-strong {
+    border-color: rgba(255, 255, 255, 0.13);
+  }
+}
+
+.icon-chip {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7), 0 10px 24px rgba(84, 33, 63, 0.08);
+}
+
+.primary-action {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.24), transparent 34%),
+    linear-gradient(135deg, var(--plum), var(--wine) 58%, #34142e);
+  box-shadow: 0 10px 28px rgba(83, 29, 73, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.28);
 }
 
 /* Form controls — one calm, premium input across every module + auth screen */
 .input {
   height: 2.75rem;
   width: 100%;
-  border-radius: 0.75rem;
+  border-radius: 1rem;
   border: 1px solid var(--line);
   background: var(--sunken);
   padding: 0 0.875rem;
   color: var(--ink);
   outline: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 textarea.input {
   height: auto;
@@ -246,7 +463,7 @@ select[multiple].input {
 
 /* Data table shell — consistent header + rows */
 .data-head {
-  background: var(--sunken);
+  background: rgba(255, 255, 255, 0.52);
   font-size: 0.66rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -258,8 +475,9 @@ select[multiple].input {
 .brand-dark {
   color: #fff;
   background:
-    radial-gradient(circle at 86% -12%, rgba(198, 120, 155, 0.3), transparent 17rem),
-    linear-gradient(135deg, #1d1220, #2a172b 55%, #54213f);
+    radial-gradient(circle at 84% -12%, rgba(239, 127, 170, 0.42), transparent 18rem),
+    radial-gradient(circle at 12% 116%, rgba(70, 183, 216, 0.26), transparent 18rem),
+    linear-gradient(135deg, #211424, #35173a 56%, #622253);
 }
 
 @keyframes bo-fade-up {

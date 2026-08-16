@@ -162,21 +162,25 @@ export async function sendInviteEmail({
   businessName,
   url,
   businessId,
+  roleName,
 }: {
   to: string;
   name: string;
   businessName: string;
   url: string;
   businessId?: string | null;
+  roleName?: string | null;
 }): Promise<SendEmailResult> {
-  const subject = `Set up ${businessName} on Beauty OS`;
+  const role = roleName?.trim() || "owner";
+  const subject = `Join ${businessName} on Beauty OS`;
   const safeName = escapeHtml(name);
   const safeBusiness = escapeHtml(businessName);
+  const safeRole = escapeHtml(role);
 
   const text = [
     `Hi ${name},`,
     ``,
-    `You've been invited to run ${businessName} on Beauty OS.`,
+    `You've been invited to join ${businessName} as ${role} on Beauty OS.`,
     `Set your password and activate your account here:`,
     url,
     ``,
@@ -189,7 +193,8 @@ export async function sendInviteEmail({
       <div style="font-size:11px;font-weight:800;letter-spacing:1.6px;text-transform:uppercase;color:#9d4e7a">Beauty OS</div>
       <h1 style="margin:8px 0 16px;font-size:22px;color:#18181b">Set up your account</h1>
       <p style="margin:0 0 16px;font-size:14px;color:#71717a">
-        Hi ${safeName}, you've been invited to run <strong style="color:#18181b">${safeBusiness}</strong> on Beauty OS.
+        Hi ${safeName}, you've been invited to join <strong style="color:#18181b">${safeBusiness}</strong>
+        as <strong style="color:#18181b">${safeRole}</strong> on Beauty OS.
         Click below to set your password and activate your account.
       </p>
       <a href="${url}" style="display:inline-block;background:#18181b;color:#ffffff;text-decoration:none;font-weight:800;font-size:14px;padding:12px 22px;border-radius:16px">Activate account</a>

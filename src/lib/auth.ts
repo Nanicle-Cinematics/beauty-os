@@ -6,6 +6,9 @@ import { redirect } from "next/navigation";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { setTenantContext } from "@/lib/tenant-context";
+import { normalizeTheme, type ThemePreference } from "@/lib/theme";
+import { isTrialExpired } from "@/lib/trial";
+import { normalizeInternalPath } from "@/lib/redirects";
 
 export const sessionCookieName = "beauty_os_session";
 export const mfaChallengeCookieName = "beauty_os_mfa";
@@ -19,6 +22,8 @@ export type AppUser = {
   id: string;
   email: string;
   name: string;
+  avatarUrl: string | null;
+  themePreference: ThemePreference;
   isPlatformAdmin: boolean;
   verified: boolean;
 };
@@ -28,6 +33,8 @@ const demoUsers: Record<string, Omit<AppUser, "verified"> & { password: string; 
     id: "demo_platform_admin",
     email: "admin@beautyos.dev",
     name: "Platform Admin",
+    avatarUrl: null,
+    themePreference: "liquid",
     isPlatformAdmin: true,
     password: "password123",
     workspaces: ["osu-glow-studio", "luxe-lash-lab"],
@@ -36,6 +43,8 @@ const demoUsers: Record<string, Omit<AppUser, "verified"> & { password: string; 
     id: "demo_osu_owner",
     email: "owner@osuglow.example",
     name: "Nadia Mensah",
+    avatarUrl: null,
+    themePreference: "blush",
     isPlatformAdmin: false,
     password: "password123",
     workspaces: ["osu-glow-studio"],
@@ -44,6 +53,8 @@ const demoUsers: Record<string, Omit<AppUser, "verified"> & { password: string; 
     id: "demo_luxe_owner",
     email: "owner@luxelash.example",
     name: "Mina Owusu",
+    avatarUrl: null,
+    themePreference: "ocean",
     isPlatformAdmin: false,
     password: "password123",
     workspaces: ["luxe-lash-lab"],
@@ -52,14 +63,6 @@ const demoUsers: Record<string, Omit<AppUser, "verified"> & { password: string; 
 
 function hashSessionToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
-}
-
-function safeNextPath(nextPath: string | null) {
-  if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//")) {
-    return "/";
-  }
-
-  return nextPath;
 }
 
 export async function getCurrentUser(): Promise<AppUser | null> {
@@ -87,6 +90,8 @@ export async function getCurrentUser(): Promise<AppUser | null> {
       id: demoUser.id,
       email: demoUser.email,
       name: demoUser.name,
+      avatarUrl: demoUser.avatarUrl,
+      themePreference: demoUser.themePreference,
       isPlatformAdmin: demoUser.isPlatformAdmin,
       verified: true,
     };
@@ -105,6 +110,8 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     id: session.user.id,
     email: session.user.email,
     name: session.user.name,
+    avatarUrl: session.user.avatarUrl,
+    themePreference: normalizeTheme(session.user.themePreference),
     isPlatformAdmin: session.user.isPlatformAdmin,
     verified: session.user.emailVerifiedAt != null,
   };
@@ -127,6 +134,12 @@ export async function signIn(email: string, password: string): Promise<SignInRes
       secure: process.env.NODE_ENV === "production",
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
+    });
+    cookieStore.set("beauty_os_theme", demoUser.themePreference, {
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 365,
     });
 
     return { status: "ok" };
@@ -154,6 +167,10 @@ export async function signIn(email: string, password: string): Promise<SignInRes
 export async function startSession(userId: string) {
   const token = randomBytes(32).toString("hex");
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7);
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { themePreference: true },
+  });
 
   await prisma.session.create({
     data: { userId, tokenHash: hashSessionToken(token), expiresAt },
@@ -172,6 +189,12 @@ export async function startSession(userId: string) {
     path: "/",
     expires: expiresAt,
   });
+  cookieStore.set("beauty_os_theme", normalizeTheme(user?.themePreference), {
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
 }
 
 export async function signOut() {
@@ -185,6 +208,7 @@ export async function signOut() {
   }
 
   cookieStore.delete(sessionCookieName);
+  cookieStore.delete("beauty_os_theme");
 }
 
 // Require a logged-in user but NOT a verified email. Used only by the
@@ -193,7 +217,7 @@ export async function requireSession(nextPath = "/"): Promise<AppUser> {
   const user = await getCurrentUser();
 
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent(safeNextPath(nextPath))}`);
+    redirect(`/login?next=${encodeURIComponent(normalizeInternalPath(nextPath, "/"))}`);
   }
 
   return user;
@@ -238,14 +262,71 @@ export async function canAccessWorkspace(user: AppUser, businessSlug: string) {
       status: "ACTIVE",
       business: { slug: businessSlug },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      business: {
+        select: {
+          status: true,
+          createdAt: true,
+          subscription: { select: { status: true, trialEndsAt: true } },
+        },
+      },
+    },
   });
 
-  return Boolean(membership);
+  if (!membership) {
+    return false;
+  }
+
+  return !isTrialExpired({
+    businessStatus: membership.business.status,
+    businessCreatedAt: membership.business.createdAt,
+    subscriptionStatus: membership.business.subscription?.status,
+    subscriptionTrialEndsAt: membership.business.subscription?.trialEndsAt,
+  });
+}
+
+export async function isWorkspaceTrialLocked(user: AppUser, businessSlug: string) {
+  if (user.isPlatformAdmin || !isDatabaseConfigured()) {
+    return false;
+  }
+
+  const membership = await prisma.staffMember.findFirst({
+    where: {
+      userId: user.id,
+      status: "ACTIVE",
+      business: { slug: businessSlug },
+    },
+    select: {
+      business: {
+        select: {
+          status: true,
+          createdAt: true,
+          subscription: { select: { status: true, trialEndsAt: true } },
+        },
+      },
+    },
+  });
+
+  if (!membership) {
+    return false;
+  }
+
+  return isTrialExpired({
+    businessStatus: membership.business.status,
+    businessCreatedAt: membership.business.createdAt,
+    subscriptionStatus: membership.business.subscription?.status,
+    subscriptionTrialEndsAt: membership.business.subscription?.trialEndsAt,
+  });
 }
 
 export async function requireTenantAccess(businessSlug: string) {
   const user = await requireUser(`/${businessSlug}`);
+  const trialLocked = await isWorkspaceTrialLocked(user, businessSlug);
+  if (trialLocked) {
+    redirect(`/trial-expired?workspace=${encodeURIComponent(businessSlug)}`);
+  }
+
   const allowed = await canAccessWorkspace(user, businessSlug);
 
   if (!allowed) {

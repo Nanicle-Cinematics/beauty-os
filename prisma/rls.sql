@@ -23,8 +23,8 @@ DECLARE t text;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'Appointment','AuditLog','BusinessHours','BusinessInvite','Campaign','ClientTier',
-    'Coupon','Customer','CustomerNote','Expense','Invoice','LoyaltyLedgerEntry',
-    'LoyaltyProgram','NotificationLog','Payment','Product','PurchaseOrder','Service',
+    'ClientGallery','Coupon','Customer','CustomerNote','Expense','GalleryAccessEvent',
+    'Invoice','LoyaltyLedgerEntry','LoyaltyProgram','NotificationLog','Payment','Product','PurchaseOrder','Service',
     'ServiceCategory','StaffMember','StockMovement','Subscription','Supplier','WaitlistEntry'
   ]
   LOOP
@@ -63,6 +63,9 @@ BEGIN
   FOR r IN
     SELECT * FROM (VALUES
       ('CustomerPhoto',    'customerId',      'Customer'),
+      ('GalleryComment',   'galleryId',       'ClientGallery'),
+      ('GalleryFavorite',  'galleryId',       'ClientGallery'),
+      ('GalleryMedia',     'galleryId',       'ClientGallery'),
       ('InvoiceLineItem',  'invoiceId',       'Invoice'),
       ('PurchaseOrderItem','purchaseOrderId', 'PurchaseOrder'),
       ('ServiceImage',     'serviceId',       'Service'),

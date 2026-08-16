@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Trash2, ShieldAlert, Wallet, Clock } from "lucide-react";
+import { ArrowLeft, Trash2, ShieldAlert, Wallet, Clock, FileText } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { SubmitButton } from "@/components/submit-button";
 import { Combobox } from "@/components/combobox";
@@ -16,6 +16,7 @@ import {
 } from "@/lib/appointment-actions";
 import { requireTenantAccess } from "@/lib/auth";
 import { membershipIn, roleCan } from "@/lib/permissions";
+import { createInvoiceFromAppointmentAction } from "@/lib/invoice-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export default async function AppointmentDetailPage({ params, searchParams }: Ap
 
   const canEdit = roleCan(membership?.role, "appointments:edit");
   const canDelete = roleCan(membership?.role, "appointments:delete");
+  const canCreateInvoice = roleCan(membership?.role, "invoices:edit");
   const symbol = appointment.currency === "GHS" ? "GH₵" : appointment.currency;
 
   return (
@@ -114,7 +116,7 @@ export default async function AppointmentDetailPage({ params, searchParams }: Ap
       ) : null}
 
       {!canEdit ? (
-        <div className="flex items-center gap-2.5 rounded-xl border border-line bg-sunken px-4 py-3 text-[13px] font-medium text-muted">
+        <div className="flex items-center gap-2.5 rounded-[18px] border border-white/60 bg-white/42 px-4 py-3 text-[13px] font-medium text-muted">
           <ShieldAlert size={15} className="shrink-0 text-faint" />
           Your role can view this booking but not change it.
         </div>
@@ -142,12 +144,30 @@ export default async function AppointmentDetailPage({ params, searchParams }: Ap
             <div className="mt-1 text-[17px] font-semibold text-ink">{appointment.outstanding}</div>
           </div>
         </div>
-        <Link
-          href={`/${businessSlug}/payments`}
-          className="mt-3 inline-flex items-center gap-1 text-[12.5px] font-semibold text-plum hover:gap-1.5"
-        >
-          Record a payment in Payments →
-        </Link>
+        <div className="mt-3 flex flex-wrap gap-3">
+          <Link
+            href={`/${businessSlug}/payments`}
+            className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-plum hover:gap-1.5"
+          >
+            Record a payment in Payments →
+          </Link>
+          {appointment.invoice ? (
+            <Link
+              href={`/${businessSlug}/invoices/${appointment.invoice.id}`}
+              className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-plum hover:gap-1.5"
+            >
+              <FileText size={14} /> View invoice {appointment.invoice.number}
+            </Link>
+          ) : canCreateInvoice ? (
+            <form action={createInvoiceFromAppointmentAction}>
+              <input type="hidden" name="businessSlug" value={businessSlug} />
+              <input type="hidden" name="appointmentId" value={appointment.id} />
+              <button className="inline-flex items-center gap-1 text-[12.5px] font-semibold text-plum hover:gap-1.5">
+                <FileText size={14} /> Create invoice
+              </button>
+            </form>
+          ) : null}
+        </div>
       </section>
 
       {/* Lifecycle — separate from the edit form. Status is its own decision. */}
@@ -240,7 +260,7 @@ export default async function AppointmentDetailPage({ params, searchParams }: Ap
           {canEdit ? (
             <div className="flex flex-wrap gap-2.5 border-t border-line-2 pt-5">
               <SubmitButton
-                className="rounded-2xl bg-gradient-to-r from-plum to-wine px-5 py-3 text-sm font-semibold text-white"
+                className="rounded-2xl primary-action px-5 py-3 text-sm font-semibold text-white"
                 pendingText="Saving…"
               >
                 Save changes
@@ -261,21 +281,21 @@ export default async function AppointmentDetailPage({ params, searchParams }: Ap
           <h2 className="text-[15px] font-semibold">Danger zone</h2>
           <p className="mt-0.5 text-[12.5px] leading-5 text-muted">
             {appointment.paymentCount > 0
-              ? "This booking has payments against it, so it can't be deleted. Cancel it instead to keep the financial record."
+              ? `Deleting removes this booking and its ${appointment.paymentCount} recorded payment${
+                  appointment.paymentCount === 1 ? "" : "s"
+                } (${appointment.collected} collected). Do this only for a booking recorded in error — if money was actually taken, Cancel it instead and refund from Payments if needed. The deletion is kept in your audit trail.`
               : "This booking has no payments, so it can be deleted outright. To keep it on record, cancel it instead."}
           </p>
-          {appointment.paymentCount === 0 ? (
-            <form action={deleteAppointmentAction} className="mt-4">
-              <input type="hidden" name="businessSlug" value={businessSlug} />
-              <input type="hidden" name="appointmentId" value={appointment.id} />
-              <SubmitButton
-                className="inline-flex items-center gap-1.5 rounded-xl border border-danger/25 bg-danger-soft px-4 py-2.5 text-[13px] font-semibold text-danger hover:bg-danger hover:text-white"
-                pendingText="Deleting…"
-              >
-                <Trash2 size={14} /> Delete permanently
-              </SubmitButton>
-            </form>
-          ) : null}
+          <form action={deleteAppointmentAction} className="mt-4">
+            <input type="hidden" name="businessSlug" value={businessSlug} />
+            <input type="hidden" name="appointmentId" value={appointment.id} />
+            <SubmitButton
+              className="inline-flex items-center gap-1.5 rounded-xl border border-danger/25 bg-danger-soft px-4 py-2.5 text-[13px] font-semibold text-danger hover:bg-danger hover:text-white"
+              pendingText="Deleting…"
+            >
+              <Trash2 size={14} /> Delete permanently
+            </SubmitButton>
+          </form>
         </section>
       ) : null}
     </div>

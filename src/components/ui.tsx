@@ -28,8 +28,8 @@ const badgeTone: Record<BadgeTone, string> = {
   success: "bg-success-soft text-success",
   warning: "bg-warning-soft text-warning",
   danger: "bg-danger-soft text-danger",
-  neutral: "bg-line-2 text-muted",
-  info: "bg-[#eef1f6] text-[#4a5b7a]",
+  neutral: "bg-white/55 text-muted",
+  info: "bg-aqua/12 text-[#236f89]",
 };
 
 // Maps a raw status string to a semantic tone. Shared across modules so a
@@ -70,8 +70,8 @@ const tileTone: Record<BadgeTone, string> = {
   success: "bg-success-soft text-success",
   warning: "bg-warning-soft text-warning",
   danger: "bg-danger-soft text-danger",
-  neutral: "bg-line-2 text-muted",
-  info: "bg-[#eef1f6] text-[#4a5b7a]",
+  neutral: "bg-white/55 text-muted",
+  info: "bg-aqua/12 text-[#236f89]",
 };
 
 export function StatTile({
@@ -88,11 +88,11 @@ export function StatTile({
   tone?: BadgeTone;
 }) {
   return (
-    <article className="card p-5 transition hover:shadow-[var(--shadow-lift)]">
+    <article className="card p-5 transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lift)]">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[12px] font-medium text-muted">{label}</span>
         {Icon ? (
-          <span className={`grid size-8 shrink-0 place-items-center rounded-xl ${tileTone[tone]}`}>
+          <span className={`icon-chip grid size-9 shrink-0 place-items-center rounded-2xl ${tileTone[tone]}`}>
             <Icon size={16} />
           </span>
         ) : null}
@@ -139,8 +139,8 @@ export function EmptyState({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-line bg-plum-softer px-4 py-10 text-center">
-      <span className="grid size-11 place-items-center rounded-full bg-plum-soft text-plum">
+    <div className="glass-panel flex flex-col items-center justify-center rounded-[26px] border-dashed px-4 py-10 text-center">
+      <span className="icon-chip grid size-12 place-items-center rounded-[22px] bg-plum-soft text-plum">
         <Icon size={20} />
       </span>
       <div className="mt-3 text-[13.5px] font-semibold text-ink">{title}</div>

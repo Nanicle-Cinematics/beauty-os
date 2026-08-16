@@ -3,6 +3,7 @@ import "server-only";
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { findOrCreateCustomer } from "@/lib/entity-resolve";
 import { bookedWhere, bookingPaymentsWhere, incomingWhere, refundWhere, collected, outstanding, depositDue } from "@/lib/money";
+import { syncInvoicePaymentState } from "@/lib/invoice-data";
 
 export type PaymentRow = {
   id: string;
@@ -26,7 +27,8 @@ export type DepositDue = {
   when: string;
 };
 
-export type PaymentStat = { label: string; value: string; detail: string };
+export type PaymentStatClient = { client: string; amount: string; detail: string };
+export type PaymentStat = { label: string; value: string; detail: string; clients: PaymentStatClient[] };
 export type PaymentOption = { id: string; label: string };
 
 export type PaymentModuleData = {
@@ -36,6 +38,7 @@ export type PaymentModuleData = {
   depositsDue: DepositDue[];
   customers: PaymentOption[];
   appointments: PaymentOption[];
+  invoices: PaymentOption[];
   methods: { value: string; label: string }[];
   types: { value: string; label: string }[];
 };
@@ -61,6 +64,7 @@ const METHOD_LABELS = Object.fromEntries(PAYMENT_METHODS.map((m) => [m.value, m.
 const TYPE_LABELS = Object.fromEntries(PAYMENT_TYPES.map((t) => [t.value, t.label]));
 const VALID_METHODS = new Set(PAYMENT_METHODS.map((m) => m.value));
 const VALID_TYPES = new Set(PAYMENT_TYPES.map((t) => t.value));
+const INVOICE_INCOMING_TYPES = new Set(["DEPOSIT", "FULL_PAYMENT", "BALANCE", "PRODUCT_SALE"]);
 
 function currencySymbol(currency: string) {
   return currency === "GHS" ? "GH₵" : currency;
@@ -97,6 +101,17 @@ function netPaidForAppointment(payments: { amount: unknown; type: string; status
   return paid;
 }
 
+function netPaidForInvoice(payments: { amount: unknown; type: string; status: string }[]) {
+  let paid = 0;
+  let refunded = 0;
+  for (const payment of payments) {
+    if (payment.status !== "SUCCESS") continue;
+    if (payment.type === "REFUND") refunded += Number(payment.amount);
+    else if (INVOICE_INCOMING_TYPES.has(payment.type)) paid += Number(payment.amount);
+  }
+  return paid - refunded;
+}
+
 function clientName(customer: { firstName: string; lastName: string | null } | null) {
   if (!customer) {
     return "Walk-in";
@@ -108,10 +123,10 @@ const fallbackPaymentData: Record<string, PaymentModuleData> = {
   "osu-glow-studio": {
     tenant: { id: "sample_osu_glow", name: "Osu Glow Studio", slug: "osu-glow-studio", currency: "GHS" },
     stats: [
-      { label: "Collected", value: "GH₵ 250", detail: "Successful payments" },
-      { label: "Deposits due", value: "GH₵ 200", detail: "1 appointment" },
-      { label: "Outstanding", value: "GH₵ 0", detail: "Client balances" },
-      { label: "Refunded", value: "GH₵ 0", detail: "0 refunds" },
+      { label: "Collected", value: "GH₵ 250", detail: "Successful payments", clients: [{ client: "Ama Serwaa", amount: "GH₵ 250", detail: "Net collected" }] },
+      { label: "Deposits due", value: "GH₵ 200", detail: "1 appointment", clients: [{ client: "Akua Mensah", amount: "GH₵ 200", detail: "Wig install" }] },
+      { label: "Outstanding", value: "GH₵ 0", detail: "Client balances", clients: [] },
+      { label: "Refunded", value: "GH₵ 0", detail: "0 refunds", clients: [] },
     ],
     payments: [],
     depositsDue: [
@@ -125,16 +140,17 @@ const fallbackPaymentData: Record<string, PaymentModuleData> = {
     appointments: [
       { id: "demo-3", label: "Akua Mensah — Wig install (13 Jul)" },
     ],
+    invoices: [],
     methods: PAYMENT_METHODS,
     types: PAYMENT_TYPES,
   },
   "luxe-lash-lab": {
     tenant: { id: "sample_luxe_lash", name: "Luxe Lash Lab", slug: "luxe-lash-lab", currency: "GHS" },
     stats: [
-      { label: "Collected", value: "GH₵ 80", detail: "Successful payments" },
-      { label: "Deposits due", value: "GH₵ 50", detail: "1 appointment" },
-      { label: "Outstanding", value: "GH₵ 0", detail: "Client balances" },
-      { label: "Refunded", value: "GH₵ 0", detail: "0 refunds" },
+      { label: "Collected", value: "GH₵ 80", detail: "Successful payments", clients: [{ client: "Yaa Boateng", amount: "GH₵ 80", detail: "Net collected" }] },
+      { label: "Deposits due", value: "GH₵ 50", detail: "1 appointment", clients: [{ client: "Afia Owusu", amount: "GH₵ 50", detail: "Brow lamination" }] },
+      { label: "Outstanding", value: "GH₵ 0", detail: "Client balances", clients: [] },
+      { label: "Refunded", value: "GH₵ 0", detail: "0 refunds", clients: [] },
     ],
     payments: [],
     depositsDue: [
@@ -147,6 +163,7 @@ const fallbackPaymentData: Record<string, PaymentModuleData> = {
     appointments: [
       { id: "demo-5", label: "Afia Owusu — Brow lamination (13 Jul)" },
     ],
+    invoices: [],
     methods: PAYMENT_METHODS,
     types: PAYMENT_TYPES,
   },
@@ -166,25 +183,49 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
     return null;
   }
 
-  const [payments, appointments, customers, bookedAgg, bookingPaidAgg, incomingAgg, refundAgg] = await Promise.all([
+  const [payments, appointments, customers, invoices, bookedAgg, bookingPaidAgg, incomingAgg, refundAgg, incomingGroups, refundGroups, bookedGroups, bookingPaidGroups] = await Promise.all([
     // History list only — the money stats below are aggregated in Postgres, not
     // summed from this capped page.
     prisma.payment.findMany({
       where: { businessId: business.id },
       orderBy: { createdAt: "desc" },
       take: 25,
-      include: { customer: true },
+      select: {
+        id: true,
+        method: true,
+        type: true,
+        amount: true,
+        status: true,
+        paidAt: true,
+        createdAt: true,
+        customer: { select: { firstName: true, lastName: true } },
+      },
     }),
     // HOLD is excluded: a provisional date has no deposit to collect and must
     // not appear in payment history or balances (docs/HOLDS.md).
     prisma.appointment.findMany({
       where: { businessId: business.id, status: { notIn: ["CANCELLED", "NO_SHOW", "HOLD"] } },
       orderBy: { startAt: "desc" },
-      include: { customer: true, service: true, payments: { select: { amount: true, type: true, status: true } } },
+      select: {
+        id: true,
+        customerId: true,
+        price: true,
+        startAt: true,
+        customer: { select: { firstName: true, lastName: true } },
+        service: { select: { name: true } },
+        payments: { select: { amount: true, type: true, status: true } },
+      },
     }),
     prisma.customer.findMany({
       where: { businessId: business.id },
       orderBy: [{ firstName: "asc" }, { lastName: "asc" }],
+      select: { id: true, firstName: true, lastName: true },
+    }),
+    prisma.invoice.findMany({
+      where: { businessId: business.id, status: { not: "VOID" } },
+      orderBy: { issuedAt: "desc" },
+      take: 100,
+      select: { id: true, invoiceNumber: true, customer: { select: { firstName: true, lastName: true } } },
     }),
     // Outstanding is derived (booked − paid), never read from a stored counter.
     // `Customer.outstandingBalance` only ever decreased — booking never added to
@@ -193,6 +234,10 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
     prisma.payment.aggregate({ _sum: { amount: true }, where: bookingPaymentsWhere(business.id) }),
     prisma.payment.aggregate({ _sum: { amount: true }, where: incomingWhere(business.id) }),
     prisma.payment.aggregate({ _sum: { amount: true }, where: refundWhere(business.id) }),
+    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, _count: { _all: true }, where: incomingWhere(business.id) }),
+    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, _count: { _all: true }, where: refundWhere(business.id) }),
+    prisma.appointment.groupBy({ by: ["customerId"], _sum: { price: true }, _count: { _all: true }, where: bookedWhere(business.id) }),
+    prisma.payment.groupBy({ by: ["customerId"], _sum: { amount: true }, _count: { _all: true }, where: bookingPaymentsWhere(business.id) }),
   ]);
 
   const currency = business.currency;
@@ -222,19 +267,79 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
   const depositsDueTotal = depositsDueList.reduce((sum, d) => sum + d.amountRaw, 0);
   const bookedTotal = Number(bookedAgg._sum.price ?? 0);
   const outstandingTotal = outstanding(bookedTotal, Number(bookingPaidAgg._sum.amount ?? 0));
+  const customerNames = new Map(customers.map((customer) => [customer.id, clientName(customer)]));
+  const nameForCustomer = (customerId: string | null) => customerId ? customerNames.get(customerId) ?? "Unknown client" : "Walk-in";
+  const refundByCustomer = new Map(refundGroups.map((group) => [group.customerId, Number(group._sum.amount ?? 0)]));
+  const bookingPaidByCustomer = new Map(bookingPaidGroups.map((group) => [group.customerId, Number(group._sum.amount ?? 0)]));
+
+  const collectedClients: PaymentStatClient[] = incomingGroups
+    .map((group) => {
+      const gross = Number(group._sum.amount ?? 0);
+      const refundedForClient = refundByCustomer.get(group.customerId) ?? 0;
+      return {
+        client: nameForCustomer(group.customerId),
+        amountRaw: collected(gross, refundedForClient),
+        count: group._count._all,
+        refundedForClient,
+      };
+    })
+    .filter((row) => row.amountRaw !== 0)
+    .sort((a, b) => b.amountRaw - a.amountRaw)
+    .map((row) => ({
+      client: row.client,
+      amount: money(row.amountRaw, currency),
+      detail: `${row.count} payment${row.count === 1 ? "" : "s"}${row.refundedForClient > 0 ? `, less ${money(row.refundedForClient, currency)} refunded` : ""}`,
+    }));
+
+  const depositClients: PaymentStatClient[] = depositsDueList
+    .map((deposit) => ({ client: deposit.client, amountRaw: deposit.amountRaw, detail: deposit.service }))
+    .reduce<Array<{ client: string; amountRaw: number; details: string[] }>>((rows, deposit) => {
+      const existing = rows.find((row) => row.client === deposit.client);
+      if (existing) {
+        existing.amountRaw += deposit.amountRaw;
+        existing.details.push(deposit.detail);
+      } else {
+        rows.push({ client: deposit.client, amountRaw: deposit.amountRaw, details: [deposit.detail] });
+      }
+      return rows;
+    }, [])
+    .sort((a, b) => b.amountRaw - a.amountRaw)
+    .map((row) => ({ client: row.client, amount: money(row.amountRaw, currency), detail: row.details.slice(0, 2).join(", ") }));
+
+  const outstandingClients: PaymentStatClient[] = bookedGroups
+    .map((group) => {
+      const booked = Number(group._sum.price ?? 0);
+      const paid = bookingPaidByCustomer.get(group.customerId) ?? 0;
+      return { client: nameForCustomer(group.customerId), amountRaw: outstanding(booked, paid), booked, paid, count: group._count._all };
+    })
+    .filter((row) => row.amountRaw > 0)
+    .sort((a, b) => b.amountRaw - a.amountRaw)
+    .map((row) => ({
+      client: row.client,
+      amount: money(row.amountRaw, currency),
+      detail: `${row.count} booking${row.count === 1 ? "" : "s"} of ${money(row.booked, currency)}, paid ${money(row.paid, currency)}`,
+    }));
+
+  const refundClients: PaymentStatClient[] = refundGroups
+    .map((group) => ({ client: nameForCustomer(group.customerId), amountRaw: Number(group._sum.amount ?? 0), count: group._count._all }))
+    .filter((row) => row.amountRaw > 0)
+    .sort((a, b) => b.amountRaw - a.amountRaw)
+    .map((row) => ({ client: row.client, amount: money(row.amountRaw, currency), detail: `${row.count} refund${row.count === 1 ? "" : "s"}` }));
 
   const stats: PaymentStat[] = [
-    { label: "Collected", value: money(collectedTotal, currency), detail: "Payments in, less refunds" },
+    { label: "Collected", value: money(collectedTotal, currency), detail: "Payments in, less refunds", clients: collectedClients },
     {
       label: "Deposits due",
       value: money(depositsDueTotal, currency),
       detail: `${depositsDueList.length} ${depositsDueList.length === 1 ? "appointment" : "appointments"}`,
+      clients: depositClients,
     },
-    { label: "Outstanding", value: money(outstandingTotal, currency), detail: `Of ${money(bookedTotal, currency)} booked` },
+    { label: "Outstanding", value: money(outstandingTotal, currency), detail: `Of ${money(bookedTotal, currency)} booked`, clients: outstandingClients },
     {
       label: "Refunded",
       value: money(refunded, currency),
       detail: `${payments.filter((p) => p.type === "REFUND").length} refunds`,
+      clients: refundClients,
     },
   ];
 
@@ -258,6 +363,10 @@ export async function getPaymentModuleData(businessSlug: string): Promise<Paymen
       id: a.id,
       label: `${clientName(a.customer)} — ${a.service.name} (${shortDate(a.startAt)})`,
     })),
+    invoices: invoices.map((invoice) => ({
+      id: invoice.id,
+      label: `${invoice.invoiceNumber} — ${clientName(invoice.customer)}`,
+    })),
     methods: PAYMENT_METHODS,
     types: PAYMENT_TYPES,
   };
@@ -267,6 +376,7 @@ export async function recordPayment({
   businessSlug,
   customer,
   appointmentId,
+  invoiceId,
   amount,
   method,
   type,
@@ -275,33 +385,64 @@ export async function recordPayment({
   businessSlug: string;
   customer: string;
   appointmentId: string;
+  invoiceId?: string;
   amount: number;
   method: string;
   type: string;
   reference: string;
-}) {
+}): Promise<PaymentWriteResult> {
   if (!isDatabaseConfigured() || !Number.isFinite(amount) || amount <= 0) {
-    return;
+    return { ok: false, error: "Enter a payment amount greater than zero." };
   }
   if (!VALID_METHODS.has(method) || !VALID_TYPES.has(type)) {
-    return;
+    return { ok: false, error: "Choose a valid payment method and type." };
   }
 
   const business = await prisma.business.findUnique({
     where: { slug: businessSlug },
-    select: { id: true },
+    select: { id: true, currency: true },
   });
 
   if (!business) {
-    return;
+    return { ok: false, error: "Workspace not found." };
   }
 
-  // Resolve a linked appointment (scoped to this business) if provided, and
-  // derive the customer from it when one wasn't explicitly chosen.
+  let invoice: {
+    id: string;
+    customerId: string;
+    appointmentId: string | null;
+    total: unknown;
+    status: string;
+    payments: { amount: unknown; type: string; status: string }[];
+  } | null = null;
+  if (invoiceId) {
+    invoice = await prisma.invoice.findFirst({
+      where: { id: invoiceId, businessId: business.id },
+      select: {
+        id: true,
+        customerId: true,
+        appointmentId: true,
+        total: true,
+        status: true,
+        payments: { select: { amount: true, type: true, status: true } },
+      },
+    });
+    if (!invoice) return { ok: false, error: "That invoice no longer exists." };
+    if (invoice.status === "VOID") return { ok: false, error: "A void invoice can't accept payments." };
+    if (type === "REFUND") return { ok: false, error: "Issue invoice refunds from the payment detail page." };
+    const balanceDue = Math.max(0, Number(invoice.total) - netPaidForInvoice(invoice.payments));
+    if (amount > balanceDue + 1e-9) {
+      return { ok: false, error: `Payment exceeds the remaining invoice balance of ${money(balanceDue, business.currency)}.` };
+    }
+  }
+
+  // Resolve a linked appointment (scoped to this business) if provided or inferred
+  // from the invoice, and derive the customer from it when one wasn't explicitly chosen.
   let appointment: { id: string; customerId: string } | null = null;
-  if (appointmentId) {
+  const linkedAppointmentId = appointmentId || invoice?.appointmentId || "";
+  if (linkedAppointmentId) {
     appointment = await prisma.appointment.findFirst({
-      where: { id: appointmentId, businessId: business.id },
+      where: { id: linkedAppointmentId, businessId: business.id },
       select: { id: true, customerId: true },
     });
   }
@@ -310,7 +451,7 @@ export async function recordPayment({
   // when left blank, fall back to the linked appointment's client (or walk-in).
   const resolvedCustomerId = customer.trim()
     ? await findOrCreateCustomer(business.id, customer)
-    : appointment?.customerId ?? null;
+    : invoice?.customerId ?? appointment?.customerId ?? null;
 
   await tenantTransaction(async (tx) => {
     await tx.payment.create({
@@ -318,6 +459,7 @@ export async function recordPayment({
         businessId: business.id,
         customerId: resolvedCustomerId,
         appointmentId: appointment?.id ?? null,
+        invoiceId: invoice?.id ?? null,
         amount,
         method: method as "PAYSTACK" | "HUBTEL" | "MOMO" | "TELECEL_CASH" | "BANK_TRANSFER" | "CASH",
         type: type as "DEPOSIT" | "FULL_PAYMENT" | "BALANCE" | "REFUND" | "PRODUCT_SALE",
@@ -341,6 +483,11 @@ export async function recordPayment({
     // owed anything. Outstanding is now derived wherever it's shown, from booked
     // appointments minus real payments. See src/lib/money.ts.
   }, { timeout: 15000 });
+
+  if (invoice?.id) {
+    await syncInvoicePaymentState(businessSlug, invoice.id);
+  }
+  return { ok: true };
 }
 
 // ── Corrections (item 14) ────────────────────────────────────────────────────
@@ -489,7 +636,7 @@ export async function voidPayment(businessSlug: string, paymentId: string, reaso
 
   const payment = await prisma.payment.findFirst({
     where: { id: paymentId, business: { slug: businessSlug } },
-    select: { id: true, status: true, type: true, note: true },
+    select: { id: true, status: true, type: true, note: true, invoiceId: true },
   });
   if (!payment) return { ok: false, error: "That payment no longer exists." };
   if (payment.type === "REFUND") return { ok: false, error: "A refund can't be voided. Record a new payment if needed." };
@@ -502,6 +649,9 @@ export async function voidPayment(businessSlug: string, paymentId: string, reaso
     where: { id: payment.id },
     data: { status: "VOIDED", note: payment.note ? `${payment.note} — ${stamp}` : stamp },
   });
+  if (payment.invoiceId) {
+    await syncInvoicePaymentState(businessSlug, payment.invoiceId);
+  }
   return { ok: true };
 }
 
@@ -521,7 +671,7 @@ export async function refundPayment(
 
   const original = await prisma.payment.findFirst({
     where: { id: paymentId, business: { slug: businessSlug } },
-    select: { id: true, businessId: true, customerId: true, appointmentId: true, amount: true, method: true, type: true, status: true },
+    select: { id: true, businessId: true, customerId: true, appointmentId: true, invoiceId: true, amount: true, method: true, type: true, status: true },
   });
   if (!original) return { ok: false, error: "That payment no longer exists." };
   if (original.type === "REFUND") return { ok: false, error: "You can't refund a refund." };
@@ -542,6 +692,7 @@ export async function refundPayment(
       businessId: original.businessId,
       customerId: original.customerId,
       appointmentId: original.appointmentId,
+      invoiceId: original.invoiceId,
       amount,
       method: original.method,
       type: "REFUND",
@@ -550,5 +701,8 @@ export async function refundPayment(
       paidAt: new Date(),
     },
   });
+  if (original.invoiceId) {
+    await syncInvoicePaymentState(businessSlug, original.invoiceId);
+  }
   return { ok: true };
 }

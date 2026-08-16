@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Users } from "lucide-react";
+import { Users, ChevronDown } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { StatTile, statMetaFor, EmptyState, Avatar } from "@/components/ui";
 import { notFound } from "next/navigation";
 import { createClientAction } from "@/lib/client-actions";
 import { getClientModuleData } from "@/lib/client-data";
 import { requireTenantAccess } from "@/lib/auth";
+import { timeDataLoad } from "@/lib/perf";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +14,29 @@ type ClientsPageProps = {
   params: Promise<{
     businessSlug: string;
   }>;
+  searchParams: Promise<{ new?: string }>;
 };
 
-export default async function ClientsPage({ params }: ClientsPageProps) {
+const signalTone: Record<string, string> = {
+  vip: "bg-plum-soft text-plum",
+  birthday: "bg-warning-soft text-warning",
+  owed: "bg-danger-soft text-danger",
+  new: "bg-success-soft text-success",
+  quiet: "bg-line-2 text-muted",
+};
+
+const contactTone: Record<string, string> = {
+  ready: "bg-success-soft text-success",
+  partial: "bg-warning-soft text-warning",
+  missing: "bg-danger-soft text-danger",
+};
+
+export default async function ClientsPage({ params, searchParams }: ClientsPageProps) {
   const { businessSlug } = await params;
+  const { new: newParam } = await searchParams;
+  const showNew = newParam === "1";
   await requireTenantAccess(businessSlug);
-  const data = await getClientModuleData(businessSlug);
+  const data = await timeDataLoad(`clients:${businessSlug}`, () => getClientModuleData(businessSlug));
 
   if (!data) {
     notFound();
@@ -37,7 +55,7 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
           })}
         </section>
 
-        <section className="grid grid-cols-[minmax(0,1fr)_360px] gap-5 max-[1080px]:grid-cols-1">
+        <section className="grid gap-5">
           <div className="card p-5">
             <div className="mb-4">
               <h2 className="text-lg font-semibold">Client directory</h2>
@@ -47,17 +65,17 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
             </div>
 
             {data.clients.length === 0 ? (
-              <EmptyState icon={Users} title="No clients yet" body="Add your first client from the panel on the right." />
+              <EmptyState icon={Users} title="No clients yet" body="Add your first client using Add client below." />
             ) : (
-              <div className="overflow-hidden rounded-2xl border border-line">
-                <div className="grid grid-cols-[1.3fr_1.1fr_90px_100px_120px_110px] bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[940px]:hidden">
-                  <span>Client</span><span>Contact</span><span>Visits</span><span>Last visit</span><span>Lifetime</span><span>Owed</span>
+              <div className="glass-panel overflow-hidden rounded-[26px]">
+                <div className="grid grid-cols-[1.4fr_1.1fr_120px_80px_100px_110px_100px] gap-3 bg-plum-soft px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted max-[1040px]:hidden">
+                  <span>Client</span><span>Contact</span><span>Signal</span><span>Visits</span><span>Last visit</span><span>Lifetime</span><span>Owed</span>
                 </div>
                 {data.clients.map((client) => (
                   <Link
                     key={client.id}
                     href={`/${businessSlug}/clients/${client.id}`}
-                    className="grid grid-cols-[1.3fr_1.1fr_90px_100px_120px_110px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm transition hover:bg-plum-softer max-[940px]:grid-cols-1"
+                    className="grid grid-cols-[1.4fr_1.1fr_120px_80px_100px_110px_100px] items-center gap-3 border-t border-line-2 px-4 py-4 text-sm transition hover:bg-plum-softer max-[1040px]:grid-cols-1"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <Avatar name={client.name} />
@@ -74,7 +92,15 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
                         ) : null}
                       </div>
                     </div>
-                    <span className="truncate font-medium text-muted">{client.contact}</span>
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium text-muted">{client.contact}</span>
+                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10.5px] font-semibold ${contactTone[client.contactTone]}`}>
+                        {client.contactTone === "ready" ? "Email + phone" : client.contactTone === "partial" ? "One contact" : "Needs contact"}
+                      </span>
+                    </span>
+                    <span className={`w-fit rounded-full px-2.5 py-1 text-[11px] font-semibold ${signalTone[client.signalTone]}`}>
+                      {client.signal}
+                    </span>
                     <span className="font-semibold">{client.visits}</span>
                     <span className="font-bold text-muted">{client.lastVisit}</span>
                     <span className="font-semibold">{client.lifetimeSpend}</span>
@@ -87,15 +113,18 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
             )}
           </div>
 
-          <form action={createClientAction} className="card p-5">
-            <h2 className="text-lg font-semibold">Add client</h2>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Creates a client record scoped to {data.tenant.name}.
-            </p>
-
-            <input type="hidden" name="businessSlug" value={businessSlug} />
-
-            <div className="mt-5 grid gap-4">
+          <details id="add-client" open={showNew} className="group card overflow-hidden p-0">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-5 [&::-webkit-details-marker]:hidden">
+              <div>
+                <h2 className="text-lg font-semibold">Add client</h2>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  Creates a client record scoped to {data.tenant.name}.
+                </p>
+              </div>
+              <ChevronDown size={18} className="shrink-0 text-muted transition-transform group-open:rotate-180" />
+            </summary>
+            <form action={createClientAction} className="grid gap-4 border-t border-line-2 p-5">
+              <input type="hidden" name="businessSlug" value={businessSlug} />
               <div className="grid grid-cols-2 gap-3 max-[560px]:grid-cols-1">
                 <label className="field-label">
                   First name
@@ -144,11 +173,11 @@ export default async function ClientsPage({ params }: ClientsPageProps) {
                 <textarea name="allergies" rows={2} className="input" />
               </label>
 
-              <button className="rounded-2xl bg-gradient-to-r from-plum to-wine px-4 py-3 text-sm font-semibold text-white">
+              <button className="rounded-2xl primary-action px-4 py-3 text-sm font-semibold text-white">
                 Add client
               </button>
-            </div>
-          </form>
+            </form>
+          </details>
         </section>
     </div>
   );

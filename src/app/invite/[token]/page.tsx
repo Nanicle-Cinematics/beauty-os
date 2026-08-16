@@ -38,7 +38,8 @@ export default async function InvitePage({ params, searchParams }: InvitePagePro
         ) : (
           <div className="grid gap-4 rounded-[24px] border border-line bg-card p-6 shadow-[var(--shadow-soft)]">
             <p className="text-sm text-muted">
-              You&rsquo;re joining <span className="font-semibold text-ink">{invite.businessName}</span> as the owner.
+              You&rsquo;re joining <span className="font-semibold text-ink">{invite.businessName}</span> as{" "}
+              <span className="font-semibold text-ink">{invite.roleLabel}</span>.
               Sign-in email: <span className="font-semibold text-ink">{invite.email}</span>
             </p>
 

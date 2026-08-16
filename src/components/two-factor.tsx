@@ -58,7 +58,7 @@ export function TwoFactor({ status, enrollment }: { status: Status; enrollment: 
       {codes ? (
         <RecoveryCodes codes={codes} />
       ) : !status.configured ? (
-        <div className="rounded-xl border border-line bg-sunken px-4 py-3 text-sm text-muted">
+        <div className="rounded-[18px] border border-white/60 bg-white/42 px-4 py-3 text-sm text-muted">
           Two-factor isn&apos;t configured on this server yet.
         </div>
       ) : status.enabled ? (
@@ -108,13 +108,13 @@ export function TwoFactor({ status, enrollment }: { status: Status; enrollment: 
             {confirmState.error ? <div className="text-[12.5px] font-semibold text-danger">{confirmState.error}</div> : null}
             <div className="flex gap-2">
               <input name="code" inputMode="numeric" autoComplete="one-time-code" autoFocus placeholder="123456" className={`${codeInput} flex-1`} required />
-              <button className="rounded-xl bg-gradient-to-r from-plum to-wine px-5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">Verify &amp; turn on</button>
+              <button className="rounded-xl primary-action px-5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">Verify &amp; turn on</button>
             </div>
           </form>
         </div>
       ) : (
         <form action={startMfaAction}>
-          <button className="rounded-xl bg-gradient-to-r from-plum to-wine px-4 py-2.5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
+          <button className="rounded-xl primary-action px-4 py-2.5 text-sm font-semibold text-white shadow-[0_6px_16px_rgba(84,33,63,0.28)]">
             Enable two-factor
           </button>
         </form>

@@ -14,7 +14,7 @@ import {
 } from "@/lib/appointment-data";
 import { requireTenantAccess, type AppUser } from "@/lib/auth";
 import { membershipIn, roleCan, type Capability } from "@/lib/permissions";
-import { prisma } from "@/lib/prisma";
+import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -39,6 +39,8 @@ async function audit(
   entityId: string,
   metadata: Record<string, unknown>,
 ) {
+  if (!isDatabaseConfigured()) return;
+
   try {
     const business = await prisma.business.findUnique({ where: { slug: businessSlug }, select: { id: true } });
     if (!business) return;
@@ -255,7 +257,12 @@ export async function deleteAppointmentAction(formData: FormData) {
     redirect(`${back}?error=${encodeURIComponent(result.error)}`);
   }
 
-  await audit(businessSlug, user, membership?.staffMemberId ?? null, "appointment.deleted", appointmentId, {});
+  // The payment rows are gone, so the audit entry IS the surviving record of
+  // what money was attached to the booking we just removed.
+  await audit(businessSlug, user, membership?.staffMemberId ?? null, "appointment.deleted", appointmentId, {
+    removedPayments: result.removedPayments,
+    removedTotal: result.removedTotal,
+  });
 
   revalidatePath(`/${businessSlug}/appointments`);
   revalidatePath(`/${businessSlug}/calendar`);

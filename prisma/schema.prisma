@@ -24,26 +24,27 @@ datasource db {
 /// businesses, a customer of multiple businesses, and/or a platform admin —
 /// this row is shared across all of those contexts.
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  phone            String?
-  passwordHash     String
-  name             String
-  avatarUrl        String?
-  isPlatformAdmin  Boolean   @default(false)
-  mfaEnabled       Boolean   @default(false)
-  mfaSecret        String?
-  emailVerifiedAt  DateTime?
-  lastLoginAt      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  phone           String?
+  passwordHash    String
+  name            String
+  avatarUrl       String?
+  themePreference String    @default("liquid")
+  isPlatformAdmin Boolean   @default(false)
+  mfaEnabled      Boolean   @default(false)
+  mfaSecret       String?
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  staffMemberships StaffMember[]
-  customerProfiles Customer[]
-  auditLogs        AuditLog[]
-  sessions         Session[]
+  staffMemberships        StaffMember[]
+  customerProfiles        Customer[]
+  auditLogs               AuditLog[]
+  sessions                Session[]
   emailVerificationTokens EmailVerificationToken[]
-  mfaRecoveryCodes MfaRecoveryCode[]
+  mfaRecoveryCodes        MfaRecoveryCode[]
 
   @@index([isPlatformAdmin])
 }
@@ -87,14 +88,14 @@ model MfaRecoveryCode {
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash    String   @unique
-  userAgent    String?
-  ipAddress    String?
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  userAgent String?
+  ipAddress String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 
   @@index([userId])
 }
@@ -126,26 +127,27 @@ enum CommissionType {
 /// and everything the "Staff Management" module needs. Not used for
 /// customers — see `Customer` below.
 model StaffMember {
-  id             String         @id @default(cuid())
-  businessId     String
-  business       Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  userId         String?
-  user           User?          @relation(fields: [userId], references: [id])
-  invitedEmail   String?
-  role           BusinessRole
-  status         StaffStatus    @default(INVITED)
-  bio            String?
-  colorHex       String?
-  commissionType CommissionType @default(NONE)
-  commissionValue Decimal?     @db.Decimal(6, 2)
+  id              String         @id @default(cuid())
+  businessId      String
+  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?          @relation(fields: [userId], references: [id])
+  invitedEmail    String?
+  displayName     String?
+  role            BusinessRole
+  status          StaffStatus    @default(INVITED)
+  bio             String?
+  colorHex        String?
+  commissionType  CommissionType @default(NONE)
+  commissionValue Decimal?       @db.Decimal(6, 2)
   /// DEPRECATED — do not use. Authorization is role-based via the capability
   /// model in src/lib/permissions.ts (roleCan / CAPABILITIES). Wiring a
   /// per-staff permissions blob here would create a second, divergent source of
   /// truth for who-can-do-what. Left only so dropping it is its own migration.
-  permissions    Json?
-  joinedAt       DateTime?
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  permissions     Json?
+  joinedAt        DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   workingHours     WorkingHours[]
   timeOff          TimeOff[]
@@ -162,8 +164,8 @@ model WorkingHours {
   id            String      @id @default(cuid())
   staffMemberId String
   staffMember   StaffMember @relation(fields: [staffMemberId], references: [id], onDelete: Cascade)
-  dayOfWeek     Int         // 0 = Sunday .. 6 = Saturday
-  startTime     String?     // "09:00", null when isOff
+  dayOfWeek     Int // 0 = Sunday .. 6 = Saturday
+  startTime     String? // "09:00", null when isOff
   endTime       String?
   isOff         Boolean     @default(false)
 
@@ -196,12 +198,12 @@ model TimeOff {
 /// Seeded lookup table (not an enum) so new business types can be added by
 /// the platform admin without a schema migration.
 model BusinessCategory {
-  id        String   @id @default(cuid())
-  key       String   @unique // "hair_salon", "barbershop", ...
+  id        String  @id @default(cuid())
+  key       String  @unique // "hair_salon", "barbershop", ...
   label     String
   icon      String?
-  sortOrder Int      @default(0)
-  isActive  Boolean  @default(true)
+  sortOrder Int     @default(0)
+  isActive  Boolean @default(true)
 
   businesses Business[]
 }
@@ -214,32 +216,32 @@ enum BusinessStatus {
 }
 
 model Business {
-  id           String           @id @default(cuid())
-  slug         String           @unique
-  name         String
-  categoryId   String
-  category     BusinessCategory @relation(fields: [categoryId], references: [id])
-  logoUrl      String?
-  description  String?
-  email        String?
-  phone        String?
-  addressLine1 String?
-  addressLine2 String?
-  city         String?
-  region       String?
-  country      String?
-  timezone     String           @default("UTC")
-  currency     String           @default("GHS")
-  taxRate      Decimal?         @db.Decimal(5, 2)
-  taxId        String?
-  socialLinks  Json?
-  status       BusinessStatus   @default(TRIAL)
+  id              String           @id @default(cuid())
+  slug            String           @unique
+  name            String
+  categoryId      String
+  category        BusinessCategory @relation(fields: [categoryId], references: [id])
+  logoUrl         String?
+  description     String?
+  email           String?
+  phone           String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  region          String?
+  country         String?
+  timezone        String           @default("UTC")
+  currency        String           @default("GHS")
+  taxRate         Decimal?         @db.Decimal(5, 2)
+  taxId           String?
+  socialLinks     Json?
+  status          BusinessStatus   @default(TRIAL)
   // True when the workspace name is a signup-time placeholder (e.g. a social
   // JIT signup auto-named "<name>'s Studio"). Drives an in-app nudge to rename;
   // cleared when the owner renames or dismisses it.
-  namePlaceholder Boolean       @default(false)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  namePlaceholder Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 
   hours             BusinessHours[]
   staff             StaffMember[]
@@ -250,6 +252,8 @@ model Business {
   waitlistEntries   WaitlistEntry[]
   payments          Payment[]
   invoices          Invoice[]
+  galleries         ClientGallery[]
+  galleryEvents     GalleryAccessEvent[]
   expenses          Expense[]
   suppliers         Supplier[]
   products          Product[]
@@ -315,30 +319,30 @@ model ServiceCategory {
 }
 
 model Service {
-  id                 String            @id @default(cuid())
+  id                 String           @id @default(cuid())
   businessId         String
-  business           Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business           Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   categoryId         String?
-  category           ServiceCategory?  @relation(fields: [categoryId], references: [id])
+  category           ServiceCategory? @relation(fields: [categoryId], references: [id])
   name               String
   description        String?
-  price              Decimal           @db.Decimal(12, 2)
+  price              Decimal          @db.Decimal(12, 2)
   /// DEPRECATED — the deposit is 50% of price, computed (src/lib/money.ts).
   /// No longer read or written. Kept only until dropped in its own migration.
-  depositAmount      Decimal?          @db.Decimal(12, 2)
+  depositAmount      Decimal?         @db.Decimal(12, 2)
   durationMinutes    Int
   colorHex           String?
   prepInstructions   String?
   cancellationPolicy String?
   availabilityRules  Json?
-  isActive           Boolean           @default(true)
-  createdAt          DateTime          @default(now())
-  updatedAt          DateTime          @updatedAt
+  isActive           Boolean          @default(true)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
-  images         ServiceImage[]
-  assignedStaff  ServiceStaff[]
-  productsUsed   ServiceProduct[]
-  appointments   Appointment[]
+  images          ServiceImage[]
+  assignedStaff   ServiceStaff[]
+  productsUsed    ServiceProduct[]
+  appointments    Appointment[]
   waitlistEntries WaitlistEntry[]
 
   @@index([businessId])
@@ -364,12 +368,12 @@ model ServiceStaff {
 
 /// Powers automatic stock deduction after a service is completed.
 model ServiceProduct {
-  id            String  @id @default(cuid())
-  serviceId     String
-  service       Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  productId     String
-  product       Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-  quantityUsed  Decimal @db.Decimal(10, 2)
+  id           String  @id @default(cuid())
+  serviceId    String
+  service      Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  productId    String
+  product      Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantityUsed Decimal @db.Decimal(10, 2)
 
   @@unique([serviceId, productId])
 }
@@ -379,40 +383,40 @@ model ServiceProduct {
 // ============================================================================
 
 model Customer {
-  id                    String   @id @default(cuid())
-  businessId            String
-  business              Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  userId                String?
-  user                  User?    @relation(fields: [userId], references: [id])
-  firstName             String
-  lastName              String?
-  phone                 String?
-  email                 String?
-  addressLine1          String?
-  city                  String?
-  birthdate             DateTime?
-  anniversaryDate       DateTime?
-  skinNotes             String?
-  allergies             String?
-  favoriteServiceId     String?
-  favoriteStaffId       String?
-  marketingOptInEmail    Boolean  @default(true)
-  marketingOptInSms      Boolean  @default(true)
-  marketingOptInWhatsapp Boolean  @default(true)
-  tags                  String[]
+  id                     String    @id @default(cuid())
+  businessId             String
+  business               Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId                 String?
+  user                   User?     @relation(fields: [userId], references: [id])
+  firstName              String
+  lastName               String?
+  phone                  String?
+  email                  String?
+  addressLine1           String?
+  city                   String?
+  birthdate              DateTime?
+  anniversaryDate        DateTime?
+  skinNotes              String?
+  allergies              String?
+  favoriteServiceId      String?
+  favoriteStaffId        String?
+  marketingOptInEmail    Boolean   @default(true)
+  marketingOptInSms      Boolean   @default(true)
+  marketingOptInWhatsapp Boolean   @default(true)
+  tags                   String[]
   /// Archived clients are hidden from working lists but keep their history.
   /// A client with appointments or payments must never be hard-deleted — that
   /// would orphan bookings and rewrite the financial record.
-  archivedAt            DateTime?
+  archivedAt             DateTime?
   /// DEPRECATED — do not read or write. Nothing maintains this any more.
   /// It was a running counter that only ever decreased (payments subtracted from
   /// it; booking an appointment never added to it), so it sat at 0 for every
   /// client and reported that nobody owed anything. Outstanding is now derived
   /// wherever it's shown: booked appointments minus real payments. See
   /// src/lib/money.ts. Kept only so the column drop is a separate migration.
-  outstandingBalance    Decimal  @default(0) @db.Decimal(12, 2)
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  outstandingBalance     Decimal   @default(0) @db.Decimal(12, 2)
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
 
   notes            CustomerNote[]
   photos           CustomerPhoto[]
@@ -420,6 +424,7 @@ model Customer {
   waitlistEntries  WaitlistEntry[]
   payments         Payment[]
   invoices         Invoice[]
+  galleries        ClientGallery[]
   loyaltyLedger    LoyaltyLedgerEntry[]
   notificationLogs NotificationLog[]
 
@@ -429,13 +434,13 @@ model Customer {
 }
 
 model CustomerNote {
-  id            String       @id @default(cuid())
+  id            String   @id @default(cuid())
   businessId    String
   customerId    String
-  customer      Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
   authorStaffId String?
   body          String
-  createdAt     DateTime     @default(now())
+  createdAt     DateTime @default(now())
 
   @@index([customerId])
 }
@@ -505,6 +510,7 @@ model Appointment {
 
   payments       Payment[]
   invoices       Invoice[]
+  galleries      ClientGallery[]
   stockMovements StockMovement[]
 
   @@index([businessId, startAt])
@@ -522,18 +528,18 @@ enum WaitlistStatus {
 }
 
 model WaitlistEntry {
-  id              String         @id @default(cuid())
-  businessId      String
-  business        Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  customerId      String
-  customer        Customer       @relation(fields: [customerId], references: [id])
-  serviceId       String
-  service         Service        @relation(fields: [serviceId], references: [id])
+  id               String         @id @default(cuid())
+  businessId       String
+  business         Business       @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId       String
+  customer         Customer       @relation(fields: [customerId], references: [id])
+  serviceId        String
+  service          Service        @relation(fields: [serviceId], references: [id])
   preferredStaffId String?
-  earliestDate    DateTime?
-  latestDate      DateTime?
-  status          WaitlistStatus @default(WAITING)
-  createdAt       DateTime       @default(now())
+  earliestDate     DateTime?
+  latestDate       DateTime?
+  status           WaitlistStatus @default(WAITING)
+  createdAt        DateTime       @default(now())
 
   @@index([businessId])
 }
@@ -601,6 +607,7 @@ enum InvoiceStatus {
   SENT
   PARTIALLY_PAID
   PAID
+  OVERDUE
   VOID
 }
 
@@ -612,6 +619,7 @@ model Invoice {
   customer       Customer      @relation(fields: [customerId], references: [id])
   appointmentId  String?
   appointment    Appointment?  @relation(fields: [appointmentId], references: [id])
+  invoiceNumber  String        @default(cuid())
   subtotal       Decimal       @db.Decimal(12, 2)
   taxAmount      Decimal       @default(0) @db.Decimal(12, 2)
   discountAmount Decimal       @default(0) @db.Decimal(12, 2)
@@ -620,35 +628,189 @@ model Invoice {
   status         InvoiceStatus @default(DRAFT)
   dueDate        DateTime?
   issuedAt       DateTime      @default(now())
+  sentAt         DateTime?
+  paidAt         DateTime?
+  notes          String?
+  terms          String?
   createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   lineItems InvoiceLineItem[]
   payments  Payment[]
+  galleries ClientGallery[]
 
   @@index([businessId, issuedAt])
+  @@index([customerId])
+  @@index([appointmentId])
+}
+
+// ============================================================================
+// SECURE CLIENT GALLERIES
+// ============================================================================
+
+enum GalleryStatus {
+  DRAFT
+  EDITING
+  READY_FOR_REVIEW
+  AWAITING_PAYMENT
+  PAID
+  COMPLETED
+  ARCHIVED
+}
+
+enum GalleryMediaType {
+  IMAGE
+  VIDEO
+}
+
+enum GalleryEventType {
+  SENT
+  OPENED
+  VIEWED_IMAGE
+  FAVORITED
+  COMMENTED
+  PAYMENT_PENDING
+  PAYMENT_RECEIVED
+  DOWNLOAD_ENABLED
+  COMPLETED
+  REVOKED
+}
+
+model ClientGallery {
+  id                 String        @id @default(cuid())
+  businessId         String
+  business           Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  customerId         String
+  customer           Customer      @relation(fields: [customerId], references: [id])
+  appointmentId      String?
+  appointment        Appointment?  @relation(fields: [appointmentId], references: [id])
+  invoiceId          String?
+  invoice            Invoice?      @relation(fields: [invoiceId], references: [id])
+  title              String
+  status             GalleryStatus @default(DRAFT)
+  tokenHash          String        @unique
+  shareSlug          String        @unique
+  pinHash            String?
+  expiresAt          DateTime?
+  revokedAt          DateTime?
+  downloadsEnabled   Boolean       @default(false)
+  originalsEnabled   Boolean       @default(false)
+  zipEnabled         Boolean       @default(false)
+  sharingEnabled     Boolean       @default(false)
+  printEnabled       Boolean       @default(false)
+  projectTotal       Decimal       @default(0) @db.Decimal(12, 2)
+  depositPaid        Decimal       @default(0) @db.Decimal(12, 2)
+  outstandingBalance Decimal       @default(0) @db.Decimal(12, 2)
+  sentAt             DateTime?
+  completedAt        DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  media     GalleryMedia[]
+  comments  GalleryComment[]
+  favorites GalleryFavorite[]
+  events    GalleryAccessEvent[]
+
+  @@index([businessId, status])
+  @@index([customerId])
+  @@index([appointmentId])
+  @@index([invoiceId])
+}
+
+model GalleryMedia {
+  id           String           @id @default(cuid())
+  galleryId    String
+  gallery      ClientGallery    @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  type         GalleryMediaType @default(IMAGE)
+  url          String
+  thumbnailUrl String?
+  originalUrl  String?
+  title        String?
+  category     String?
+  width        Int?
+  height       Int?
+  sortOrder    Int              @default(0)
+  createdAt    DateTime         @default(now())
+
+  comments  GalleryComment[]
+  favorites GalleryFavorite[]
+
+  @@index([galleryId, sortOrder])
+}
+
+model GalleryFavorite {
+  id        String        @id @default(cuid())
+  galleryId String
+  gallery   ClientGallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  mediaId   String
+  media     GalleryMedia  @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  sessionId String
+  createdAt DateTime      @default(now())
+
+  @@unique([mediaId, sessionId])
+  @@index([galleryId])
+}
+
+model GalleryComment {
+  id        String        @id @default(cuid())
+  galleryId String
+  gallery   ClientGallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  mediaId   String?
+  media     GalleryMedia? @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  sessionId String?
+  author    String?
+  body      String
+  createdAt DateTime      @default(now())
+
+  @@index([galleryId, createdAt])
+  @@index([mediaId])
+}
+
+model GalleryAccessEvent {
+  id         String           @id @default(cuid())
+  businessId String
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  galleryId  String
+  gallery    ClientGallery    @relation(fields: [galleryId], references: [id], onDelete: Cascade)
+  mediaId    String?
+  type       GalleryEventType
+  sessionId  String?
+  ipAddress  String?
+  userAgent  String?
+  device     String?
+  browser    String?
+  metadata   Json?
+  createdAt  DateTime         @default(now())
+
+  @@index([businessId, createdAt])
+  @@index([galleryId, createdAt])
 }
 
 model InvoiceLineItem {
-  id          String  @id @default(cuid())
-  invoiceId   String
-  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  description String
-  quantity    Decimal @db.Decimal(10, 2)
-  unitPrice   Decimal @db.Decimal(12, 2)
-  total       Decimal @db.Decimal(12, 2)
+  id             String  @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description    String
+  quantity       Decimal @db.Decimal(10, 2)
+  unitPrice      Decimal @db.Decimal(12, 2)
+  discountAmount Decimal @default(0) @db.Decimal(12, 2)
+  taxAmount      Decimal @default(0) @db.Decimal(12, 2)
+  total          Decimal @db.Decimal(12, 2)
+
+  @@index([invoiceId])
 }
 
 model Expense {
-  id              String       @id @default(cuid())
-  businessId      String
-  business        Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  category        String
-  amount          Decimal      @db.Decimal(12, 2)
-  description     String?
-  incurredAt      DateTime
+  id               String       @id @default(cuid())
+  businessId       String
+  business         Business     @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  category         String
+  amount           Decimal      @db.Decimal(12, 2)
+  description      String?
+  incurredAt       DateTime
   createdByStaffId String?
-  createdByStaff  StaffMember? @relation(fields: [createdByStaffId], references: [id])
-  createdAt       DateTime     @default(now())
+  createdByStaff   StaffMember? @relation(fields: [createdByStaffId], references: [id])
+  createdAt        DateTime     @default(now())
 
   @@index([businessId, incurredAt])
 }
@@ -658,14 +820,14 @@ model Expense {
 // ============================================================================
 
 model Supplier {
-  id            String   @id @default(cuid())
-  businessId    String
-  business      Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name          String
-  contactPhone  String?
-  contactEmail  String?
-  address       String?
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  businessId   String
+  business     Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name         String
+  contactPhone String?
+  contactEmail String?
+  address      String?
+  createdAt    DateTime @default(now())
 
   products       Product[]
   purchaseOrders PurchaseOrder[]
@@ -741,17 +903,17 @@ enum StockMovementType {
 }
 
 model StockMovement {
-  id                  String            @id @default(cuid())
-  businessId          String
-  business            Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  productId           String
-  product             Product           @relation(fields: [productId], references: [id])
-  type                StockMovementType
-  quantity            Decimal           @db.Decimal(10, 2)
+  id                   String            @id @default(cuid())
+  businessId           String
+  business             Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  productId            String
+  product              Product           @relation(fields: [productId], references: [id])
+  type                 StockMovementType
+  quantity             Decimal           @db.Decimal(10, 2)
   relatedAppointmentId String?
-  relatedAppointment  Appointment?      @relation(fields: [relatedAppointmentId], references: [id])
-  note                String?
-  createdAt           DateTime          @default(now())
+  relatedAppointment   Appointment?      @relation(fields: [relatedAppointmentId], references: [id])
+  note                 String?
+  createdAt            DateTime          @default(now())
 
   @@index([businessId, createdAt])
   @@index([productId])
@@ -798,14 +960,14 @@ enum LoyaltyEntryType {
 }
 
 model LoyaltyLedgerEntry {
-  id                  String           @id @default(cuid())
-  businessId          String
-  customerId          String
-  customer            Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  points              Int
-  type                LoyaltyEntryType
+  id                   String           @id @default(cuid())
+  businessId           String
+  customerId           String
+  customer             Customer         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  points               Int
+  type                 LoyaltyEntryType
   relatedAppointmentId String?
-  createdAt           DateTime         @default(now())
+  createdAt            DateTime         @default(now())
 
   @@index([customerId])
 }
@@ -872,14 +1034,14 @@ enum PlanKey {
 }
 
 model Plan {
-  id           String   @id @default(cuid())
-  key          PlanKey  @unique
+  id           String  @id @default(cuid())
+  key          PlanKey @unique
   name         String
-  priceMonthly Decimal  @db.Decimal(12, 2)
-  priceYearly  Decimal  @db.Decimal(12, 2)
+  priceMonthly Decimal @db.Decimal(12, 2)
+  priceYearly  Decimal @db.Decimal(12, 2)
   features     Json
   limits       Json
-  isActive     Boolean  @default(true)
+  isActive     Boolean @default(true)
 
   subscriptions Subscription[]
 }
@@ -897,31 +1059,31 @@ enum SubscriptionStatus {
 }
 
 model Subscription {
-  id                 String             @id @default(cuid())
-  businessId         String             @unique
-  business           Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  planId             String
-  plan               Plan               @relation(fields: [planId], references: [id])
-  billingCycle       BillingCycle
-  status             SubscriptionStatus @default(TRIALING)
-  trialEndsAt        DateTime?
-  currentPeriodEnd   DateTime?
-  cancelAtPeriodEnd  Boolean            @default(false)
-  platformCouponId   String?
-  platformCoupon     PlatformCoupon?    @relation(fields: [platformCouponId], references: [id])
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  id                String             @id @default(cuid())
+  businessId        String             @unique
+  business          Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  planId            String
+  plan              Plan               @relation(fields: [planId], references: [id])
+  billingCycle      BillingCycle
+  status            SubscriptionStatus @default(TRIALING)
+  trialEndsAt       DateTime?
+  currentPeriodEnd  DateTime?
+  cancelAtPeriodEnd Boolean            @default(false)
+  platformCouponId  String?
+  platformCoupon    PlatformCoupon?    @relation(fields: [platformCouponId], references: [id])
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model PlatformCoupon {
-  id              String       @id @default(cuid())
-  code            String       @unique
-  discountType    DiscountType
-  value           Decimal      @db.Decimal(10, 2)
-  maxRedemptions  Int?
-  redeemedCount   Int          @default(0)
-  expiresAt       DateTime?
-  active          Boolean      @default(true)
+  id             String       @id @default(cuid())
+  code           String       @unique
+  discountType   DiscountType
+  value          Decimal      @db.Decimal(10, 2)
+  maxRedemptions Int?
+  redeemedCount  Int          @default(0)
+  expiresAt      DateTime?
+  active         Boolean      @default(true)
 
   subscriptions Subscription[]
 }
@@ -931,18 +1093,18 @@ model PlatformCoupon {
 // ============================================================================
 
 model AuditLog {
-  id            String       @id @default(cuid())
-  businessId    String?
-  business      Business?    @relation(fields: [businessId], references: [id])
-  actorUserId   String?
-  actorUser     User?        @relation(fields: [actorUserId], references: [id])
-  actorStaffId  String?
-  actorStaff    StaffMember? @relation(fields: [actorStaffId], references: [id])
-  action        String
-  entityType    String
-  entityId      String?
-  metadata      Json?
-  createdAt     DateTime     @default(now())
+  id           String       @id @default(cuid())
+  businessId   String?
+  business     Business?    @relation(fields: [businessId], references: [id])
+  actorUserId  String?
+  actorUser    User?        @relation(fields: [actorUserId], references: [id])
+  actorStaffId String?
+  actorStaff   StaffMember? @relation(fields: [actorStaffId], references: [id])
+  action       String
+  entityType   String
+  entityId     String?
+  metadata     Json?
+  createdAt    DateTime     @default(now())
 
   @@index([businessId, createdAt])
   @@index([actorUserId])
@@ -962,18 +1124,18 @@ enum NotificationStatus {
 }
 
 model NotificationLog {
-  id         String               @id @default(cuid())
+  id         String              @id @default(cuid())
   businessId String
-  business   Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business            @relation(fields: [businessId], references: [id], onDelete: Cascade)
   customerId String?
-  customer   Customer?            @relation(fields: [customerId], references: [id])
+  customer   Customer?           @relation(fields: [customerId], references: [id])
   channel    NotificationChannel
   type       String
   recipient  String
-  status     NotificationStatus   @default(PENDING)
+  status     NotificationStatus  @default(PENDING)
   sentAt     DateTime?
   payload    Json?
-  createdAt  DateTime             @default(now())
+  createdAt  DateTime            @default(now())
 
   @@index([businessId, createdAt])
 }

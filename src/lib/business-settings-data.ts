@@ -28,17 +28,65 @@ export type BusinessSettings = {
   taxRate: string;
   taxId: string;
   hours: DayHours[];
+  subscription: {
+    planName: string;
+    status: string;
+    billingCycle: string;
+    trialEndsAt: string;
+    currentPeriodEnd: string;
+    cancelAtPeriodEnd: boolean;
+  } | null;
+  plans: {
+    id: string;
+    name: string;
+    key: string;
+    priceMonthly: string;
+    priceYearly: string;
+    features: string[];
+    current: boolean;
+  }[];
 };
 
 const s = (v: string | null | undefined) => v ?? "";
 
+function money(amount: { toString(): string }, currency = "GHS") {
+  const symbol = currency === "GHS" ? "GH₵" : currency;
+  return `${symbol} ${Number(amount.toString()).toLocaleString("en-US")}`;
+}
+
+function titleCase(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function shortDate(date: Date | null | undefined) {
+  if (!date) return "—";
+  return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(date);
+}
+
+function featureList(features: unknown) {
+  if (Array.isArray(features)) {
+    return features.map((feature) => String(feature)).filter(Boolean).slice(0, 4);
+  }
+  if (features && typeof features === "object") {
+    return Object.values(features).map((feature) => String(feature)).filter(Boolean).slice(0, 4);
+  }
+  return [];
+}
+
 export async function getBusinessSettings(slug: string): Promise<BusinessSettings | null> {
   if (!isDatabaseConfigured()) return null;
 
-  const business = await prisma.business.findUnique({
-    where: { slug },
-    include: { hours: true },
-  });
+  const [business, plans] = await Promise.all([
+    prisma.business.findUnique({
+      where: { slug },
+      include: { hours: true, subscription: { include: { plan: true } } },
+    }),
+    prisma.plan.findMany({ where: { isActive: true }, orderBy: { priceMonthly: "asc" } }),
+  ]);
   if (!business) return null;
 
   const byDay = new Map(business.hours.map((h) => [h.dayOfWeek, h]));
@@ -69,6 +117,25 @@ export async function getBusinessSettings(slug: string): Promise<BusinessSetting
     taxRate: business.taxRate != null ? String(Number(business.taxRate)) : "",
     taxId: s(business.taxId),
     hours,
+    subscription: business.subscription
+      ? {
+          planName: business.subscription.plan.name,
+          status: titleCase(business.subscription.status),
+          billingCycle: titleCase(business.subscription.billingCycle),
+          trialEndsAt: shortDate(business.subscription.trialEndsAt),
+          currentPeriodEnd: shortDate(business.subscription.currentPeriodEnd),
+          cancelAtPeriodEnd: business.subscription.cancelAtPeriodEnd,
+        }
+      : null,
+    plans: plans.map((plan) => ({
+      id: plan.id,
+      name: plan.name,
+      key: titleCase(plan.key),
+      priceMonthly: money(plan.priceMonthly, business.currency),
+      priceYearly: money(plan.priceYearly, business.currency),
+      features: featureList(plan.features),
+      current: business.subscription?.planId === plan.id,
+    })),
   };
 }
 
@@ -83,7 +150,7 @@ export type BusinessDetailsInput = {
   description: string;
   email: string;
   phone: string;
-  logoUrl: string;
+  logoUrl: string | null;
   addressLine1: string;
   addressLine2: string;
   city: string;
@@ -105,9 +172,9 @@ export async function updateBusinessDetails(input: BusinessDetailsInput): Promis
   if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     return { ok: false, error: "Enter a valid contact email." };
   }
-  const logoUrl = nullify(input.logoUrl);
-  if (logoUrl && !/^https?:\/\//i.test(logoUrl)) {
-    return { ok: false, error: "Logo URL must start with http:// or https://." };
+  const logoUrl = input.logoUrl?.trim() || null;
+  if (logoUrl && !/^(https?:\/\/|data:image\/)/i.test(logoUrl)) {
+    return { ok: false, error: "Workspace picture must be an image URL or uploaded image." };
   }
 
   const currency = VALID_CURRENCIES.has(input.currency) ? input.currency : "GHS";

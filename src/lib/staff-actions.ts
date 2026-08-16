@@ -13,6 +13,8 @@ import {
 import { requireTenantAccess, type AppUser } from "@/lib/auth";
 import { membershipIn, roleCan, type Capability } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
+import { sendInviteEmail } from "@/lib/email";
+import { getBaseUrl, inviteUrl } from "@/lib/urls";
 
 function getString(formData: FormData, key: string) {
   return String(formData.get(key) ?? "");
@@ -77,8 +79,9 @@ export async function inviteStaffAction(formData: FormData) {
 
   const commissionRaw = Number.parseFloat(getString(formData, "commissionValue"));
 
-  await inviteStaff({
+  const result = await inviteStaff({
     businessSlug,
+    name: getString(formData, "name"),
     email: getString(formData, "email"),
     role: getString(formData, "role"),
     commissionType: getString(formData, "commissionType"),
@@ -86,6 +89,24 @@ export async function inviteStaffAction(formData: FormData) {
     colorHex: getString(formData, "colorHex"),
     bio: getString(formData, "bio"),
   });
+
+  if (!result.ok) {
+    redirect(`/${businessSlug}/staff?toastError=${encodeURIComponent(result.error)}`);
+  }
+
+  const url = inviteUrl(await getBaseUrl(), result.inviteToken);
+  const mail = await sendInviteEmail({
+    to: result.email,
+    name: result.name,
+    businessName: result.businessName,
+    url,
+    businessId: result.businessId,
+    roleName: result.roleLabel,
+  });
+
+  if (!mail.ok || mail.dryRun) {
+    redirect(`/${businessSlug}/staff?toastError=${encodeURIComponent("Crew member was saved, but the invite email could not be sent. Check SMTP settings and try again.")}`);
+  }
 
   revalidatePath(`/${businessSlug}/staff`);
   redirect(`/${businessSlug}/staff?toast=${encodeURIComponent("Invitation sent")}`);

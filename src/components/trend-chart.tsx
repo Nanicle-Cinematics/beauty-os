@@ -92,7 +92,7 @@ export function TrendChart({
 
           {active !== null ? (
             <div
-              className="pointer-events-none absolute top-1 z-10 w-max max-w-[180px] rounded-xl border border-line bg-card px-3 py-2 shadow-[var(--shadow-lift)]"
+              className="pointer-events-none absolute top-1 z-10 w-max max-w-[180px] rounded-[18px] border border-white/60 bg-white/50 px-3 py-2 shadow-[var(--shadow-lift)]"
               style={{
                 left: `${xPct(active)}%`,
                 transform: `translateX(${active === 0 ? "0" : active === n - 1 ? "-100%" : "-50%"})`,

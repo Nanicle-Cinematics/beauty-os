@@ -1,7 +1,11 @@
 import "server-only";
 
+import { createHash, randomBytes } from "crypto";
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
+import { roleLabelForIndustry, roleOptionsForIndustry } from "@/lib/industry";
 import type { BusinessRole } from "@prisma/client";
+
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type StaffRow = {
   id: string;
@@ -42,12 +46,17 @@ export type StaffDetail = {
   isSelf: boolean;
   bookings: number;
   linkedToUser: boolean;
+  categoryKey: string;
 };
 
 export type StaffWriteResult = { ok: true } | { ok: false; error: string };
 
+export type InviteStaffResult =
+  | { ok: true; inviteToken: string; businessId: string; businessName: string; email: string; name: string; roleLabel: string }
+  | { ok: false; error: string };
+
 export type StaffModuleData = {
-  tenant: { id: string; name: string; slug: string; currency: string };
+  tenant: { id: string; name: string; slug: string; currency: string; categoryKey: string };
   stats: StaffStat[];
   staff: StaffRow[];
   roles: RoleOption[];
@@ -66,6 +75,10 @@ export const BUSINESS_ROLES: RoleOption[] = [
 const VALID_ROLES = new Set(BUSINESS_ROLES.map((role) => role.value));
 const REALISED = new Set(["COMPLETED", "CONFIRMED"]);
 
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 function currencySymbol(currency: string) {
   return currency === "GHS" ? "GH₵" : currency;
 }
@@ -82,8 +95,8 @@ function titleCase(value: string) {
     .join(" ");
 }
 
-/** A staff member has no name column until a User is linked; fall back to the
- * local part of the invited email so pending invites are still readable. */
+/** Fall back to the local part of the invited email so older pending invites
+ * created before displayName are still readable. */
 function displayNameFromEmail(email: string) {
   const local = email.split("@")[0] ?? email;
   return local
@@ -112,7 +125,7 @@ export async function getStaffModuleData(businessSlug: string): Promise<StaffMod
 
   const business = await prisma.business.findUnique({
     where: { slug: businessSlug },
-    select: { id: true, name: true, slug: true, currency: true },
+    select: { id: true, name: true, slug: true, currency: true, category: { select: { key: true } } },
   });
 
   if (!business) {
@@ -140,9 +153,9 @@ export async function getStaffModuleData(businessSlug: string): Promise<StaffMod
     const revenue = realised.reduce((sum, appointment) => sum + Number(appointment.price), 0);
     return {
       id: member.id,
-      name: member.user?.name ?? (member.invitedEmail ? displayNameFromEmail(member.invitedEmail) : "Pending"),
+      name: member.user?.name ?? member.displayName ?? (member.invitedEmail ? displayNameFromEmail(member.invitedEmail) : "Pending"),
       email,
-      role: titleCase(member.role),
+      role: roleLabelForIndustry(member.role, business.category.key),
       status: titleCase(member.status),
       statusKey: member.status as StaffRow["statusKey"],
       commission: commissionLabel(
@@ -189,11 +202,17 @@ export async function getStaffModuleData(businessSlug: string): Promise<StaffMod
     { label: "Revenue generated", value: money(totalRevenue, currency), detail: "Realised bookings" },
   ];
 
-  return { tenant: business, stats, staff, roles: BUSINESS_ROLES };
+  return {
+    tenant: { id: business.id, name: business.name, slug: business.slug, currency: business.currency, categoryKey: business.category.key },
+    stats,
+    staff,
+    roles: roleOptionsForIndustry(BUSINESS_ROLES, business.category.key),
+  };
 }
 
 export async function inviteStaff({
   businessSlug,
+  name,
   email,
   role,
   commissionType,
@@ -202,29 +221,30 @@ export async function inviteStaff({
   bio,
 }: {
   businessSlug: string;
+  name: string;
   email: string;
   role: string;
   commissionType: string;
   commissionValue: number | null;
   colorHex: string;
   bio: string;
-}) {
+}): Promise<InviteStaffResult> {
   if (!isDatabaseConfigured()) {
-    return;
+    return { ok: false, error: "Database is not configured." };
   }
 
   const normalizedEmail = email.trim().toLowerCase();
   if (!normalizedEmail || !VALID_ROLES.has(role)) {
-    return;
+    return { ok: false, error: "Enter a valid email and role." };
   }
 
   const business = await prisma.business.findUnique({
     where: { slug: businessSlug },
-    select: { id: true },
+    select: { id: true, name: true, category: { select: { key: true } } },
   });
 
   if (!business) {
-    return;
+    return { ok: false, error: "Workspace not found." };
   }
 
   // Link an existing platform user if this email already has an account, so
@@ -234,41 +254,38 @@ export async function inviteStaff({
     select: { id: true },
   });
 
-  // Don't create a duplicate membership for the same person in one business.
-  const duplicate = await prisma.staffMember.findFirst({
+  const existingMember = await prisma.staffMember.findFirst({
     where: {
       businessId: business.id,
-      status: { not: "REMOVED" },
       OR: [
         { invitedEmail: normalizedEmail },
         existingUser ? { userId: existingUser.id } : { id: "__none__" },
       ],
     },
-    select: { id: true },
+    select: { id: true, status: true },
   });
 
-  if (duplicate) {
-    return;
+  if (existingMember && existingMember.status !== "REMOVED") {
+    return { ok: false, error: "That person is already on this crew or has a pending invite." };
   }
 
   const normalizedCommissionType = ["NONE", "PERCENTAGE", "FIXED"].includes(commissionType)
     ? commissionType
     : "NONE";
 
-  await prisma.staffMember.create({
-    data: {
+  const inviteToken = randomBytes(32).toString("hex");
+  const recipientName = name.trim() || displayNameFromEmail(normalizedEmail);
+  const roleValue = role as BusinessRole;
+  const roleLabel = roleLabelForIndustry(roleValue, business.category.key);
+
+  await tenantTransaction(async (tx) => {
+    const memberData = {
       businessId: business.id,
       userId: existingUser?.id ?? null,
       invitedEmail: normalizedEmail,
-      role: role as
-        | "OWNER"
-        | "MANAGER"
-        | "RECEPTIONIST"
-        | "SENIOR_ARTIST"
-        | "ARTIST"
-        | "CASHIER"
-        | "INVENTORY_OFFICER",
-      status: "INVITED",
+      displayName: recipientName,
+      role: roleValue,
+      status: "INVITED" as const,
       commissionType: normalizedCommissionType as "NONE" | "PERCENTAGE" | "FIXED",
       commissionValue:
         normalizedCommissionType !== "NONE" && commissionValue != null && commissionValue >= 0
@@ -276,8 +293,40 @@ export async function inviteStaff({
           : null,
       colorHex: colorHex || null,
       bio: bio.trim() || null,
-    },
-  });
+    };
+
+    if (existingMember) {
+      await tx.staffMember.update({ where: { id: existingMember.id }, data: memberData });
+    } else {
+      await tx.staffMember.create({ data: memberData });
+    }
+
+    await tx.businessInvite.updateMany({
+      where: { businessId: business.id, email: normalizedEmail, acceptedAt: null, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+
+    await tx.businessInvite.create({
+      data: {
+        businessId: business.id,
+        email: normalizedEmail,
+        name: recipientName,
+        role: roleValue,
+        tokenHash: hashToken(inviteToken),
+        expiresAt: new Date(Date.now() + INVITE_TTL_MS),
+      },
+    });
+  }, { timeout: 15000 });
+
+  return {
+    ok: true,
+    inviteToken,
+    businessId: business.id,
+    businessName: business.name,
+    email: normalizedEmail,
+    name: recipientName,
+    roleLabel,
+  };
 }
 
 const WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -306,6 +355,7 @@ export async function getStaffDetail(
     where: { id: staffId, business: { slug: businessSlug } },
     include: {
       user: true,
+      business: { select: { category: { select: { key: true } } } },
       workingHours: true,
       assignedServices: { select: { serviceId: true } },
       _count: { select: { appointments: true } },
@@ -347,6 +397,7 @@ export async function getStaffDetail(
     isSelf: member.userId != null && member.userId === currentUserId,
     bookings: member._count.appointments,
     linkedToUser: member.userId != null,
+    categoryKey: member.business.category.key,
   };
 }
 

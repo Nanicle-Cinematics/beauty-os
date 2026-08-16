@@ -2,8 +2,16 @@ import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { hashPassword, verifyPassword } from "@/lib/password";
+import { normalizeTheme, type ThemePreference } from "@/lib/theme";
 
-export type Account = { name: string; phone: string; email: string; verified: boolean };
+export type Account = {
+  name: string;
+  phone: string;
+  email: string;
+  verified: boolean;
+  avatarUrl: string;
+  themePreference: ThemePreference;
+};
 
 export async function getAccount(userId: string): Promise<Account | null> {
   if (!isDatabaseConfigured()) {
@@ -11,17 +19,36 @@ export async function getAccount(userId: string): Promise<Account | null> {
   }
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { name: true, phone: true, email: true, emailVerifiedAt: true },
+    select: { name: true, phone: true, email: true, emailVerifiedAt: true, avatarUrl: true, themePreference: true },
   });
   if (!user) {
     return null;
   }
-  return { name: user.name, phone: user.phone ?? "", email: user.email, verified: user.emailVerifiedAt != null };
+  return {
+    name: user.name,
+    phone: user.phone ?? "",
+    email: user.email,
+    verified: user.emailVerifiedAt != null,
+    avatarUrl: user.avatarUrl ?? "",
+    themePreference: normalizeTheme(user.themePreference),
+  };
 }
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
 
-export async function updateProfile({ userId, name, phone }: { userId: string; name: string; phone: string }): Promise<ActionResult> {
+export async function updateProfile({
+  userId,
+  name,
+  phone,
+  avatarUrl,
+  themePreference,
+}: {
+  userId: string;
+  name: string;
+  phone: string;
+  avatarUrl: string | null;
+  themePreference: string;
+}): Promise<ActionResult> {
   if (!isDatabaseConfigured()) {
     return { ok: false, error: "Not available right now." };
   }
@@ -29,7 +56,19 @@ export async function updateProfile({ userId, name, phone }: { userId: string; n
   if (!cleanName) {
     return { ok: false, error: "Name can't be empty." };
   }
-  await prisma.user.update({ where: { id: userId }, data: { name: cleanName, phone: phone.trim() || null } });
+  const cleanAvatar = avatarUrl?.trim() || null;
+  if (cleanAvatar && !/^(https?:\/\/|data:image\/)/i.test(cleanAvatar)) {
+    return { ok: false, error: "Profile picture must be an image URL or uploaded image." };
+  }
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      name: cleanName,
+      phone: phone.trim() || null,
+      avatarUrl: cleanAvatar,
+      themePreference: normalizeTheme(themePreference),
+    },
+  });
   return { ok: true };
 }
 

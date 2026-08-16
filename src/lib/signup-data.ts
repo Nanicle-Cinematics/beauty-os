@@ -4,6 +4,8 @@ import { randomBytes } from "crypto";
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { setTenantContext } from "@/lib/tenant-context";
 import { hashPassword } from "@/lib/password";
+import { seedStarterWorkspaceData } from "@/lib/starter-data";
+import { trialEndsAt } from "@/lib/trial";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -70,12 +72,18 @@ export type PublicCategory = { id: string; label: string };
 const fallbackCategories: PublicCategory[] = [
   { id: "sample_hair", label: "Hair, makeup, nails" },
   { id: "sample_lashes", label: "Lashes and brows" },
+  { id: "sample_photo", label: "Photographer" },
 ];
 
 export async function getSignupCategories(): Promise<PublicCategory[]> {
   if (!isDatabaseConfigured()) {
     return fallbackCategories;
   }
+  await prisma.businessCategory.upsert({
+    where: { key: "photographer" },
+    update: { label: "Photographer", icon: "camera", sortOrder: 30, isActive: true },
+    create: { key: "photographer", label: "Photographer", icon: "camera", sortOrder: 30 },
+  });
   const categories = await prisma.businessCategory.findMany({
     where: { isActive: true },
     orderBy: { sortOrder: "asc" },
@@ -128,7 +136,7 @@ export async function signUpBusiness({
     return { ok: false, error: "Password must be at least 8 characters." };
   }
 
-  const category = await prisma.businessCategory.findFirst({ where: { id: categoryId, isActive: true }, select: { id: true } });
+  const category = await prisma.businessCategory.findFirst({ where: { id: categoryId, isActive: true }, select: { id: true, key: true } });
   if (!category) {
     return { ok: false, error: "Choose the type of business you run." };
   }
@@ -141,6 +149,7 @@ export async function signUpBusiness({
   const uniqueSlug = await ensureUniqueSlug(slugify(bizName) || "studio");
   const passwordHash = await hashPassword(ownerPassword);
   const now = new Date();
+  const starterPlan = await prisma.plan.findFirst({ where: { isActive: true }, orderBy: { priceMonthly: "asc" }, select: { id: true } });
 
   try {
     const result = await tenantTransaction(async (tx) => {
@@ -169,6 +178,29 @@ export async function signUpBusiness({
           joinedAt: now,
         },
       });
+
+      const ownerStaff = await tx.staffMember.findFirst({
+        where: { businessId: business.id, userId: owner.id },
+        select: { id: true },
+      });
+
+      await seedStarterWorkspaceData(tx, {
+        businessId: business.id,
+        categoryKey: category.key,
+        ownerStaffId: ownerStaff?.id,
+      });
+
+      if (starterPlan) {
+        await tx.subscription.create({
+          data: {
+            businessId: business.id,
+            planId: starterPlan.id,
+            billingCycle: "MONTHLY",
+            status: "TRIALING",
+            trialEndsAt: trialEndsAt(now),
+          },
+        });
+      }
 
       await tx.auditLog.create({
         data: {
@@ -220,7 +252,7 @@ export async function jitSignUpFromSocial({ email, name }: { email: string; name
   const oName = (name ?? "").trim() || oEmail.split("@")[0];
   const bizName = `${oName}'s Studio`;
 
-  const category = await prisma.businessCategory.findFirst({ where: { isActive: true }, orderBy: { sortOrder: "asc" }, select: { id: true } });
+  const category = await prisma.businessCategory.findFirst({ where: { isActive: true }, orderBy: { sortOrder: "asc" }, select: { id: true, key: true } });
   if (!category) {
     return { ok: false, error: "no_category" };
   }
@@ -228,6 +260,7 @@ export async function jitSignUpFromSocial({ email, name }: { email: string; name
   const uniqueSlug = await ensureUniqueSlug(slugify(bizName) || "studio");
   const passwordHash = await hashPassword(randomBytes(32).toString("hex"));
   const now = new Date();
+  const starterPlan = await prisma.plan.findFirst({ where: { isActive: true }, orderBy: { priceMonthly: "asc" }, select: { id: true } });
 
   try {
     const result = await tenantTransaction(async (tx) => {
@@ -244,6 +277,29 @@ export async function jitSignUpFromSocial({ email, name }: { email: string; name
       await tx.staffMember.create({
         data: { businessId: business.id, userId: owner.id, invitedEmail: oEmail, role: "OWNER", status: "ACTIVE", joinedAt: now },
       });
+
+      const ownerStaff = await tx.staffMember.findFirst({
+        where: { businessId: business.id, userId: owner.id },
+        select: { id: true },
+      });
+
+      await seedStarterWorkspaceData(tx, {
+        businessId: business.id,
+        categoryKey: category.key,
+        ownerStaffId: ownerStaff?.id,
+      });
+
+      if (starterPlan) {
+        await tx.subscription.create({
+          data: {
+            businessId: business.id,
+            planId: starterPlan.id,
+            billingCycle: "MONTHLY",
+            status: "TRIALING",
+            trialEndsAt: trialEndsAt(now),
+          },
+        });
+      }
 
       await tx.auditLog.create({
         data: {

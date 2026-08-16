@@ -5,15 +5,11 @@ import { ShieldCheck } from "lucide-react";
 import { verifyMfaAction } from "@/lib/auth-actions";
 import { verifyChallenge } from "@/lib/mfa";
 import { mfaChallengeCookieName } from "@/lib/auth";
+import { normalizeInternalPath } from "@/lib/redirects";
 
 export const dynamic = "force-dynamic";
 
 type Props = { searchParams: Promise<{ next?: string; error?: string }> };
-
-function safeNextPath(v?: string) {
-  if (!v || !v.startsWith("/") || v.startsWith("//")) return "/app";
-  return v;
-}
 
 export default async function TwoFactorLoginPage({ searchParams }: Props) {
   const { next, error } = await searchParams;
@@ -23,7 +19,7 @@ export default async function TwoFactorLoginPage({ searchParams }: Props) {
     // No valid challenge — send them back to sign in.
     redirect("/login");
   }
-  const nextPath = safeNextPath(next);
+  const nextPath = normalizeInternalPath(next);
 
   return (
     <main className="grid min-h-screen place-items-center bg-canvas px-4 py-10 text-ink">

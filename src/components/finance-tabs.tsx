@@ -7,7 +7,7 @@ const tabs = [
 
 export function FinanceTabs({ businessSlug, active }: { businessSlug: string; active: "overview" | "expenses" }) {
   return (
-    <div className="flex w-fit gap-1 rounded-xl border border-line bg-card p-1">
+    <div className="glass-panel flex w-fit gap-1 rounded-[20px] p-1">
       {tabs.map((tab) => {
         const isActive = tab.key === active;
         return (
@@ -15,8 +15,8 @@ export function FinanceTabs({ businessSlug, active }: { businessSlug: string; ac
             key={tab.key}
             href={`/${businessSlug}/${tab.path}`}
             aria-current={isActive ? "page" : undefined}
-            className={`rounded-lg px-3.5 py-1.5 text-[13px] font-semibold transition ${
-              isActive ? "bg-gradient-to-r from-plum to-wine text-white shadow-[0_4px_12px_rgba(84,33,63,0.25)]" : "text-muted hover:bg-sunken hover:text-ink"
+            className={`rounded-2xl px-3.5 py-1.5 text-[13px] font-semibold transition ${
+              isActive ? "primary-action text-white" : "text-muted hover:bg-white/55 hover:text-ink"
             }`}
           >
             {tab.label}

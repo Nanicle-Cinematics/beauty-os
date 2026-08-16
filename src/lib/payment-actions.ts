@@ -60,23 +60,35 @@ async function auditFinancial(
 
 export async function recordPaymentAction(formData: FormData) {
   const businessSlug = safeBusinessSlug(getString(formData, "businessSlug"));
+  const returnTo = getString(formData, "returnTo");
   // Previously unguarded — anyone with tenant access could record a payment.
   const { allowed } = await authorize(businessSlug, "payments:record");
   if (!allowed) {
     redirect(`/${businessSlug}/payments?toastError=${encodeURIComponent("You don't have permission to record payments.")}`);
   }
 
-  await recordPayment({
+  const result = await recordPayment({
     businessSlug,
     customer: getString(formData, "customer"),
     appointmentId: getString(formData, "appointmentId"),
+    invoiceId: getString(formData, "invoiceId"),
     amount: parseMoney(getString(formData, "amount")),
     method: getString(formData, "method"),
     type: getString(formData, "type"),
     reference: getString(formData, "reference"),
   });
+  if (!result.ok) {
+    if (returnTo.startsWith(`/${businessSlug}/`)) {
+      redirect(`${returnTo}?error=${encodeURIComponent(result.error)}`);
+    }
+    redirect(`/${businessSlug}/payments?toastError=${encodeURIComponent(result.error)}`);
+  }
 
   revalidatePath(`/${businessSlug}/payments`);
+  if (returnTo.startsWith(`/${businessSlug}/`)) {
+    revalidatePath(returnTo);
+    redirect(`${returnTo}?toast=${encodeURIComponent("Payment recorded")}`);
+  }
   redirect(`/${businessSlug}/payments?toast=${encodeURIComponent("Payment recorded")}`);
 }
 

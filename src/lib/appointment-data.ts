@@ -1,6 +1,6 @@
 import "server-only";
 
-import { addMinutes, format, formatLongDateInTz, formatTimeInTz, toLocalInput, fromLocalInput } from "@/lib/date";
+import { addMinutes, formatLongDateInTz, formatTimeInTz, toLocalInput, fromLocalInput } from "@/lib/date";
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { findOrCreateCustomer, findOrCreateService } from "@/lib/entity-resolve";
 import { depositTarget } from "@/lib/money";
@@ -16,6 +16,8 @@ import { sendHoldPromotedEmail, sendHoldReleasedEmail } from "@/lib/email";
 
 export type AppointmentRow = {
   id: string;
+  dateKey: string;
+  dateLabel: string;
   time: string;
   client: string;
   service: string;
@@ -63,6 +65,7 @@ export type AppointmentDetail = {
   holdExpiresAtLocal: string;
   holdPriority: string;
   paymentCount: number;
+  invoice: { id: string; number: string } | null;
   collected: string;
   outstanding: string;
   currency: string;
@@ -80,7 +83,9 @@ export type AppointmentModuleData = {
     id: string;
     name: string;
     slug: string;
+    categoryKey: string;
   };
+  defaultStartAtLocal: string;
   appointments: AppointmentRow[];
   customers: AppointmentOption[];
   services: AppointmentOption[];
@@ -89,12 +94,13 @@ export type AppointmentModuleData = {
 
 const fallbackAppointmentData: Record<string, AppointmentModuleData> = {
   "osu-glow-studio": {
-    tenant: { id: "sample_osu_glow", name: "Osu Glow Studio", slug: "osu-glow-studio" },
+    tenant: { id: "sample_osu_glow", name: "Osu Glow Studio", slug: "osu-glow-studio", categoryKey: "hair_makeup_nails" },
     appointments: [
-      { id: "demo-1", time: "09:00", client: "Ama Serwaa", service: "Silk press + trim", staff: "Nadia", status: "CONFIRMED", value: "GH₵ 420", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
-      { id: "demo-2", time: "10:30", client: "Esi Manu", service: "Soft glam", staff: "Nadia", status: "PENDING", value: "GH₵ 650", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
-      { id: "demo-3", time: "12:00", client: "Akua Mensah", service: "Wig install", staff: "Nadia", status: "Hold", value: "GH₵ 780", isHold: true, holdExpired: false, holdExpiryLabel: "expires in 3 days", holdQueueLabel: null },
+      { id: "demo-1", dateKey: "today", dateLabel: "Today", time: "09:00", client: "Ama Serwaa", service: "Silk press + trim", staff: "Nadia", status: "CONFIRMED", value: "GH₵ 420", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
+      { id: "demo-2", dateKey: "today", dateLabel: "Today", time: "10:30", client: "Esi Manu", service: "Soft glam", staff: "Nadia", status: "PENDING", value: "GH₵ 650", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
+      { id: "demo-3", dateKey: "today", dateLabel: "Today", time: "12:00", client: "Akua Mensah", service: "Wig install", staff: "Nadia", status: "Hold", value: "GH₵ 780", isHold: true, holdExpired: false, holdExpiryLabel: "expires in 3 days", holdQueueLabel: null },
     ],
+    defaultStartAtLocal: "2026-07-13T14:00",
     customers: [
       { id: "demo-customer-1", label: "Ama Serwaa" },
       { id: "demo-customer-2", label: "Esi Manu" },
@@ -108,11 +114,12 @@ const fallbackAppointmentData: Record<string, AppointmentModuleData> = {
     staff: [{ id: "demo-staff-1", label: "Nadia Mensah" }],
   },
   "luxe-lash-lab": {
-    tenant: { id: "sample_luxe_lash", name: "Luxe Lash Lab", slug: "luxe-lash-lab" },
+    tenant: { id: "sample_luxe_lash", name: "Luxe Lash Lab", slug: "luxe-lash-lab", categoryKey: "lashes_brows" },
     appointments: [
-      { id: "demo-4", time: "09:00", client: "Yaa Boateng", service: "Classic lash set", staff: "Mina", status: "CONFIRMED", value: "GH₵ 360", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
-      { id: "demo-5", time: "11:30", client: "Afia Owusu", service: "Brow lamination", staff: "Mina", status: "PENDING", value: "GH₵ 220", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
+      { id: "demo-4", dateKey: "today", dateLabel: "Today", time: "09:00", client: "Yaa Boateng", service: "Classic lash set", staff: "Mina", status: "CONFIRMED", value: "GH₵ 360", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
+      { id: "demo-5", dateKey: "today", dateLabel: "Today", time: "11:30", client: "Afia Owusu", service: "Brow lamination", staff: "Mina", status: "PENDING", value: "GH₵ 220", isHold: false, holdExpired: false, holdExpiryLabel: null, holdQueueLabel: null },
     ],
+    defaultStartAtLocal: "2026-07-13T14:00",
     customers: [
       { id: "demo-customer-4", label: "Yaa Boateng" },
       { id: "demo-customer-5", label: "Afia Owusu" },
@@ -135,6 +142,10 @@ function readableStatus(status: string) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function dayLabel(date: Date, timezone: string) {
+  return formatLongDateInTz(date, timezone);
 }
 
 /**
@@ -227,7 +238,7 @@ export async function getAppointmentModuleData(businessSlug: string): Promise<Ap
 
   const business = await prisma.business.findUnique({
     where: { slug: businessSlug },
-    select: { id: true, name: true, slug: true, currency: true },
+    select: { id: true, name: true, slug: true, currency: true, timezone: true, category: { select: { key: true } } },
   });
 
   if (!business) {
@@ -260,14 +271,22 @@ export async function getAppointmentModuleData(businessSlug: string): Promise<Ap
   ]);
 
   const now = new Date();
+  const timezone = business.timezone || "UTC";
+  const nextHour = new Date(now);
+  nextHour.setMinutes(0, 0, 0);
+  nextHour.setHours(nextHour.getHours() + 1);
 
   return {
-    tenant: business,
+    tenant: { id: business.id, name: business.name, slug: business.slug, categoryKey: business.category.key },
+    defaultStartAtLocal: toLocalInput(nextHour, timezone),
     appointments: appointments.map((appointment) => {
       const isHold = appointment.status === "HOLD";
+      const dateKey = toLocalInput(appointment.startAt, timezone).slice(0, 10);
       return {
         id: appointment.id,
-        time: format(appointment.startAt),
+        dateKey,
+        dateLabel: dayLabel(appointment.startAt, timezone),
+        time: formatTimeInTz(appointment.startAt, timezone),
         client: [appointment.customer.firstName, appointment.customer.lastName].filter(Boolean).join(" "),
         service: appointment.service.name,
         staff: appointment.staffMember?.user?.name ?? appointment.staffMember?.invitedEmail ?? "Unassigned",
@@ -362,7 +381,7 @@ export async function createAppointment({
 
   await tenantTransaction(
     async (tx) => {
-      const created = await tx.appointment.create({
+      await tx.appointment.create({
         data: {
           businessId: business.id,
           customerId,
@@ -370,7 +389,7 @@ export async function createAppointment({
           staffMemberId: staffMember.id,
           startAt,
           endAt,
-          status: hold ? "HOLD" : "CONFIRMED",
+          status: hold ? "HOLD" : "PENDING",
           source: "ADMIN",
           price: resolvedPrice,
           // Deposit is no longer a stored per-service amount — it's 50% of price,
@@ -383,11 +402,8 @@ export async function createAppointment({
         },
         select: { id: true },
       });
-      // A booking created straight as CONFIRMED is a confirmation, so it carries
-      // its 50% deposit like any other. Holds stay provisional — no deposit.
-      if (!hold) {
-        await autoSettle(tx, { id: created.id, businessId: business.id, customerId, price: resolvedPrice }, "deposit");
-      }
+      // New bookings start pending. Money is only recorded when staff explicitly
+      // confirms the booking, which is the point the 50% deposit is received.
     },
     { timeout: 15000 },
   );
@@ -418,6 +434,8 @@ export async function firmHold({
       startAt: true,
       endAt: true,
       status: true,
+      customerId: true,
+      price: true,
       business: { select: { id: true, name: true, phone: true, email: true, timezone: true } },
     },
   });
@@ -458,6 +476,7 @@ export async function firmHold({
         where: { id: appointment.id },
         data: { status: "CONFIRMED", holdPriority: null, holdExpiresAt: null },
       });
+      await autoSettle(tx, appointment, "deposit");
 
       if (losers.length > 0) {
         await tx.appointment.updateMany({
@@ -667,6 +686,7 @@ export async function getAppointmentDetail(businessSlug: string, appointmentId: 
       customer: true,
       service: true,
       payments: { select: { amount: true, type: true, status: true } },
+      invoices: { select: { id: true, invoiceNumber: true }, orderBy: { issuedAt: "desc" }, take: 1 },
     },
   });
   if (!appointment) return null;
@@ -700,6 +720,7 @@ export async function getAppointmentDetail(businessSlug: string, appointmentId: 
     holdExpiresAtLocal: appointment.holdExpiresAt ? appointment.holdExpiresAt.toISOString().slice(0, 10) : "",
     holdPriority: appointment.holdPriority != null ? String(appointment.holdPriority) : "",
     paymentCount: appointment.payments.length,
+    invoice: appointment.invoices[0] ? { id: appointment.invoices[0].id, number: appointment.invoices[0].invoiceNumber } : null,
     collected: moneyCode(collected, currency),
     outstanding: moneyCode(outstanding, currency),
     currency,
@@ -769,30 +790,43 @@ export async function updateAppointment(input: {
 }
 
 /**
- * Hard delete, permitted only for an appointment with no payments.
+ * Delete a booking and its payments together, in one transaction.
  *
- * A booking with money against it is part of the financial record — deleting it
- * would orphan the payments and rewrite history. Cancelling (a status change
- * that keeps the row) is the honest action there. Guard lives here, not the UI.
+ * For a booking recorded in error. Pending bookings usually have no payments;
+ * confirmed/completed bookings may carry deposits or balances. We delete any
+ * linked payments alongside the booking and return what was removed, so the
+ * action can write it to the audit trail. To reverse a booking where real cash
+ * was taken, the honest path is Cancel (keeps the row) + a refund.
  */
-export async function deleteAppointment(businessSlug: string, appointmentId: string): Promise<AppointmentWriteResult> {
+export async function deleteAppointment(
+  businessSlug: string,
+  appointmentId: string,
+): Promise<{ ok: true; removedPayments: number; removedTotal: number } | { ok: false; error: string }> {
   if (!isDatabaseConfigured()) return { ok: false, error: "Database not configured" };
 
   const appointment = await prisma.appointment.findFirst({
     where: { id: appointmentId, business: { slug: businessSlug } },
-    select: { id: true, _count: { select: { payments: true } } },
+    select: { id: true, payments: { select: { amount: true, type: true, status: true } } },
   });
   if (!appointment) return { ok: false, error: "That appointment no longer exists." };
 
-  if (appointment._count.payments > 0) {
-    return {
-      ok: false,
-      error: "This appointment has payments against it. Cancel it instead — deleting would erase that financial record.",
-    };
+  const removedPayments = appointment.payments.length;
+  let removedTotal = 0;
+  for (const p of appointment.payments) {
+    if (p.status !== "SUCCESS") continue;
+    if (p.type === "REFUND") removedTotal -= Number(p.amount);
+    else if (["DEPOSIT", "FULL_PAYMENT", "BALANCE", "PRODUCT_SALE"].includes(p.type)) removedTotal += Number(p.amount);
   }
 
-  await prisma.appointment.delete({ where: { id: appointment.id } });
-  return { ok: true };
+  await tenantTransaction(
+    async (tx) => {
+      await tx.payment.deleteMany({ where: { appointmentId: appointment.id } });
+      await tx.appointment.delete({ where: { id: appointment.id } });
+    },
+    { timeout: 15000 },
+  );
+
+  return { ok: true, removedPayments, removedTotal };
 }
 
 /**
