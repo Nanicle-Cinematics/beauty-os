@@ -83,7 +83,8 @@ export function AiDecisionAssistant({ businessSlug }: { businessSlug: string }) 
           </div>
         </div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/50 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em] text-muted">
-          <Sparkles size={12} /> {mode === "openai" ? "Live AI" : mode === "fallback" ? "Local fallback" : "Ready"}
+          {/* "Local fallback" was engineer-speak on a screen a salon owner reads. */}
+          <Sparkles size={12} /> {mode === "openai" ? "Live AI" : mode === "fallback" ? "Quick answer" : "Ready"}
         </span>
       </div>
 

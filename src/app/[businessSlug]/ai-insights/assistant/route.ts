@@ -35,25 +35,30 @@ function cleanMessages(value: unknown): ChatMessage[] {
     }));
 }
 
+// Answers built from the tenant's own numbers, used whenever the language model
+// is unavailable. These strings are read by salon owners, so they must never
+// name server configuration — the UI already shows a "Quick answer" badge when
+// this path runs, which is all the mode signal a customer needs. End each reply
+// on something the reader can actually go and do.
 function fallbackReply(question: string, context: Awaited<ReturnType<typeof getAiAssistantContext>>) {
   const firstInsight = context?.insights[0];
   const quickAction = firstInsight?.steps?.[0] ?? "Review AI Insights and start with the highest-priority card.";
   const lower = question.toLowerCase();
 
   if (lower.includes("deposit") || lower.includes("payment") || lower.includes("cash")) {
-    return `Start with cash security. Beauty OS currently shows ${context?.moneyAtRisk ?? "some money"} at risk. First action: ${quickAction}\n\nI can give deeper conversational reasoning when OPENAI_API_KEY is configured on the server.`;
+    return `Start with cash security. Beauty OS currently shows ${context?.moneyAtRisk ?? "some money"} at risk. First action: ${quickAction}\n\nOpen Payments to see exactly who still owes you.`;
   }
 
   if (lower.includes("marketing") || lower.includes("message") || lower.includes("campaign")) {
     const draft = firstInsight?.draft ?? "Hi, a few appointment slots opened this week. Reply with your preferred day and we will help you book in.";
-    return `Use a focused campaign, not a broad discount. Draft copy:\n\n${draft}\n\nI can tailor this by client segment when OPENAI_API_KEY is configured on the server.`;
+    return `Use a focused campaign, not a broad discount. Draft copy:\n\n${draft}\n\nYou can send this from Marketing — edit it to sound like you before it goes out.`;
   }
 
   if (lower.includes("today") || lower.includes("priority") || lower.includes("do first")) {
-    return `Do this first: ${quickAction}\n\nCurrent focus: ${context?.focus ?? "No urgent focus available"}.\n\nI can behave like a full ChatGPT-style assistant once OPENAI_API_KEY is configured.`;
+    return `Do this first: ${quickAction}\n\nCurrent focus: ${context?.focus ?? "No urgent focus available"}.`;
   }
 
-  return `I can help with that. Based on the live Beauty OS context, the current focus is: ${context?.focus ?? "No urgent focus available"}.\n\nRecommended first move: ${quickAction}\n\nFor full natural-language decision support, configure OPENAI_API_KEY on the server.`;
+  return `Based on your live numbers, the current focus is: ${context?.focus ?? "No urgent focus available"}.\n\nRecommended first move: ${quickAction}\n\nAsk me about cash, bookings, marketing, inventory, or staffing for a more specific answer.`;
 }
 
 function systemPrompt(context: Awaited<ReturnType<typeof getAiAssistantContext>>) {
