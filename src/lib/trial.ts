@@ -18,6 +18,15 @@ export function isTrialExpired({
   subscriptionTrialEndsAt?: Date | null;
   now?: Date;
 }) {
+  // An explicit activation on either side means this workspace is no longer on
+  // a trial, so the trial gate must not hold it. Without this, a stale TRIALING
+  // subscription left behind by an earlier plan change outranked an admin
+  // setting the business ACTIVE, and the workspace stayed locked with no way
+  // out of it from the platform UI.
+  if (businessStatus === "ACTIVE" || subscriptionStatus === "ACTIVE") {
+    return false;
+  }
+
   if (businessStatus !== "TRIAL" && subscriptionStatus !== "TRIALING") {
     return false;
   }

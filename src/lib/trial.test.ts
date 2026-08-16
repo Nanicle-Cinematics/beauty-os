@@ -32,4 +32,47 @@ describe("trial policy", () => {
       now: new Date("2026-07-19T00:00:00.000Z"),
     })).toBe(false);
   });
+
+  // A plan change leaves a TRIALING subscription behind. That stale row used to
+  // outrank an admin marking the business ACTIVE, so the workspace stayed
+  // locked and no control in the platform UI could release it.
+  it("does not lock an activated business carrying a stale trialing subscription", () => {
+    expect(isTrialExpired({
+      businessStatus: "ACTIVE",
+      businessCreatedAt: new Date("2026-07-16T00:00:00.000Z"),
+      subscriptionStatus: "TRIALING",
+      subscriptionTrialEndsAt: new Date("2026-07-26T00:00:00.000Z"),
+      now: new Date("2026-08-16T00:00:00.000Z"),
+    })).toBe(false);
+  });
+
+  it("does not lock a paying subscriber whose business row still reads TRIAL", () => {
+    expect(isTrialExpired({
+      businessStatus: "TRIAL",
+      businessCreatedAt: new Date("2026-07-16T00:00:00.000Z"),
+      subscriptionStatus: "ACTIVE",
+      now: new Date("2026-08-16T00:00:00.000Z"),
+    })).toBe(false);
+  });
+
+  it("still locks a lapsed trial that was never activated", () => {
+    expect(isTrialExpired({
+      businessStatus: "TRIAL",
+      businessCreatedAt: new Date("2026-07-16T00:00:00.000Z"),
+      subscriptionStatus: "TRIALING",
+      subscriptionTrialEndsAt: new Date("2026-07-26T00:00:00.000Z"),
+      now: new Date("2026-08-16T00:00:00.000Z"),
+    })).toBe(true);
+  });
+
+  it("prefers the subscription trial end over the created-at fallback", () => {
+    // Extending trialEndsAt is the other way to release a locked workspace.
+    expect(isTrialExpired({
+      businessStatus: "TRIAL",
+      businessCreatedAt: new Date("2026-07-16T00:00:00.000Z"),
+      subscriptionStatus: "TRIALING",
+      subscriptionTrialEndsAt: new Date("2026-09-01T00:00:00.000Z"),
+      now: new Date("2026-08-16T00:00:00.000Z"),
+    })).toBe(false);
+  });
 });
