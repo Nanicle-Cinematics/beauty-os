@@ -16,12 +16,20 @@ export default async function TrialExpiredPage({ searchParams }: TrialExpiredPag
         </div>
         <h1 className="mt-5 font-serif text-3xl font-semibold tracking-tight">Your 7-day trial has ended</h1>
         <p className="mt-3 text-sm leading-6 text-muted">
-          This workspace is locked because the free trial period has expired. Upgrade the workspace to continue using Beauty OS.
+          This workspace is locked because the free trial period has expired. Your data is safe and nothing has been
+          deleted — get in touch and we will reactivate the workspace for you.
         </p>
         <div className="mt-6 grid gap-2">
-          <Link href="/settings" className="primary-action rounded-2xl px-5 py-3 text-sm font-semibold text-white">
-            Upgrade workspace
-          </Link>
+          {/* Self-serve checkout is not wired yet, so this has to reach a human.
+              It previously pointed at /settings, which has no billing on it. */}
+          <a
+            href={`mailto:naniclecinematics@gmail.com?subject=${encodeURIComponent(
+              workspace ? `Reactivate my Beauty OS workspace (${workspace})` : "Reactivate my Beauty OS workspace",
+            )}`}
+            className="primary-action rounded-2xl px-5 py-3 text-sm font-semibold text-white"
+          >
+            Contact us to reactivate
+          </a>
           <Link
             href="/logout"
             prefetch={false}

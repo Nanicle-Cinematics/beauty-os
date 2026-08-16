@@ -266,16 +266,30 @@ export async function setBusinessStatus({
   if (!isDatabaseConfigured() || !VALID_STATUSES.has(status)) {
     return;
   }
-  const business = await prisma.business.findUnique({ where: { id: businessId }, select: { id: true, status: true } });
+  const business = await prisma.business.findUnique({
+    where: { id: businessId },
+    select: { id: true, status: true, subscription: { select: { id: true, status: true } } },
+  });
   if (!business || business.status === status) {
     return;
   }
+
+  // Activating a business has to settle its subscription too. Leaving a
+  // TRIALING row behind used to re-lock the workspace the moment the old
+  // trialEndsAt passed, and nothing in the admin UI could clear it.
+  const activatesSubscription = status === "ACTIVE" && business.subscription?.status === "TRIALING";
 
   await tenantTransaction(async (tx) => {
     await tx.business.update({
       where: { id: business.id },
       data: { status: status as "TRIAL" | "ACTIVE" | "SUSPENDED" | "CLOSED" },
     });
+    if (activatesSubscription && business.subscription) {
+      await tx.subscription.update({
+        where: { id: business.subscription.id },
+        data: { status: "ACTIVE", trialEndsAt: null },
+      });
+    }
     await tx.auditLog.create({
       data: {
         businessId: business.id,
@@ -283,7 +297,7 @@ export async function setBusinessStatus({
         action: "business.status_changed",
         entityType: "Business",
         entityId: business.id,
-        metadata: { from: business.status, status },
+        metadata: { from: business.status, status, subscriptionActivated: activatesSubscription },
       },
     });
   });
@@ -304,7 +318,7 @@ export async function changeBusinessPlan({
   const [business, plan] = await Promise.all([
     prisma.business.findUnique({
       where: { id: businessId },
-      select: { id: true, subscription: { select: { id: true, planId: true } } },
+      select: { id: true, status: true, subscription: { select: { id: true, planId: true } } },
     }),
     prisma.plan.findFirst({ where: { id: planId, isActive: true }, select: { id: true, name: true } }),
   ]);
@@ -319,8 +333,19 @@ export async function changeBusinessPlan({
     if (business.subscription) {
       await tx.subscription.update({ where: { id: business.subscription.id }, data: { planId: plan.id } });
     } else {
+      // Only a business still on trial gets a trialing subscription. Assigning
+      // a plan to an already-activated business used to start a brand new
+      // 7-day countdown, which quietly re-locked a paying customer a week
+      // later — the opposite of what assigning them a plan means.
+      const onTrial = business.status === "TRIAL";
       await tx.subscription.create({
-        data: { businessId: business.id, planId: plan.id, billingCycle: "MONTHLY", status: "TRIALING", trialEndsAt: trialEndsAt() },
+        data: {
+          businessId: business.id,
+          planId: plan.id,
+          billingCycle: "MONTHLY",
+          status: onTrial ? "TRIALING" : "ACTIVE",
+          trialEndsAt: onTrial ? trialEndsAt() : null,
+        },
       });
     }
     await tx.auditLog.create({
