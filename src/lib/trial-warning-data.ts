@@ -57,8 +57,13 @@ export async function sendExpiringTrialWarnings(now = new Date()): Promise<Trial
 
   const horizon = new Date(now.getTime() + WARN_WITHIN_DAYS * 24 * 60 * 60 * 1000);
 
-  const candidates = await withBypass(() =>
-    prisma.business.findMany({
+  // The callback MUST be async with the query awaited inside it. A plain arrow
+  // returning prisma.foo() only builds a lazy PrismaPromise — it does not run
+  // until the await outside storage.run(), by which point the bypass context is
+  // gone and RLS returns zero rows. That failure is silent: the job reports a
+  // clean "nobody is expiring" and warns no one, forever.
+  const candidates = await withBypass(async () => {
+    return await prisma.business.findMany({
       where: {
         status: { in: ["TRIAL", "SUSPENDED"] },
         // A business with no subscription row falls back to createdAt + 7 days,
@@ -85,8 +90,8 @@ export async function sendExpiringTrialWarnings(now = new Date()): Promise<Trial
         },
       },
       take: MAX_CANDIDATES,
-    }),
-  );
+    });
+  });
 
   const baseUrl = await getBaseUrl();
 
@@ -110,8 +115,8 @@ export async function sendExpiringTrialWarnings(now = new Date()): Promise<Trial
 
     summary.candidates += 1;
 
-    const priorWarning = await withBypass(() =>
-      prisma.notificationLog.findFirst({
+    const priorWarning = await withBypass(async () => {
+      return await prisma.notificationLog.findFirst({
         where: {
           businessId: business.id,
           type: "trial_expiring",
@@ -121,8 +126,8 @@ export async function sendExpiringTrialWarnings(now = new Date()): Promise<Trial
           createdAt: { gte: new Date(now.getTime() - DEDUPE_WINDOW_MS) },
         },
         select: { id: true },
-      }),
-    );
+      });
+    });
 
     if (priorWarning) {
       summary.alreadyWarned += 1;
