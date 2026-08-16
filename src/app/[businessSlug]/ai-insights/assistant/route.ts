@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
 import { requireTenantAccess } from "@/lib/auth";
 import { getAiAssistantContext } from "@/lib/ai-assistant-context";
+import { checkRateLimit, retryMessage } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
+
+// This is the only endpoint that spends money per call, and the cost is billed
+// to us rather than the tenant. Two ceilings: a per-user hourly limit, which
+// stops a stuck client loop or one person holding down send, and a per-business
+// daily cap, which bounds what any single workspace can cost us in a month.
+// Deliberately well above real use — a salon owner asks a handful of questions
+// a day, not twenty an hour.
+const USER_LIMIT_PER_HOUR = 20;
+const BUSINESS_LIMIT_PER_DAY = 200;
+const HOUR_MS = 60 * 60 * 1000;
+const DAY_MS = 24 * HOUR_MS;
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -99,13 +111,31 @@ function extractResponsesText(data: unknown) {
 
 export async function POST(request: Request, { params }: RouteParams) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug);
 
   const body = (await request.json().catch(() => ({}))) as { messages?: unknown };
   const messages = cleanMessages(body.messages);
   const latest = [...messages].reverse().find((message) => message.role === "user");
   if (!latest) {
     return NextResponse.json({ error: "Send a message first." }, { status: 400 });
+  }
+
+  // Checked before building the context, so a throttled caller costs us neither
+  // the OpenAI call nor the seven queries behind it.
+  const perUser = await checkRateLimit(`ai-assistant:user:${user.id}`, USER_LIMIT_PER_HOUR, HOUR_MS);
+  if (!perUser.allowed) {
+    return NextResponse.json(
+      { error: retryMessage("You have asked the assistant a lot of questions just now.", perUser.retryAfterSec) },
+      { status: 429 },
+    );
+  }
+
+  const perBusiness = await checkRateLimit(`ai-assistant:business:${businessSlug}`, BUSINESS_LIMIT_PER_DAY, DAY_MS);
+  if (!perBusiness.allowed) {
+    return NextResponse.json(
+      { error: retryMessage("This workspace has reached today's assistant limit.", perBusiness.retryAfterSec) },
+      { status: 429 },
+    );
   }
 
   const context = await getAiAssistantContext(businessSlug);
@@ -130,7 +160,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL || "gpt-5.1",
+      // mini handles this workload — prioritising a supplied JSON context against
+      // a tight system prompt — at roughly a fifth the cost of gpt-5.1. Override
+      // with OPENAI_MODEL if its answers ever prove too thin.
+      model: process.env.OPENAI_MODEL || "gpt-5-mini",
       instructions: systemPrompt(context),
       input,
       max_output_tokens: 900,

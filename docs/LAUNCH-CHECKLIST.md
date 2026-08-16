@@ -19,7 +19,7 @@ Set these in the deployment provider, scoped to production:
 - `MFA_SECRET_KEY`: stable 32-byte hex key.
 - `APP_URL`: canonical production URL with no trailing slash.
 - `OPENAI_API_KEY`: required for full AI assistant responses.
-- `OPENAI_MODEL`: defaults to `gpt-5.1` when unset.
+- `OPENAI_MODEL`: defaults to `gpt-5-mini` when unset; set to `gpt-5.1` for stronger answers at roughly 5x the cost.
 - Email: either `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` or `RESEND_API_KEY` and `EMAIL_FROM`.
 - SMS/WhatsApp, if enabled: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_SMS_FROM`, `WHATSAPP_BUSINESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`.
 - SSO, if enabled: `WORKOS_API_KEY`, `WORKOS_CLIENT_ID`, and optionally `WORKOS_MICROSOFT_ENABLED=true`.

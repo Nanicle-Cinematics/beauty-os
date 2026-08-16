@@ -47,5 +47,10 @@ export async function checkRateLimit(key: string, limit: number, windowMs: numbe
 
 export function retryMessage(prefix: string, retryAfterSec: number): string {
   const mins = Math.ceil(retryAfterSec / 60);
+  // Day-long windows would otherwise read "try again in 1200 minutes".
+  if (mins >= 120) {
+    const hours = Math.ceil(mins / 60);
+    return `${prefix} Please try again in ${hours} hour${hours === 1 ? "" : "s"}.`;
+  }
   return `${prefix} Please try again in ${mins} minute${mins === 1 ? "" : "s"}.`;
 }

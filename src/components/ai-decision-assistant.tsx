@@ -58,7 +58,7 @@ export function AiDecisionAssistant({ businessSlug }: { businessSlug: string }) 
     } catch {
       setMessages((current) => [
         ...current,
-        { role: "assistant", content: "I could not reach the assistant service. Check the deployment environment and try again." },
+        { role: "assistant", content: "I could not reach the assistant just now. Check your connection and try again in a moment." },
       ]);
     } finally {
       setPending(false);
