@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { LockKeyhole } from "lucide-react";
 
+// Customer-facing support inbox. Deliberately a platform-admin address, not the
+// naniclecinematics@gmail.com sender used for outbound mail and security.txt —
+// a locked-out owner writing in is a customer about to churn, and the reply has
+// to come from someone who can actually unlock them.
+const SUPPORT_EMAIL = "degraftnanaaboagye@gmail.com";
+
 type TrialExpiredPageProps = {
   searchParams: Promise<{ workspace?: string }>;
 };
@@ -21,9 +27,11 @@ export default async function TrialExpiredPage({ searchParams }: TrialExpiredPag
         </p>
         <div className="mt-6 grid gap-2">
           {/* Self-serve checkout is not wired yet, so this has to reach a human.
-              It previously pointed at /settings, which has no billing on it. */}
+              It previously pointed at /settings, which has no billing on it.
+              Addressed to a platform admin, since reactivating a workspace is
+              something only that account can actually do. */}
           <a
-            href={`mailto:naniclecinematics@gmail.com?subject=${encodeURIComponent(
+            href={`mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
               workspace ? `Reactivate my Beauty OS workspace (${workspace})` : "Reactivate my Beauty OS workspace",
             )}`}
             className="primary-action rounded-2xl px-5 py-3 text-sm font-semibold text-white"
