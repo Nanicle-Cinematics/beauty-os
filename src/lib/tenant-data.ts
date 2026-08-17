@@ -119,9 +119,15 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
   if (!canSwitch) {
     // Counting the user's memberships spans all their businesses — a legitimate
     // cross-tenant read inside a tenant-scoped request, so lift RLS for it.
-    const memberships = await withBypass(() =>
-      prisma.staffMember.count({ where: { userId: user.id, status: "ACTIVE" } }),
-    );
+    //
+    // Async with the count awaited inside: a plain arrow returning prisma.foo()
+    // only builds a lazy PrismaPromise, which dispatches after storage.run() has
+    // returned and therefore under the request's own tenant scope. RLS then
+    // confines the count to the current business, it can never exceed 1, and
+    // "Switch workspace" silently never appears for anyone with two workspaces.
+    const memberships = await withBypass(async () => {
+      return await prisma.staffMember.count({ where: { userId: user.id, status: "ACTIVE" } });
+    });
     canSwitch = memberships > 1;
   }
 

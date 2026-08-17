@@ -133,17 +133,26 @@ async function recordEvent(input: {
 }) {
   if (!isDatabaseConfigured()) return;
   const meta = await requestMeta().catch(() => ({ ipAddress: null, userAgent: "", browser: null, device: null }));
-  await withBypass(() => prisma.galleryAccessEvent.create({
-    data: {
-      businessId: input.businessId,
-      galleryId: input.galleryId,
-      mediaId: input.mediaId,
-      type: input.type,
-      sessionId: input.sessionId,
-      metadata: input.metadata as never,
-      ...meta,
-    },
-  })).catch(() => {});
+  // The callback must be async with the write awaited inside it. Returning
+  // prisma.foo() from a plain arrow hands back a lazy PrismaPromise that does
+  // not dispatch until it is awaited outside storage.run(), leaving the write
+  // to run under whatever context the caller happened to have. That was true
+  // here: public callers inherited an outer bypass and staff callers were
+  // scoped to the matching businessId, so events did still record — but by
+  // accident of the call site, not because of this wrapper.
+  await withBypass(async () => {
+    await prisma.galleryAccessEvent.create({
+      data: {
+        businessId: input.businessId,
+        galleryId: input.galleryId,
+        mediaId: input.mediaId,
+        type: input.type,
+        sessionId: input.sessionId,
+        metadata: input.metadata as never,
+        ...meta,
+      },
+    });
+  }).catch(() => {});
 }
 
 async function paymentSnapshot(input: { businessId: string; appointmentId?: string | null; invoiceId?: string | null; fallbackTotal: number }) {
