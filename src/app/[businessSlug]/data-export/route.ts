@@ -15,7 +15,11 @@ function replacer(_key: string, value: unknown): unknown {
 
 export async function GET(_request: NextRequest, { params }: { params: Promise<{ businessSlug: string }> }) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
+  // The one tenant route that stays open to a locked workspace. Everything else
+  // redirects to /trial-expired, which was also swallowing the owner's route to
+  // their own records — the moment they are most likely to want them, and a
+  // right that does not lapse with a trial. Membership is still required.
+  await requireTenantAccess(businessSlug, { allowTrialLocked: true });
 
   const data = await getBusinessExport(businessSlug);
   if (!data) return new NextResponse("Not found", { status: 404 });

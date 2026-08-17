@@ -246,6 +246,34 @@ export async function requirePlatformAdmin(): Promise<AppUser> {
   return user;
 }
 
+/**
+ * Whether the user belongs to this workspace at all — membership only, with no
+ * view on whether the trial has run out.
+ *
+ * Kept separate from canAccessWorkspace because a lapsed trial is a billing
+ * state, not an authorization one. Data export has to remain reachable while a
+ * workspace is locked: refusing to hand people their own records at the exact
+ * moment they are most likely to want them is the wrong answer, and a data
+ * subject's right to their data does not lapse with a trial.
+ */
+export async function hasWorkspaceMembership(user: AppUser, businessSlug: string) {
+  if (user.isPlatformAdmin) {
+    return true;
+  }
+
+  if (!isDatabaseConfigured()) {
+    const demoUser = demoUsers[user.email];
+    return Boolean(demoUser?.workspaces.includes(businessSlug));
+  }
+
+  const membership = await prisma.staffMember.findFirst({
+    where: { userId: user.id, status: "ACTIVE", business: { slug: businessSlug } },
+    select: { id: true },
+  });
+
+  return Boolean(membership);
+}
+
 export async function canAccessWorkspace(user: AppUser, businessSlug: string) {
   if (user.isPlatformAdmin) {
     return true;
@@ -320,14 +348,34 @@ export async function isWorkspaceTrialLocked(user: AppUser, businessSlug: string
   });
 }
 
-export async function requireTenantAccess(businessSlug: string) {
+/**
+ * Guard for every tenant-scoped surface: signed in, verified, a member of this
+ * workspace, and not locked out by a lapsed trial. Also pins the tenant context
+ * so RLS enforces the boundary for the rest of the request.
+ *
+ * `allowTrialLocked` lets a locked workspace through. It exists for data export
+ * and nothing else — see hasWorkspaceMembership. Membership is still required;
+ * this relaxes billing state, never authorization.
+ */
+export async function requireTenantAccess(
+  businessSlug: string,
+  { allowTrialLocked = false }: { allowTrialLocked?: boolean } = {},
+) {
   const user = await requireUser(`/${businessSlug}`);
-  const trialLocked = await isWorkspaceTrialLocked(user, businessSlug);
-  if (trialLocked) {
-    redirect(`/trial-expired?workspace=${encodeURIComponent(businessSlug)}`);
+
+  if (!allowTrialLocked) {
+    const trialLocked = await isWorkspaceTrialLocked(user, businessSlug);
+    if (trialLocked) {
+      redirect(`/trial-expired?workspace=${encodeURIComponent(businessSlug)}`);
+    }
   }
 
-  const allowed = await canAccessWorkspace(user, businessSlug);
+  // canAccessWorkspace folds the trial check into its answer, so a locked
+  // workspace would be rejected here too — membership alone is the right
+  // question once the caller has opted into serving locked tenants.
+  const allowed = allowTrialLocked
+    ? await hasWorkspaceMembership(user, businessSlug)
+    : await canAccessWorkspace(user, businessSlug);
 
   if (!allowed) {
     redirect("/");

@@ -38,6 +38,18 @@ export default async function TrialExpiredPage({ searchParams }: TrialExpiredPag
           >
             Contact us to reactivate
           </a>
+          {/* The export route is the one tenant surface a locked workspace can
+              still reach, but its usual link lives in the app shell — which a
+              locked owner never gets to see. Without this the fix would only
+              work for someone who guessed the URL. */}
+          {workspace ? (
+            <a
+              href={`/${encodeURIComponent(workspace)}/data-export`}
+              className="rounded-2xl border border-line px-5 py-3 text-sm font-semibold text-muted hover:bg-sunken"
+            >
+              Export your data
+            </a>
+          ) : null}
           <Link
             href="/logout"
             prefetch={false}
