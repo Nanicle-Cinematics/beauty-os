@@ -111,7 +111,7 @@ function extractResponsesText(data: unknown) {
 
 export async function POST(request: Request, { params }: RouteParams) {
   const { businessSlug } = await params;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "ai-insights" });
 
   const body = (await request.json().catch(() => ({}))) as { messages?: unknown };
   const messages = cleanMessages(body.messages);

@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma, tenantTransaction, isDatabaseConfigured } from "@/lib/prisma";
 import { CURRENCIES, TIMEZONES } from "@/lib/onboarding-data";
+import { planFeatureList, isPlanKey, TOP_PLAN } from "@/lib/entitlements";
 
 const VALID_CURRENCIES = new Set(CURRENCIES.map((c) => c.value));
 const VALID_TIMEZONES = new Set(TIMEZONES.map((t) => t.value));
@@ -67,14 +68,17 @@ function shortDate(date: Date | null | undefined) {
   return new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }).format(date);
 }
 
-function featureList(features: unknown) {
-  if (Array.isArray(features)) {
-    return features.map((feature) => String(feature)).filter(Boolean).slice(0, 4);
-  }
-  if (features && typeof features === "object") {
-    return Object.values(features).map((feature) => String(feature)).filter(Boolean).slice(0, 4);
-  }
-  return [];
+/**
+ * What a plan includes, derived from the entitlement ladder rather than the
+ * `Plan.features` JSON column.
+ *
+ * That column was hand-maintained marketing copy which nothing enforced, and it
+ * drifted: Growth Suite listed Marketing while the dearer Studio Pro did not.
+ * Deriving it means a bullet cannot outlive the access it describes. The old
+ * slice-to-4 is gone with it — the list is now exactly as long as the tier is.
+ */
+function featureList(planKey: string, previousPlanName: string | null) {
+  return planFeatureList(isPlanKey(planKey) ? planKey : TOP_PLAN, previousPlanName);
 }
 
 export async function getBusinessSettings(slug: string): Promise<BusinessSettings | null> {
@@ -127,13 +131,13 @@ export async function getBusinessSettings(slug: string): Promise<BusinessSetting
           cancelAtPeriodEnd: business.subscription.cancelAtPeriodEnd,
         }
       : null,
-    plans: plans.map((plan) => ({
+    plans: plans.map((plan, i) => ({
       id: plan.id,
       name: plan.name,
       key: titleCase(plan.key),
       priceMonthly: money(plan.priceMonthly, business.currency),
       priceYearly: money(plan.priceYearly, business.currency),
-      features: featureList(plan.features),
+      features: featureList(plan.key, i > 0 ? plans[i - 1].name : null),
       current: business.subscription?.planId === plan.id,
     })),
   };

@@ -27,7 +27,7 @@ type Props = {
 export default async function CampaignDetailPage({ params, searchParams }: Props) {
   const { businessSlug, campaignId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "marketing" });
 
   const [campaign, module, membership] = await Promise.all([
     getCampaignDetail(businessSlug, campaignId),

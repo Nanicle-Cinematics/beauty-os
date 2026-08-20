@@ -22,7 +22,7 @@ type StaffDetailPageProps = {
 export default async function StaffDetailPage({ params, searchParams }: StaffDetailPageProps) {
   const { businessSlug, staffId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "staff" });
 
   const [member, services, membership] = await Promise.all([
     getStaffDetail(businessSlug, staffId, user.id),

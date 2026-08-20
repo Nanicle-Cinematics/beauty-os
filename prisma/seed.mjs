@@ -59,6 +59,11 @@ async function seedLookupData() {
     }),
   ]);
 
+  // NOTE: `features` and `limits` below are descriptive only. What a plan
+  // actually unlocks — modules and staff seats — is decided by the ladder in
+  // src/lib/entitlements.ts, and every page that displays a feature list derives
+  // it from there. These columns are kept roughly in step for anyone reading the
+  // database directly; editing them changes no behaviour. Change the ladder.
   const plans = await Promise.all([
     prisma.plan.upsert({
       where: { key: "STUDIO" },

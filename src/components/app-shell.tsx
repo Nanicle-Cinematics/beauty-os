@@ -24,6 +24,7 @@ import {
   Search,
   LogOut,
   ArrowUpRight,
+  Lock,
   ChevronsUpDown,
   Settings,
   Store,
@@ -33,27 +34,28 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { TenantChrome } from "@/lib/tenant-data";
+import type { ModuleKey } from "@/lib/entitlements";
 import { industryCopy } from "@/lib/industry";
 import { ThemeModeButton } from "@/components/theme-mode-button";
 
-type NavItem = { label: string; path: string; icon: LucideIcon };
+type NavItem = { label: string; path: string; icon: LucideIcon; module: ModuleKey };
 
 const primaryNav: NavItem[] = [
-  { label: "Dashboard", path: "", icon: LayoutDashboard },
-  { label: "Calendar", path: "calendar", icon: CalendarDays },
-  { label: "Appointments", path: "appointments", icon: CalendarClock },
-  { label: "Waitlist", path: "waitlist", icon: Hourglass },
-  { label: "Clients", path: "clients", icon: Users },
-  { label: "Services", path: "services", icon: Sparkles },
-  { label: "Staff", path: "staff", icon: UserCog },
-  { label: "Inventory", path: "inventory", icon: Package },
-  { label: "Payments", path: "payments", icon: CreditCard },
-  { label: "Invoices", path: "invoices", icon: FileText },
-  { label: "Galleries", path: "galleries", icon: Images },
-  { label: "Finance", path: "finance", icon: Wallet },
-  { label: "Marketing", path: "marketing", icon: Megaphone },
-  { label: "AI Insights", path: "ai-insights", icon: Brain },
-  { label: "Reports", path: "reports", icon: BarChart3 },
+  { label: "Dashboard", path: "", icon: LayoutDashboard, module: "dashboard" },
+  { label: "Calendar", path: "calendar", icon: CalendarDays, module: "calendar" },
+  { label: "Appointments", path: "appointments", icon: CalendarClock, module: "appointments" },
+  { label: "Waitlist", path: "waitlist", icon: Hourglass, module: "waitlist" },
+  { label: "Clients", path: "clients", icon: Users, module: "clients" },
+  { label: "Services", path: "services", icon: Sparkles, module: "services" },
+  { label: "Staff", path: "staff", icon: UserCog, module: "staff" },
+  { label: "Inventory", path: "inventory", icon: Package, module: "inventory" },
+  { label: "Payments", path: "payments", icon: CreditCard, module: "payments" },
+  { label: "Invoices", path: "invoices", icon: FileText, module: "invoices" },
+  { label: "Galleries", path: "galleries", icon: Images, module: "galleries" },
+  { label: "Finance", path: "finance", icon: Wallet, module: "finance" },
+  { label: "Marketing", path: "marketing", icon: Megaphone, module: "marketing" },
+  { label: "AI Insights", path: "ai-insights", icon: Brain, module: "ai-insights" },
+  { label: "Reports", path: "reports", icon: BarChart3, module: "reports" },
 ];
 
 function quickAddFor(copy: ReturnType<typeof industryCopy>) {
@@ -104,6 +106,7 @@ function sectionTitle(pathname: string, slug: string, copy: ReturnType<typeof in
   const rest = pathname.replace(`/${slug}`, "").replace(/^\//, "");
   const seg = rest.split("/")[0] ?? "";
   if (seg === "settings") return "Business settings";
+  if (seg === "upgrade") return "Your plan";
   const match = primaryNav.find((item) => item.path === seg);
   if (seg === "" || !match) return "Operations dashboard";
   return navLabel(match.label, copy);
@@ -166,23 +169,31 @@ export function AppShell({
         {primaryNav.map((item) => {
           const active = isActive(item.path);
           const Icon = item.icon;
+          // Locked modules stay visible on purpose. Hiding them would leave the
+          // owner with no idea the feature exists, which sells nothing; showing
+          // them dimmed with a lock is the upgrade prompt.
+          const locked = chrome.lockedModules.includes(item.module);
           return (
             <Link
               key={item.label}
-              href={`/${slug}${item.path ? `/${item.path}` : ""}`}
+              href={locked ? `/${slug}/upgrade?module=${item.module}` : `/${slug}${item.path ? `/${item.path}` : ""}`}
               onClick={() => setDrawerOpen(false)}
               aria-current={active ? "page" : undefined}
+              title={locked ? `${item.label} is not included in your plan` : undefined}
               className={`group relative flex min-h-11 items-center gap-3 rounded-2xl px-3 text-[13.5px] font-medium transition ${
                 active
                   ? "glass-strong text-plum"
-                  : "text-muted hover:bg-white/50 hover:text-ink"
+                  : locked
+                    ? "text-faint hover:bg-white/40 hover:text-muted"
+                    : "text-muted hover:bg-white/50 hover:text-ink"
               }`}
             >
               {active ? (
                 <span className="absolute left-1 top-1/2 h-6 w-1 -translate-y-1/2 rounded-full bg-gradient-to-b from-rose via-mauve to-aqua" />
               ) : null}
               <Icon size={17} strokeWidth={active ? 2.1 : 1.8} className={active ? "text-plum" : "text-faint group-hover:text-muted"} />
-              {navLabel(item.label, copy)}
+              <span className="flex-1">{navLabel(item.label, copy)}</span>
+              {locked ? <Lock size={13} strokeWidth={2} className="text-faint" aria-label="Not included in your plan" /> : null}
             </Link>
           );
         })}
@@ -198,13 +209,21 @@ export function AppShell({
           </div>
           <div className="mt-1.5 font-serif text-[15px] font-semibold text-ink">{chrome.planName}</div>
           <div className="mt-1 text-[11.5px] leading-5 text-muted">
-            {chrome.staffSeats} staff {chrome.staffSeats === 1 ? "seat" : "seats"} · {chrome.branchCount} branch · {chrome.status}
+            {chrome.seatLimit === null
+              ? `${chrome.staffSeats} staff ${chrome.staffSeats === 1 ? "seat" : "seats"}`
+              : `${chrome.staffSeats} of ${chrome.seatLimit} staff seats`}{" "}
+            · {chrome.branchCount} branch · {chrome.status}
           </div>
+          {chrome.lockedModules.length > 0 ? (
+            <div className="mt-1 text-[11.5px] leading-5 text-muted">
+              {chrome.lockedModules.length} {chrome.lockedModules.length === 1 ? "module" : "modules"} locked
+            </div>
+          ) : null}
           <Link
-            href={`/${slug}/settings#subscription`}
+            href={`/${slug}/upgrade`}
             className="primary-action mt-3 flex items-center justify-center gap-1.5 rounded-2xl px-3 py-2.5 text-[12.5px] font-semibold text-white"
           >
-            Upgrade plan <ArrowUpRight size={14} />
+            {chrome.upgradeToName ? `Upgrade to ${chrome.upgradeToName}` : "Your plan"} <ArrowUpRight size={14} />
           </Link>
         </div>
 

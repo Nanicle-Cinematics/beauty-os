@@ -6,6 +6,7 @@ import { setTenantContext } from "@/lib/tenant-context";
 import { hashPassword } from "@/lib/password";
 import { seedStarterWorkspaceData } from "@/lib/starter-data";
 import { trialEndsAt } from "@/lib/trial";
+import { planFeatureList, isPlanKey, TOP_PLAN } from "@/lib/entitlements";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -61,7 +62,14 @@ export async function getPublicPlans(): Promise<PublicPlan[]> {
     name: p.name,
     priceMonthly: money(Number(p.priceMonthly)),
     priceYearly: money(Number(p.priceYearly)),
-    features: Array.isArray(p.features) ? (p.features as unknown[]).map(String) : [],
+    // Derived from the entitlement ladder rather than read from `Plan.features`,
+    // so the pricing page can only ever promise what the plan actually unlocks.
+    // The hand-maintained JSON drifted before: Growth Suite advertised Marketing
+    // while the dearer Studio Pro did not, making the upgrade look like a loss.
+    features: planFeatureList(
+      isPlanKey(p.key) ? p.key : TOP_PLAN,
+      i > 0 ? plans[i - 1].name : null,
+    ),
     // Highlight the top (most expensive) active plan as the recommended tier.
     highlighted: i === plans.length - 1,
   }));

@@ -17,7 +17,7 @@ type InvoicesPageProps = {
 export default async function InvoicesPage({ params, searchParams }: InvoicesPageProps) {
   const { businessSlug } = await params;
   const filters = await searchParams;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "invoices" });
   const data = await timeDataLoad(`invoices:${businessSlug}`, () => getInvoiceModuleData(businessSlug, filters));
   if (!data) notFound();
 

@@ -35,7 +35,7 @@ type AppointmentDetailPageProps = {
 export default async function AppointmentDetailPage({ params, searchParams }: AppointmentDetailPageProps) {
   const { businessSlug, appointmentId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "appointments" });
 
   const [appointment, module, membership] = await Promise.all([
     getAppointmentDetail(businessSlug, appointmentId),

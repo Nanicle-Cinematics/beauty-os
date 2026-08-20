@@ -21,7 +21,7 @@ type FinancePageProps = {
 export default async function FinancePage({ params, searchParams }: FinancePageProps) {
   const { businessSlug } = await params;
   const { logged, error } = await searchParams;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "finance" });
   const data = await getFinanceData(businessSlug);
   if (!data) notFound();
 

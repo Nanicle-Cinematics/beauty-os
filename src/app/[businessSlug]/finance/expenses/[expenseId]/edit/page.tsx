@@ -18,7 +18,7 @@ type EditExpensePageProps = {
 export default async function EditExpensePage({ params, searchParams }: EditExpensePageProps) {
   const { businessSlug, expenseId } = await params;
   const { error } = await searchParams;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "finance" });
   const expense = await getExpense(businessSlug, expenseId);
   if (!expense) notFound();
 

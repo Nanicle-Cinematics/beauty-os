@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { setTenantContext } from "@/lib/tenant-context";
+import { workspaceHasModule } from "@/lib/entitlement-data";
+import type { ModuleKey } from "@/lib/entitlements";
 import { normalizeTheme, type ThemePreference } from "@/lib/theme";
 import { isTrialExpired } from "@/lib/trial";
 import { normalizeInternalPath } from "@/lib/redirects";
@@ -359,7 +361,10 @@ export async function isWorkspaceTrialLocked(user: AppUser, businessSlug: string
  */
 export async function requireTenantAccess(
   businessSlug: string,
-  { allowTrialLocked = false }: { allowTrialLocked?: boolean } = {},
+  {
+    allowTrialLocked = false,
+    module,
+  }: { allowTrialLocked?: boolean; module?: ModuleKey } = {},
 ) {
   const user = await requireUser(`/${businessSlug}`);
 
@@ -392,6 +397,17 @@ export async function requireTenantAccess(
       redirect("/");
     }
     setTenantContext({ businessId: business.id });
+  }
+
+  // Plan gating comes last, once the tenant is resolved and scoped. It is a
+  // billing state, not an authorization one: the caller is a legitimate member
+  // of a workspace whose plan does not include this module, so they are sent to
+  // the upgrade page rather than bounced out of the workspace. Platform admins
+  // are the vendor and see everything.
+  if (module && !user.isPlatformAdmin) {
+    if (!(await workspaceHasModule(businessSlug, module))) {
+      redirect(`/${businessSlug}/upgrade?module=${encodeURIComponent(module)}`);
+    }
   }
 
   return user;

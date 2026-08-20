@@ -19,7 +19,7 @@ type NewInvoicePageProps = {
 export default async function NewInvoicePage({ params, searchParams }: NewInvoicePageProps) {
   const { businessSlug } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "invoices" });
   const [data, membership] = await Promise.all([getInvoiceFormData(businessSlug), membershipIn(user, businessSlug)]);
   if (!data) notFound();
 

@@ -18,7 +18,7 @@ type Props = {
 export default async function TierDetailPage({ params, searchParams }: Props) {
   const { businessSlug, tierId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "marketing" });
 
   const [tier, membership] = await Promise.all([
     getTierDetail(businessSlug, tierId),

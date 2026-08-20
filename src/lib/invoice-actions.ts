@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireTenantAccess, type AppUser } from "@/lib/auth";
-import { membershipIn, roleCan, type Capability } from "@/lib/permissions";
+import { authorizeCapability, CAPABILITY_MODULE, type Capability } from "@/lib/permissions";
 import { prisma } from "@/lib/prisma";
 import {
   createInvoice,
@@ -33,8 +33,14 @@ function parseDate(value: string) {
 
 async function authorize(businessSlug: string, capability: Capability) {
   const user = await requireTenantAccess(businessSlug);
-  const membership = await membershipIn(user, businessSlug);
-  return { user, membership, allowed: roleCan(membership?.role, capability) };
+  const { membership, allowed, blockedByPlan } = await authorizeCapability(user, businessSlug, capability);
+  // Blocked by the plan rather than the role: send them to the upgrade page.
+  // Telling a manager they lack permission to do their own job would read as a
+  // broken account, when the real answer is that the workspace never bought it.
+  if (blockedByPlan) {
+    redirect(`/${businessSlug}/upgrade?module=${CAPABILITY_MODULE[capability]}`);
+  }
+  return { user, membership, allowed, blockedByPlan };
 }
 
 async function audit(

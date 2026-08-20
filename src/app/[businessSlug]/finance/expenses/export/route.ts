@@ -10,7 +10,7 @@ function csvCell(value: string | number): string {
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ businessSlug: string }> }) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "finance" });
 
   const sp = request.nextUrl.searchParams;
   const data = await getExpensesForExport(businessSlug, {

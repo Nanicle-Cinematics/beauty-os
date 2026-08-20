@@ -3,6 +3,8 @@ import "server-only";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { withBypass } from "@/lib/tenant-context";
 import type { AppUser } from "@/lib/auth";
+import { getWorkspaceEntitlement } from "@/lib/entitlement-data";
+import type { ModuleKey } from "@/lib/entitlements";
 
 export type WorkspaceSummary = {
   name: string;
@@ -68,6 +70,10 @@ export type TenantChrome = {
   namePlaceholder: boolean;
   staffSeats: number;
   branchCount: number;
+  /** Modules this plan does not include — the shell marks them with a lock. */
+  lockedModules: ModuleKey[];
+  seatLimit: number | null;
+  upgradeToName: string | null;
   account: { email: string; name: string; avatarUrl: string | null; themePreference: string; canSwitch: boolean; isAdmin: boolean };
 };
 
@@ -91,6 +97,9 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
       namePlaceholder: false,
       staffSeats: current.slug === "osu-glow-studio" ? 6 : 3,
       branchCount: 1,
+      lockedModules: [],
+      seatLimit: null,
+      upgradeToName: null,
       account: {
         email: user.email,
         name: user.name,
@@ -114,6 +123,8 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
   if (!business) {
     return null;
   }
+
+  const entitlement = await getWorkspaceEntitlement(slug);
 
   let canSwitch = user.isPlatformAdmin;
   if (!canSwitch) {
@@ -142,6 +153,11 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
     namePlaceholder: business.namePlaceholder,
     staffSeats: business._count.staff,
     branchCount: 1,
+    // Platform admins are the vendor doing support — they see the whole product
+    // regardless of what the tenant pays, matching the guards in auth.ts.
+    lockedModules: user.isPlatformAdmin ? [] : entitlement.lockedModules,
+    seatLimit: entitlement.seatLimit,
+    upgradeToName: entitlement.upgradeToName,
     account: {
       email: user.email,
       name: user.name,

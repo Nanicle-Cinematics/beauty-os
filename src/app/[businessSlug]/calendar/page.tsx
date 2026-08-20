@@ -37,7 +37,7 @@ export default async function CalendarPage({ params, searchParams }: CalendarPag
   const { businessSlug } = await params;
   const { date } = await searchParams;
   const anchorDate = parseAnchorDate(date);
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "calendar" });
   const data = await timeDataLoad(`calendar:${businessSlug}`, () => getCalendarData(businessSlug, anchorDate));
   if (!data) notFound();
   const busiestDay = data.days.reduce((best, day) => (day.count > best.count ? day : best), data.days[0]);

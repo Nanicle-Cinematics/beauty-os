@@ -13,7 +13,7 @@ type ReportsPageProps = { params: Promise<{ businessSlug: string }> };
 
 export default async function ReportsPage({ params }: ReportsPageProps) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "reports" });
   const data = await getReportsData(businessSlug);
   if (!data) notFound();
 

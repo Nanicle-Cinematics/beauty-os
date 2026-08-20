@@ -21,7 +21,7 @@ export default async function ServicesPage({ params, searchParams }: ServicesPag
   const { businessSlug } = await params;
   const { new: newParam } = await searchParams;
   const showNew = newParam === "1";
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "services" });
   const data = await getServiceModuleData(businessSlug);
 
   if (!data) {

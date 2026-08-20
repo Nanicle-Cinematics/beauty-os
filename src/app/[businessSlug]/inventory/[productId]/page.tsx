@@ -18,7 +18,7 @@ type ProductDetailPageProps = {
 export default async function ProductDetailPage({ params, searchParams }: ProductDetailPageProps) {
   const { businessSlug, productId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "inventory" });
 
   const [product, membership] = await Promise.all([
     getProductDetail(businessSlug, productId),
