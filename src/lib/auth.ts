@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { verifyPassword } from "@/lib/password";
 import { setTenantContext } from "@/lib/tenant-context";
+import { isDatabaseUnavailableError } from "@/lib/db-health";
 import { workspaceHasModule } from "@/lib/entitlement-data";
 import type { ModuleKey } from "@/lib/entitlements";
 import { normalizeTheme, type ThemePreference } from "@/lib/theme";
@@ -99,10 +100,23 @@ export async function getCurrentUser(): Promise<AppUser | null> {
     };
   }
 
-  const session = await prisma.session.findUnique({
-    where: { tokenHash: hashSessionToken(token) },
-    include: { user: true },
-  });
+  // Every authenticated surface funnels through this one lookup, so it is where
+  // a database outage is caught. Returning null here would be wrong — that means
+  // "signed out", and would bounce a salon owner to /login where their correct
+  // password fails for reasons nobody can explain. Sending them to the
+  // maintenance page tells them the truth instead.
+  let session;
+  try {
+    session = await prisma.session.findUnique({
+      where: { tokenHash: hashSessionToken(token) },
+      include: { user: true },
+    });
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      redirect("/maintenance");
+    }
+    throw error;
+  }
 
   if (!session || session.expiresAt < new Date()) {
     return null;
