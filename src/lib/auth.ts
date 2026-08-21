@@ -159,7 +159,18 @@ export async function signIn(email: string, password: string): Promise<SignInRes
     return { status: "ok" };
   }
 
-  const user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  // Without this, signing in during an outage returns an unexplained error on a
+  // correct password — the most alarming way to meet a downed database, because
+  // it looks like the account is gone rather than the service.
+  let user;
+  try {
+    user = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      redirect("/maintenance");
+    }
+    throw error;
+  }
 
   if (!user || !(await verifyPassword(password, user.passwordHash))) {
     return { status: "invalid" };
