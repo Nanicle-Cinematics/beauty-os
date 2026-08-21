@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Check } from "lucide-react";
+import { isDatabaseUnavailableError } from "@/lib/db-health";
 import { signUpAction } from "@/lib/signup-actions";
 import { getSignupCategories } from "@/lib/signup-data";
 import { PasswordInput } from "@/components/password-input";
@@ -15,7 +17,18 @@ const perks = ["7 days free, then access locks", "Your own secure workspace", "Y
 
 export default async function SignupPage({ searchParams }: SignupPageProps) {
   const { error } = await searchParams;
-  const categories = await getSignupCategories();
+  // Signing up writes a workspace, so unlike the pricing page this cannot
+  // degrade to placeholder content — letting someone fill in a form that is
+  // guaranteed to fail is worse than telling them plainly to come back.
+  let categories;
+  try {
+    categories = await getSignupCategories();
+  } catch (error) {
+    if (isDatabaseUnavailableError(error)) {
+      redirect("/maintenance");
+    }
+    throw error;
+  }
 
   return (
     <main className="grid min-h-screen place-items-center bg-canvas px-6 py-8 text-ink max-[720px]:px-3">
