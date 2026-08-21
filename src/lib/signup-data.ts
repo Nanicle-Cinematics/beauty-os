@@ -6,6 +6,7 @@ import { setTenantContext } from "@/lib/tenant-context";
 import { hashPassword } from "@/lib/password";
 import { seedStarterWorkspaceData } from "@/lib/starter-data";
 import { trialEndsAt } from "@/lib/trial";
+import { withDatabaseFallback } from "@/lib/db-health";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -55,16 +56,22 @@ export async function getPublicPlans(): Promise<PublicPlan[]> {
   if (!isDatabaseConfigured()) {
     return fallbackPlans;
   }
-  const plans = await prisma.plan.findMany({ where: { isActive: true }, orderBy: { priceMonthly: "asc" } });
-  return plans.map((p, i) => ({
-    key: p.key,
-    name: p.name,
-    priceMonthly: money(Number(p.priceMonthly)),
-    priceYearly: money(Number(p.priceYearly)),
-    features: Array.isArray(p.features) ? (p.features as unknown[]).map(String) : [],
-    // Highlight the top (most expensive) active plan as the recommended tier.
-    highlighted: i === plans.length - 1,
-  }));
+  // The public landing page is the one surface that should survive a database
+  // outage: prices are static marketing content, and a prospect who finds a
+  // 500 assumes the product is dead. Tenant data never degrades like this —
+  // it goes to /maintenance rather than showing anyone invented numbers.
+  return withDatabaseFallback(async () => {
+    const plans = await prisma.plan.findMany({ where: { isActive: true }, orderBy: { priceMonthly: "asc" } });
+    return plans.map((p, i) => ({
+      key: p.key,
+      name: p.name,
+      priceMonthly: money(Number(p.priceMonthly)),
+      priceYearly: money(Number(p.priceYearly)),
+      features: Array.isArray(p.features) ? (p.features as unknown[]).map(String) : [],
+      // Highlight the top (most expensive) active plan as the recommended tier.
+      highlighted: i === plans.length - 1,
+    }));
+  }, fallbackPlans);
 }
 
 export type PublicCategory = { id: string; label: string };
