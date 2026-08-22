@@ -19,7 +19,7 @@ type Props = {
 export default async function PaymentDetailPage({ params, searchParams }: Props) {
   const { businessSlug, paymentId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "payments" });
 
   const [payment, membership] = await Promise.all([
     getPaymentDetail(businessSlug, paymentId),

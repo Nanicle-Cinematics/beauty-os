@@ -37,7 +37,7 @@ function statusActions(statusKey: string): { label: string; value: string; tone?
 
 export default async function StaffPage({ params }: StaffPageProps) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "staff" });
   const data = await getStaffModuleData(businessSlug);
 
   if (!data) {

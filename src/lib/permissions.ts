@@ -2,6 +2,8 @@ import "server-only";
 
 import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import type { AppUser } from "@/lib/auth";
+import { workspaceHasModule } from "@/lib/entitlement-data";
+import type { ModuleKey } from "@/lib/entitlements";
 
 export type BusinessRole =
   | "OWNER"
@@ -115,8 +117,83 @@ export function roleCan(role: BusinessRole | null | undefined, capability: Capab
   return (CAPABILITIES[capability] as readonly string[]).includes(role);
 }
 
+/**
+ * Which module each capability belongs to.
+ *
+ * Every guarded action already checks a capability, so mapping capabilities to
+ * modules here means plan gating reaches every write in the app through one
+ * edit. Hiding a locked module from the nav proves nothing — a Growth Suite
+ * tenant could still POST straight at `recordPaymentAction`; this is the gate
+ * that actually stops them.
+ */
+export const CAPABILITY_MODULE: Record<Capability, ModuleKey> = {
+  "clients:edit": "clients",
+  "clients:archive": "clients",
+  "clients:delete": "clients",
+  "services:edit": "services",
+  "services:retire": "services",
+  "services:delete": "services",
+  "staff:edit": "staff",
+  "staff:status": "staff",
+  "staff:role": "staff",
+  "inventory:edit": "inventory",
+  "inventory:adjust": "inventory",
+  "inventory:delete": "inventory",
+  "appointments:edit": "appointments",
+  "appointments:delete": "appointments",
+  "marketing:edit": "marketing",
+  "marketing:delete": "marketing",
+  "payments:record": "payments",
+  "payments:edit": "payments",
+  "payments:refund": "payments",
+  "payments:void": "payments",
+  "invoices:edit": "invoices",
+  "invoices:send": "invoices",
+  "invoices:void": "invoices",
+  "galleries:edit": "galleries",
+  "galleries:unlock": "galleries",
+  "galleries:complete": "galleries",
+  "galleries:delete": "galleries",
+  "business:settings": "settings",
+};
+
+export type Authorization = {
+  membership: Membership | null;
+  /** Role permits it AND the plan includes the module. */
+  allowed: boolean;
+  /** The role was sufficient; only the plan stood in the way. */
+  blockedByPlan: boolean;
+};
+
+/**
+ * The one check every guarded action runs: role first, then plan.
+ *
+ * `blockedByPlan` is kept separate so an action can tell someone their plan is
+ * the problem — a manager who is told "you do not have permission" to take a
+ * payment would reasonably think their account was broken.
+ */
+export async function authorizeCapability(
+  user: AppUser,
+  businessSlug: string,
+  capability: Capability,
+): Promise<Authorization> {
+  const membership = await membershipIn(user, businessSlug);
+  const roleAllows = roleCan(membership?.role, capability);
+
+  if (!roleAllows) {
+    return { membership, allowed: false, blockedByPlan: false };
+  }
+
+  // Platform admins are the vendor doing support, not a tenant spending money.
+  const planAllows = user.isPlatformAdmin
+    ? true
+    : await workspaceHasModule(businessSlug, CAPABILITY_MODULE[capability]);
+
+  return { membership, allowed: planAllows, blockedByPlan: !planAllows };
+}
+
 /** Convenience for actions: resolve membership and check one capability. */
 export async function can(user: AppUser, businessSlug: string, capability: Capability) {
-  const membership = await membershipIn(user, businessSlug);
-  return roleCan(membership?.role, capability);
+  const { allowed } = await authorizeCapability(user, businessSlug, capability);
+  return allowed;
 }

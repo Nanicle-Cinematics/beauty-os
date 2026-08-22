@@ -20,7 +20,7 @@ type Props = { params: Promise<{ businessSlug: string }> };
 
 export default async function WaitlistPage({ params }: Props) {
   const { businessSlug } = await params;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "waitlist" });
   const [data, membership] = await Promise.all([
     getWaitlistModuleData(businessSlug),
     membershipIn(user, businessSlug),

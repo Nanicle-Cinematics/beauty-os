@@ -50,7 +50,7 @@ export default async function AppointmentsPage({ params, searchParams }: Appoint
   const { businessSlug } = await params;
   const { new: newParam } = await searchParams;
   const showNew = newParam === "1";
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "appointments" });
   const membership = await membershipIn(user, businessSlug);
   const canDelete = roleCan(membership?.role, "appointments:delete");
   const data = await timeDataLoad(`appointments:${businessSlug}`, () => getAppointmentModuleData(businessSlug));

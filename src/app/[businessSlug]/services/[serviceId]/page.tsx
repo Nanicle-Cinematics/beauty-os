@@ -19,7 +19,7 @@ type ServiceDetailPageProps = {
 export default async function ServiceDetailPage({ params, searchParams }: ServiceDetailPageProps) {
   const { businessSlug, serviceId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "services" });
 
   const [service, options, membership] = await Promise.all([
     getServiceDetail(businessSlug, serviceId),

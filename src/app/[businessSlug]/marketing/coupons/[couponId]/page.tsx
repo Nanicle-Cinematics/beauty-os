@@ -18,7 +18,7 @@ type Props = {
 export default async function CouponDetailPage({ params, searchParams }: Props) {
   const { businessSlug, couponId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "marketing" });
 
   const [coupon, membership] = await Promise.all([
     getCouponDetail(businessSlug, couponId),

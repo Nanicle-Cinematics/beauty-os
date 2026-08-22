@@ -19,7 +19,7 @@ type ExpensesPageProps = {
 export default async function ExpensesPage({ params, searchParams }: ExpensesPageProps) {
   const { businessSlug } = await params;
   const sp = await searchParams;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "finance" });
   const data = await getExpensesList(businessSlug, sp);
   if (!data) notFound();
 

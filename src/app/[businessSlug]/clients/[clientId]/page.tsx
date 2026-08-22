@@ -23,7 +23,7 @@ type ClientDetailPageProps = {
 export default async function ClientDetailPage({ params, searchParams }: ClientDetailPageProps) {
   const { businessSlug, clientId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "clients" });
 
   const [client, favorites, membership] = await Promise.all([
     getClientDetail(businessSlug, clientId),

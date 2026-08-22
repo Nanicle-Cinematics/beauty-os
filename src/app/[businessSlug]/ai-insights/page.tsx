@@ -45,7 +45,7 @@ const priorityStyle: Record<string, string> = {
 
 export default async function AiInsightsPage({ params }: AiInsightsPageProps) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "ai-insights" });
   const data = await getAiInsightsData(businessSlug);
   if (!data) notFound();
 

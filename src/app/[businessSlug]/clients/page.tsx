@@ -35,7 +35,7 @@ export default async function ClientsPage({ params, searchParams }: ClientsPageP
   const { businessSlug } = await params;
   const { new: newParam } = await searchParams;
   const showNew = newParam === "1";
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "clients" });
   const data = await timeDataLoad(`clients:${businessSlug}`, () => getClientModuleData(businessSlug));
 
   if (!data) {

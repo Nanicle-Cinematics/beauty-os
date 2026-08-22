@@ -26,7 +26,7 @@ const cardClass = "card p-5";
 
 export default async function MarketingPage({ params }: MarketingPageProps) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "marketing" });
   const data = await getMarketingModuleData(businessSlug);
 
   if (!data) {

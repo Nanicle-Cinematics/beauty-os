@@ -20,7 +20,7 @@ type InvoiceDetailPageProps = {
 export default async function InvoiceDetailPage({ params, searchParams }: InvoiceDetailPageProps) {
   const { businessSlug, invoiceId } = await params;
   const { error } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "invoices" });
   const [invoice, membership] = await Promise.all([getInvoiceDetail(businessSlug, invoiceId), membershipIn(user, businessSlug)]);
   if (!invoice) notFound();
 

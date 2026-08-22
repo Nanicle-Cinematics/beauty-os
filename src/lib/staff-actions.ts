@@ -11,7 +11,8 @@ import {
   type StaffDayHours,
 } from "@/lib/staff-data";
 import { requireTenantAccess, type AppUser } from "@/lib/auth";
-import { membershipIn, roleCan, type Capability } from "@/lib/permissions";
+import { authorizeCapability, CAPABILITY_MODULE, type Capability } from "@/lib/permissions";
+import { workspaceSeatState } from "@/lib/entitlement-data";
 import { prisma } from "@/lib/prisma";
 import { sendInviteEmail } from "@/lib/email";
 import { getBaseUrl, inviteUrl } from "@/lib/urls";
@@ -38,8 +39,14 @@ function parseHours(formData: FormData): StaffDayHours[] {
 
 async function authorize(businessSlug: string, capability: Capability) {
   const user = await requireTenantAccess(businessSlug);
-  const membership = await membershipIn(user, businessSlug);
-  return { user, membership, allowed: roleCan(membership?.role, capability) };
+  const { membership, allowed, blockedByPlan } = await authorizeCapability(user, businessSlug, capability);
+  // Blocked by the plan rather than the role: send them to the upgrade page.
+  // Telling a manager they lack permission to do their own job would read as a
+  // broken account, when the real answer is that the workspace never bought it.
+  if (blockedByPlan) {
+    redirect(`/${businessSlug}/upgrade?module=${CAPABILITY_MODULE[capability]}`);
+  }
+  return { user, membership, allowed, blockedByPlan };
 }
 
 /** Best-effort audit: losing the trail must never lose the change. */
@@ -75,6 +82,14 @@ export async function inviteStaffAction(formData: FormData) {
   const { allowed } = await authorize(businessSlug, "staff:edit");
   if (!allowed) {
     redirect(`/${businessSlug}/staff?toastError=${encodeURIComponent("Only owners and managers can invite staff.")}`);
+  }
+
+  // Seats are checked here rather than in staff-data because this is the only
+  // path that adds a person to a workspace. An existing team that is already
+  // over its limit is never cut back — the plan only stops the next hire.
+  const seats = await workspaceSeatState(businessSlug);
+  if (seats.exhausted) {
+    redirect(`/${businessSlug}/upgrade?reason=seats`);
   }
 
   const commissionRaw = Number.parseFloat(getString(formData, "commissionValue"));

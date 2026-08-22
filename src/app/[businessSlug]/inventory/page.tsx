@@ -28,7 +28,7 @@ const barStyles: Record<ProductStatus, string> = {
 
 export default async function InventoryPage({ params }: InventoryPageProps) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "inventory" });
   const data = await getInventoryModuleData(businessSlug);
 
   if (!data) {

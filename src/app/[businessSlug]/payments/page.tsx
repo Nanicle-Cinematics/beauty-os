@@ -23,7 +23,7 @@ export default async function PaymentsPage({ params, searchParams }: PaymentsPag
   const { businessSlug } = await params;
   const { new: newParam } = await searchParams;
   const showNew = newParam === "1";
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "payments" });
   const data = await timeDataLoad(`payments:${businessSlug}`, () => getPaymentModuleData(businessSlug));
 
   if (!data) {

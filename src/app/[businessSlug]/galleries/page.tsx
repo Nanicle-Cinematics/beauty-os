@@ -30,7 +30,7 @@ function messageFor(link: string) {
 export default async function GalleriesPage({ params, searchParams }: GalleriesPageProps) {
   const { businessSlug } = await params;
   const { new: newParam } = await searchParams;
-  const user = await requireTenantAccess(businessSlug);
+  const user = await requireTenantAccess(businessSlug, { module: "galleries" });
   const membership = await membershipIn(user, businessSlug);
   const canEdit = roleCan(membership?.role, "galleries:edit");
   const canUnlock = roleCan(membership?.role, "galleries:unlock");

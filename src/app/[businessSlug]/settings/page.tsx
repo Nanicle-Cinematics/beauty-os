@@ -30,7 +30,7 @@ function workspaceInitials(name: string) {
 
 export default async function BusinessSettingsPage({ params, searchParams }: Props) {
   const { businessSlug } = await params;
-  await requireTenantAccess(businessSlug);
+  await requireTenantAccess(businessSlug, { module: "settings" });
   const [{ updated, error }, settings] = await Promise.all([searchParams, getBusinessSettings(businessSlug)]);
   if (!settings) notFound();
 

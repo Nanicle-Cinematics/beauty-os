@@ -6,6 +6,7 @@ import { setTenantContext } from "@/lib/tenant-context";
 import { hashPassword } from "@/lib/password";
 import { seedStarterWorkspaceData } from "@/lib/starter-data";
 import { trialEndsAt } from "@/lib/trial";
+import { planFeatureList, isPlanKey, TOP_PLAN } from "@/lib/entitlements";
 import { withDatabaseFallback } from "@/lib/db-health";
 import { unstable_cache } from "next/cache";
 
@@ -48,9 +49,26 @@ export type PublicPlan = {
   highlighted: boolean;
 };
 
+// Also what the pricing page shows when Postgres is unreachable, so the prices
+// must stay in step with the seeded plans. Features come from the same ladder
+// the live path uses, so the two can never describe different products.
 const fallbackPlans: PublicPlan[] = [
-  { key: "PROFESSIONAL", name: "Growth Suite", priceMonthly: "GH₵ 199", priceYearly: "GH₵ 1,990", features: ["Bookings", "CRM", "Marketing"], highlighted: false },
-  { key: "STUDIO", name: "Studio Pro", priceMonthly: "GH₵ 349", priceYearly: "GH₵ 3,490", features: ["Bookings", "CRM", "Inventory", "Payments"], highlighted: true },
+  {
+    key: "PROFESSIONAL",
+    name: "Growth Suite",
+    priceMonthly: "GH₵ 199",
+    priceYearly: "GH₵ 1,990",
+    features: planFeatureList("PROFESSIONAL", null),
+    highlighted: false,
+  },
+  {
+    key: "STUDIO",
+    name: "Studio Pro",
+    priceMonthly: "GH₵ 349",
+    priceYearly: "GH₵ 3,490",
+    features: planFeatureList("STUDIO", "Growth Suite"),
+    highlighted: true,
+  },
 ];
 
 async function readPublicPlans(): Promise<PublicPlan[]> {
@@ -60,7 +78,14 @@ async function readPublicPlans(): Promise<PublicPlan[]> {
     name: p.name,
     priceMonthly: money(Number(p.priceMonthly)),
     priceYearly: money(Number(p.priceYearly)),
-    features: Array.isArray(p.features) ? (p.features as unknown[]).map(String) : [],
+    // Derived from the entitlement ladder rather than read from `Plan.features`,
+    // so the pricing page can only ever promise what the plan actually unlocks.
+    // The hand-maintained JSON drifted before: Growth Suite advertised Marketing
+    // while the dearer Studio Pro did not, making the upgrade look like a loss.
+    features: planFeatureList(
+      isPlanKey(p.key) ? p.key : TOP_PLAN,
+      i > 0 ? plans[i - 1].name : null,
+    ),
     // Highlight the top (most expensive) active plan as the recommended tier.
     highlighted: i === plans.length - 1,
   }));
