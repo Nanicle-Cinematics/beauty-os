@@ -3,20 +3,14 @@ import { Calendar, Users, IdCard, Package, CreditCard, Megaphone, Check, ArrowRi
 import { getPublicPlans } from "@/lib/signup-data";
 
 /**
- * Revalidate daily, not every five minutes.
+ * NOTE: this value currently has no effect, and is kept only so the intent is
+ * visible if the constraint below ever changes.
  *
- * This page reads the plan catalogue from Postgres, and 300s was exactly
- * Neon's autosuspend window: every revalidation woke the compute at the precise
- * moment it was about to sleep, so it never slept once. Combined with an
- * external monitor hitting `/` every minute — which kept a request always
- * waiting to trigger the next revalidation — that held the database awake 24/7
- * and burned 440 compute-hours against a 100-hour monthly allowance, taking
- * production down in August 2026.
- *
- * Any interval at or below the suspend window recreates the bug, so this needs
- * to stay comfortably above it. A day is the honest number for the content:
- * prices are seeded marketing copy that changes approximately never, and a
- * deploy resets the cache anyway, so an edit is live as soon as it ships.
+ * The root layout reads `cookies()` to resolve the theme, which opts every
+ * route in the app into dynamic rendering — `next build` marks this page ƒ, not
+ * ●. A dynamic page re-renders on every request regardless of the interval it
+ * declares here, so the plan query is cached in `getPublicPlans` instead, where
+ * the caching actually applies. See the comment there.
  */
 export const revalidate = 86400;
 
