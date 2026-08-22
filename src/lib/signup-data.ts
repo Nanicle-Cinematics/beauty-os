@@ -7,6 +7,7 @@ import { hashPassword } from "@/lib/password";
 import { seedStarterWorkspaceData } from "@/lib/starter-data";
 import { trialEndsAt } from "@/lib/trial";
 import { withDatabaseFallback } from "@/lib/db-health";
+import { unstable_cache } from "next/cache";
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
@@ -52,6 +53,43 @@ const fallbackPlans: PublicPlan[] = [
   { key: "STUDIO", name: "Studio Pro", priceMonthly: "GH₵ 349", priceYearly: "GH₵ 3,490", features: ["Bookings", "CRM", "Inventory", "Payments"], highlighted: true },
 ];
 
+async function readPublicPlans(): Promise<PublicPlan[]> {
+  const plans = await prisma.plan.findMany({ where: { isActive: true }, orderBy: { priceMonthly: "asc" } });
+  return plans.map((p, i) => ({
+    key: p.key,
+    name: p.name,
+    priceMonthly: money(Number(p.priceMonthly)),
+    priceYearly: money(Number(p.priceYearly)),
+    features: Array.isArray(p.features) ? (p.features as unknown[]).map(String) : [],
+    // Highlight the top (most expensive) active plan as the recommended tier.
+    highlighted: i === plans.length - 1,
+  }));
+}
+
+/**
+ * Cached at the query, not at the page.
+ *
+ * The obvious fix was `export const revalidate` on the landing page, and it
+ * does nothing here: the root layout reads `cookies()` for the theme, which
+ * makes every route in the app dynamic, so the page renders fresh on every
+ * request no matter what interval it declares. `next build` confirms it —
+ * `/` is marked ƒ, not ●.
+ *
+ * That meant every hit to the public landing page ran a Postgres query. With
+ * something requesting `/` once a minute around the clock, the Neon compute was
+ * touched far inside its 300s autosuspend window and never slept: 440 active
+ * hours against a 100 compute-hour allowance, which took production down in
+ * August 2026.
+ *
+ * Caching the read in the data cache fixes it regardless of how the page
+ * renders. A day is the honest interval — plan prices are seeded marketing copy
+ * that changes approximately never, and a deploy drops the cache anyway.
+ */
+const readPublicPlansCached = unstable_cache(readPublicPlans, ["public-plans"], {
+  revalidate: 86400,
+  tags: ["plans"],
+});
+
 export async function getPublicPlans(): Promise<PublicPlan[]> {
   if (!isDatabaseConfigured()) {
     return fallbackPlans;
@@ -60,18 +98,11 @@ export async function getPublicPlans(): Promise<PublicPlan[]> {
   // outage: prices are static marketing content, and a prospect who finds a
   // 500 assumes the product is dead. Tenant data never degrades like this —
   // it goes to /maintenance rather than showing anyone invented numbers.
-  return withDatabaseFallback(async () => {
-    const plans = await prisma.plan.findMany({ where: { isActive: true }, orderBy: { priceMonthly: "asc" } });
-    return plans.map((p, i) => ({
-      key: p.key,
-      name: p.name,
-      priceMonthly: money(Number(p.priceMonthly)),
-      priceYearly: money(Number(p.priceYearly)),
-      features: Array.isArray(p.features) ? (p.features as unknown[]).map(String) : [],
-      // Highlight the top (most expensive) active plan as the recommended tier.
-      highlighted: i === plans.length - 1,
-    }));
-  }, fallbackPlans);
+  //
+  // The fallback sits OUTSIDE the cache deliberately. A throw is not a cache
+  // entry, so an outage never gets frozen in for a day — the next request after
+  // the database returns reads it properly.
+  return withDatabaseFallback(() => readPublicPlansCached(), fallbackPlans);
 }
 
 export type PublicCategory = { id: string; label: string };
