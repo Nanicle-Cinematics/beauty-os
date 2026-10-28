@@ -13,6 +13,7 @@ import {
 import { requireTenantAccess, type AppUser } from "@/lib/auth";
 import { authorizeCapability, CAPABILITY_MODULE, type Capability } from "@/lib/permissions";
 import { workspaceSeatState } from "@/lib/entitlement-data";
+import { statusChangeTakesSeat } from "@/lib/entitlements";
 import { prisma } from "@/lib/prisma";
 import { sendInviteEmail } from "@/lib/email";
 import { getBaseUrl, inviteUrl } from "@/lib/urls";
@@ -84,9 +85,10 @@ export async function inviteStaffAction(formData: FormData) {
     redirect(`/${businessSlug}/staff?toastError=${encodeURIComponent("Only owners and managers can invite staff.")}`);
   }
 
-  // Seats are checked here rather than in staff-data because this is the only
-  // path that adds a person to a workspace. An existing team that is already
-  // over its limit is never cut back — the plan only stops the next hire.
+  // Seats are checked in the actions rather than in staff-data, on the two paths
+  // that put a person on the team: this invite, and bringing back someone who
+  // was removed (setStaffStatusAction). An existing team that is already over
+  // its limit is never cut back — the plan only stops the next hire.
   const seats = await workspaceSeatState(businessSlug);
   if (seats.exhausted) {
     redirect(`/${businessSlug}/upgrade?reason=seats`);
@@ -200,6 +202,20 @@ export async function setStaffStatusAction(formData: FormData) {
   const { user, membership, allowed } = await authorize(businessSlug, "staff:status");
   if (!allowed) {
     redirect(`/${businessSlug}/staff?toastError=${encodeURIComponent("Only owners and managers can change staff status.")}`);
+  }
+
+  // Bringing back someone who was removed puts them on the team again, so it
+  // needs a free seat exactly as a fresh invite does. The staff page offers no
+  // button for this, but the action accepts any member, so the guard lives here.
+  const current = await prisma.staffMember.findFirst({
+    where: { id: staffId, business: { slug: businessSlug } },
+    select: { status: true },
+  });
+  if (current && statusChangeTakesSeat(current.status, status)) {
+    const seats = await workspaceSeatState(businessSlug);
+    if (seats.exhausted) {
+      redirect(`/${businessSlug}/upgrade?reason=seats`);
+    }
   }
 
   await setStaffStatus({ businessSlug, staffId, status });
