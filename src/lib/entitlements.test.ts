@@ -1,10 +1,15 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "fs";
+import { join } from "path";
+
 import {
   PLAN_ORDER,
   PLAN_RANK,
   MODULE_MIN_PLAN,
+  SEAT_HOLDING_STATUSES,
   TOP_PLAN,
   hasModule,
+  holdsSeat,
   modulesFor,
   lockedModulesFor,
   nextPlanUp,
@@ -13,6 +18,7 @@ import {
   resolvePlan,
   seatLimit,
   seatsExhausted,
+  statusChangeTakesSeat,
   type ModuleKey,
   type PlanKey,
 } from "@/lib/entitlements";
@@ -108,6 +114,52 @@ describe("seats", () => {
   it("treats the top tier as unlimited", () => {
     expect(seatLimit(TOP_PLAN)).toBeNull();
     expect(seatsExhausted(TOP_PLAN, 5000)).toBe(false);
+  });
+
+  it("counts everyone still on the team, and frees a seat only on removal", () => {
+    expect(holdsSeat("INVITED")).toBe(true);
+    expect(holdsSeat("ACTIVE")).toBe(true);
+    expect(holdsSeat("SUSPENDED")).toBe(true);
+    expect(holdsSeat("REMOVED")).toBe(false);
+  });
+
+  it("lets a full salon that removed a stylist hire a replacement", () => {
+    // The bug this encodes: removing someone keeps their row, and the seat count
+    // read every row, so a Growth Suite salon at 4 of 4 that removed a stylist
+    // was still sent to the upgrade page when it tried to hire.
+    const team = ["ACTIVE", "ACTIVE", "ACTIVE", "REMOVED"];
+    expect(seatsExhausted("PROFESSIONAL", team.filter(holdsSeat).length)).toBe(false);
+    expect(seatsExhausted("PROFESSIONAL", [...team, "INVITED"].filter(holdsSeat).length)).toBe(true);
+  });
+
+  it("makes bringing a removed member back take a seat, like a fresh invite", () => {
+    expect(statusChangeTakesSeat("REMOVED", "ACTIVE")).toBe(true);
+    expect(statusChangeTakesSeat("REMOVED", "SUSPENDED")).toBe(true);
+  });
+
+  it("never needs a free seat for a move within the team", () => {
+    // Reactivating someone back from leave must work even on a full plan.
+    expect(statusChangeTakesSeat("SUSPENDED", "ACTIVE")).toBe(false);
+    expect(statusChangeTakesSeat("INVITED", "ACTIVE")).toBe(false);
+    expect(statusChangeTakesSeat("ACTIVE", "SUSPENDED")).toBe(false);
+    expect(statusChangeTakesSeat("INVITED", "REMOVED")).toBe(false);
+    expect(statusChangeTakesSeat("REMOVED", "REMOVED")).toBe(false);
+  });
+
+  it("decides for every staff status in the schema whether it holds a seat", () => {
+    // Adding an enum value silently changes what every filter written against
+    // the old set means — holds once leaked into revenue exactly that way. A new
+    // staff status fails here until someone decides whether it takes a seat.
+    const schema = readFileSync(join(process.cwd(), "prisma/schema.prisma"), "utf8");
+    const block = schema.match(/enum StaffStatus \{([^}]*)\}/);
+    expect(block).not.toBeNull();
+
+    const statuses = block![1]
+      .split("\n")
+      .map((line) => line.trim().split(/\s+/)[0])
+      .filter((token) => token && !token.startsWith("//"));
+
+    expect([...statuses].sort()).toEqual([...SEAT_HOLDING_STATUSES, "REMOVED"].sort());
   });
 });
 

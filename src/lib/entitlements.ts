@@ -183,6 +183,25 @@ export function seatsExhausted(plan: PlanKey, currentSeats: number) {
   return limit !== null && currentSeats >= limit;
 }
 
+/**
+ * Staff statuses that hold a seat: everyone still on the team, which is exactly
+ * who the staff page lists. A pending invite holds its seat, or a salon could
+ * invite past its limit and let the acceptances overflow it. A suspension keeps
+ * its seat, so bringing someone back from leave is never refused. Only removal
+ * frees one — a removed stylist's row is kept for the history, so counting rows
+ * instead of this set left a full salon unable to hire a replacement.
+ */
+export const SEAT_HOLDING_STATUSES = ["INVITED", "ACTIVE", "SUSPENDED"] as const;
+
+export function holdsSeat(status: string) {
+  return (SEAT_HOLDING_STATUSES as readonly string[]).includes(status);
+}
+
+/** True when a status change puts someone back on the team, so it needs a free seat like an invite. */
+export function statusChangeTakesSeat(from: string, to: string) {
+  return !holdsSeat(from) && holdsSeat(to);
+}
+
 /** The next tier up that actually unlocks something new, or null at the top. */
 export function nextPlanUp(plan: PlanKey): PlanKey | null {
   const locked = lockedModulesFor(plan);

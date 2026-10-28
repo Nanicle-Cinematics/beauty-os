@@ -6,6 +6,7 @@ import { prisma, isDatabaseConfigured } from "@/lib/prisma";
 import { isOnTrial } from "@/lib/trial";
 import {
   MODULE_LABEL,
+  SEAT_HOLDING_STATUSES,
   TOP_PLAN,
   hasModule,
   lockedModulesFor,
@@ -27,6 +28,7 @@ export type WorkspaceEntitlement = {
   onTrial: boolean;
   lockedModules: ModuleKey[];
   seatLimit: number | null;
+  /** Staff holding a seat: everyone on the team except removed members. */
   seatsUsed: number;
   upgradeTo: PlanKey | null;
   upgradeToName: string | null;
@@ -53,7 +55,7 @@ export const getWorkspaceEntitlement = cache(async function getWorkspaceEntitlem
       status: true,
       createdAt: true,
       subscription: { select: { status: true, plan: { select: { key: true, name: true } } } },
-      _count: { select: { staff: true } },
+      _count: { select: { staff: { where: { status: { in: [...SEAT_HOLDING_STATUSES] } } } } },
     },
   });
 

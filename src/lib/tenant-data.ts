@@ -116,7 +116,6 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
     include: {
       category: true,
       subscription: { include: { plan: true } },
-      _count: { select: { staff: true } },
     },
   });
 
@@ -151,7 +150,9 @@ export async function getTenantChrome(user: AppUser, slug: string): Promise<Tena
     status: readableStatus(business.status),
     isTrial: business.status === "TRIAL",
     namePlaceholder: business.namePlaceholder,
-    staffSeats: business._count.staff,
+    // The count the invite guard enforces, so "3 of 4 staff seats" here can never
+    // disagree with the limit that blocks the next hire.
+    staffSeats: entitlement.seatsUsed,
     branchCount: 1,
     // Platform admins are the vendor doing support — they see the whole product
     // regardless of what the tenant pays, matching the guards in auth.ts.

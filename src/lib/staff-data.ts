@@ -538,7 +538,7 @@ export async function setStaffStatus({
 
   const member = await prisma.staffMember.findFirst({
     where: { id: staffId, business: { slug: businessSlug } },
-    select: { id: true, joinedAt: true, role: true },
+    select: { id: true, businessId: true, joinedAt: true, role: true, invitedEmail: true },
   });
 
   if (!member) {
@@ -561,11 +561,24 @@ export async function setStaffStatus({
     }
   }
 
-  await prisma.staffMember.update({
-    where: { id: member.id },
-    data: {
-      status,
-      joinedAt: status === "ACTIVE" && !member.joinedAt ? new Date() : member.joinedAt,
-    },
-  });
+  await tenantTransaction(async (tx) => {
+    await tx.staffMember.update({
+      where: { id: member.id },
+      data: {
+        status,
+        joinedAt: status === "ACTIVE" && !member.joinedAt ? new Date() : member.joinedAt,
+      },
+    });
+
+    // Removing someone also withdraws any invite still waiting in their inbox.
+    // Accepting a link only looks for a pending INVITED row and creates a fresh
+    // ACTIVE one when it finds none, so the old link would let a removed invitee
+    // rejoin as a brand-new member — past both the removal and the seat limit.
+    if (status === "REMOVED" && member.invitedEmail) {
+      await tx.businessInvite.updateMany({
+        where: { businessId: member.businessId, email: member.invitedEmail, acceptedAt: null, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+    }
+  }, { timeout: 15000 });
 }
